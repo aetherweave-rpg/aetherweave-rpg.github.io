@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aetherweave — Talent Trees</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="app-header"></header>
+
+  <main class="page page-trees">
+    <div class="page-toolbar no-print">
+      <button id="export-pdf" class="btn" type="button">🖨 Export to PDF</button>
+    </div>
+    <div id="tree-tabs" class="tree-tabs"></div>
+    <div id="tree" class="tree"></div>
+
+    <div class="legend">
+      <span class="legend-title">How to read the tree</span>
+      <span class="legend-item"><span class="swatch node-available"></span> Available — click to learn</span>
+      <span class="legend-item"><span class="swatch node-owned"></span> Learned (✓)</span>
+      <span class="legend-item"><span class="swatch node-granted"></span> Granted at creation (★) — free</span>
+      <span class="legend-item"><span class="swatch node-locked"></span> Locked — requirements unmet</span>
+      <span class="legend-item"><span class="swatch node-invalid"></span> Learned but now invalid</span>
+      <span class="legend-item"><span class="line-swatch"></span> Prerequisite link (dashed = any-of)</span>
+      <span class="legend-item">Horizontal dividers separate tiers of play. Hover a talent for its requirements.</span>
+    </div>
+  </main>
+
+  <!-- ---------- Editable database (all content is in these files) ---------- -->
+  <script src="js/data/creation.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/data/skills.js"></script>
+  <script src="js/data/domains.js"></script>
+  <script src="js/data/ancestries.js"></script>
+  <script src="js/data/combinations.js"></script>
+  <script src="js/data/sources.js"></script>
+
+  <!-- ---------- Application ---------- -->
+  <script src="js/state.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/ui-shared.js"></script>
+  <script src="js/tree.js"></script>
+</body>
+</html>
