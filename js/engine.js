@@ -828,6 +828,26 @@
     return spell.mana || 0;
   }
 
+  // ---- Max HP / Max Mana ---------------------------------------------------
+  // Max HP: 5 + Body at creation, +1 per 10 combat exp spent (any pool use),
+  // and +Body again each time the tier of play advances past tier 1.
+  function maxHP(state) {
+    var body = (state.characteristics || {}).body || 0;
+    var spent = computeSpent(state);
+    var tierIncreases = currentTierIndex(state); // 0 at tier 1, 1 at tier 2, ...
+    return 5 + body + Math.floor(spent.combat / 10) + body * tierIncreases;
+  }
+  // Max Mana: the caster characteristic (from source of power) + 1 per 10 exp
+  // spent on the Spellcasting ladder, and +that characteristic again each time
+  // the tier of play advances past tier 1.
+  function maxMana(state) {
+    var charKey = casterCharacteristic(state);
+    var charVal = charKey ? ((state.characteristics || {})[charKey] || 0) : 0;
+    var spent = computeSpent(state);
+    var tierIncreases = currentTierIndex(state);
+    return charVal + Math.floor(spent.breakdown.spellcasting / 10) + charVal * tierIncreases;
+  }
+
   // ---- Spellcasting spine (auto-generated tree nodes) ---------------------
   // A magical domain grows a central spine: MAX_SPELL_TIER "Spellcasting" rungs
   // down the centre column (each +1 to spell rolls, priced like a combat skill),
@@ -903,6 +923,7 @@
     canRaiseSpellcasting: canRaiseSpellcasting, casterCharacteristic: casterCharacteristic,
     spellPool: spellPool, spellOwned: spellOwned, canLearnSpell: canLearnSpell, spellCastable: spellCastable,
     spellManaCost: spellManaCost, casterNodes: casterNodes,
+    maxHP: maxHP, maxMana: maxMana,
     // misc
     validateDB: validateDB, isCombatSkill: isCombatSkill, findKind: findKind,
     profTier: profTier, charLabel: charLabel, poolLabel: poolLabel,

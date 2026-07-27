@@ -204,29 +204,34 @@
     var hp = el("div", "hp-box");
     hp.appendChild(el("div", "stat-title", "HP"));
     var hpRow = el("div", "hp-row");
-    [["max", "Max"], ["current", "Current"]].forEach(function (k) {
-      var f = el("label", "hp-field");
-      f.appendChild(el("span", "hp-label", k[1]));
-      f.appendChild(textInput(state.hp[k[0]], function (v) {
-        State.update(function (s2) { s2.hp[k[0]] = v; }, true);
-      }, { cls: "hp-input", type: "number" }));
-      hpRow.appendChild(f);
-    });
+    var hpMaxField = el("label", "hp-field");
+    hpMaxField.appendChild(el("span", "hp-label", "Max"));
+    hpMaxField.appendChild(el("span", "hp-input hp-computed", String(Engine.maxHP(state))));
+    hpRow.appendChild(hpMaxField);
+    var hpCurField = el("label", "hp-field");
+    hpCurField.appendChild(el("span", "hp-label", "Current"));
+    hpCurField.appendChild(textInput(state.hp.current, function (v) {
+      State.update(function (s2) { s2.hp.current = v; }, true);
+    }, { cls: "hp-input", type: "number" }));
+    hpRow.appendChild(hpCurField);
     hp.appendChild(hpRow);
     wrap.appendChild(hp);
 
-    // Mana — the resource spells (tier 2+) spend to cast; edited like HP.
+    // Mana — the resource spells (tier 2+) spend to cast. Max is computed;
+    // only Current is hand-edited, like HP.
     var mana = el("div", "hp-box mana-box");
     mana.appendChild(el("div", "stat-title", "Mana"));
     var manaRow = el("div", "hp-row");
-    [["max", "Max"], ["current", "Current"]].forEach(function (k) {
-      var f = el("label", "hp-field");
-      f.appendChild(el("span", "hp-label", k[1]));
-      f.appendChild(textInput(state.mana[k[0]], function (v) {
-        State.update(function (s2) { s2.mana[k[0]] = v; }, true);
-      }, { cls: "hp-input", type: "number" }));
-      manaRow.appendChild(f);
-    });
+    var manaMaxField = el("label", "hp-field");
+    manaMaxField.appendChild(el("span", "hp-label", "Max"));
+    manaMaxField.appendChild(el("span", "hp-input hp-computed", String(Engine.maxMana(state))));
+    manaRow.appendChild(manaMaxField);
+    var manaCurField = el("label", "hp-field");
+    manaCurField.appendChild(el("span", "hp-label", "Current"));
+    manaCurField.appendChild(textInput(state.mana.current, function (v) {
+      State.update(function (s2) { s2.mana.current = v; }, true);
+    }, { cls: "hp-input", type: "number" }));
+    manaRow.appendChild(manaCurField);
     mana.appendChild(manaRow);
     wrap.appendChild(mana);
 
