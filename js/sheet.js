@@ -215,6 +215,21 @@
     hp.appendChild(hpRow);
     wrap.appendChild(hp);
 
+    // Mana — the resource spells (tier 2+) spend to cast; edited like HP.
+    var mana = el("div", "hp-box mana-box");
+    mana.appendChild(el("div", "stat-title", "Mana"));
+    var manaRow = el("div", "hp-row");
+    [["max", "Max"], ["current", "Current"]].forEach(function (k) {
+      var f = el("label", "hp-field");
+      f.appendChild(el("span", "hp-label", k[1]));
+      f.appendChild(textInput(state.mana[k[0]], function (v) {
+        State.update(function (s2) { s2.mana[k[0]] = v; }, true);
+      }, { cls: "hp-input", type: "number" }));
+      manaRow.appendChild(f);
+    });
+    mana.appendChild(manaRow);
+    wrap.appendChild(mana);
+
     var charCap = Engine.characteristicCap(state);
     CONFIG.CHARACTERISTICS.forEach(function (c) {
       var box = el("div", "char-box");
@@ -330,6 +345,7 @@
     var parts = [
       ["Skills", b.skills], ["Proficiencies", b.proficiencies],
       ["Talents", b.talents], ["Tree access", b.treeAccess],
+      ["Spellcasting", b.spellcasting], ["Spells", b.spells],
     ].filter(function (p) { return p[1] > 0; });
 
     if (parts.length) {
@@ -446,64 +462,144 @@
     return s;
   }
 
-  // ---- Learned talents ----------------------------------------------------
+  // ---- Abilities (passives · maneuvers · spells) --------------------------
+  // Owned talents split by the ability they grant, plus learned spells grouped
+  // by their magical domain. Each is a distinct category, per the design.
   function talentsSection(state) {
-    var s = section("Talents");
+    var s = section("Abilities");
     var owned = (state.talents || []).map(Engine.talentById).filter(Boolean);
-    if (!owned.length) {
-      var hint = el("div", "sheet-hint", "No talents learned yet. Head to the ");
+    var anySpells = Engine.magicalDomains().some(function (d) {
+      return Engine.spellcastingLevel(state, d.id) > 0 ||
+        Engine.spellsForDomain(d.id).some(function (sp) { return Engine.spellOwned(state, sp.id); });
+    });
+
+    if (!owned.length && !anySpells) {
+      var hint = el("div", "sheet-hint", "No abilities yet. Head to the ");
       hint.appendChild(link("Talent Trees", "index.html"));
-      hint.appendChild(document.createTextNode(" to spend exp."));
+      hint.appendChild(document.createTextNode(" to learn talents or spells."));
       s.appendChild(hint);
       return s;
     }
-    Engine.allTrees().forEach(function (d) {
-      var inTree = owned.filter(function (t) { return t.domain === d.id; })
-        .sort(function (a, b) { return a.tier - b.tier || a.row - b.row; });
-      if (!inTree.length) return;
 
-      var group = el("div", "talent-group");
-      var h = el("h3", "talent-group-title");
-      h.appendChild(el("span", "tg-icon", d.icon));
-      h.appendChild(el("span", null, d.name));
-      if (d.kind !== "core") h.appendChild(el("span", "group-note", "(" + d.kind + " tree)"));
-      group.appendChild(h);
+    var passives = owned.filter(function (t) { return t.ability !== "maneuver"; });
+    var maneuvers = owned.filter(function (t) { return t.ability === "maneuver"; });
 
-      inTree.forEach(function (t) {
-        var status = Engine.requirementStatus(t, state);
-        var row = el("div", "talent-row" + (status.met ? "" : " invalid") + (status.granted ? " granted" : ""));
-        row.appendChild(el("span", "talent-icon", t.icon || t.name.charAt(0)));
-
-        var info = el("div", "talent-info");
-        var nameLine = el("span", "talent-name", t.name);
-        if (status.granted) nameLine.appendChild(el("span", "granted-tag", "granted"));
-        info.appendChild(nameLine);
-        info.appendChild(el("span", "talent-meta", status.granted
-          ? "free at creation · " + ((CONFIG.TIERS[t.tier - 1] || {}).name || ("Tier " + t.tier))
-          : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp · " +
-            ((CONFIG.TIERS[t.tier - 1] || {}).name || ("Tier " + t.tier))));
-        if (!status.met) {
-          var why = status.reasons.filter(function (r) { return !Engine.reasonMet(r); })
-            .map(function (r) { return r.label; }).join(", ");
-          info.appendChild(el("span", "talent-invalid-note", "⚠ requirements no longer met: " + why));
-        }
-        row.appendChild(info);
-
-        var del = el("button", "icon-btn", "✕");
-        del.type = "button";
-        del.disabled = !!status.granted;
-        del.title = status.granted ? "Granted at creation — can't be refunded" : "Refund";
-        del.onclick = function () {
-          var chk = Engine.canRefund(t.id, State.get());
-          if (!chk.ok) { UI.toast("Can't refund " + t.name + " — required by " + (chk.blockedBy || []).join(", "), "error"); return; }
-          State.update(function (s2) { s2.talents = s2.talents.filter(function (id) { return id !== t.id; }); });
-        };
-        row.appendChild(del);
-        group.appendChild(row);
-      });
-      s.appendChild(group);
-    });
+    if (passives.length) s.appendChild(abilityGroup("Passives", "◆", passives, state));
+    if (maneuvers.length) s.appendChild(abilityGroup("Maneuvers", "⟳", maneuvers, state));
+    var sg = spellsGroup(state);
+    if (sg) s.appendChild(sg);
     return s;
+  }
+
+  function tierName(tier) { return (CONFIG.TIERS[tier - 1] || {}).name || ("Tier " + tier); }
+
+  function abilityGroup(title, icon, talents, state) {
+    var group = el("div", "ability-group");
+    var h = el("h3", "talent-group-title");
+    h.appendChild(el("span", "tg-icon", icon));
+    h.appendChild(el("span", null, title));
+    h.appendChild(el("span", "group-note", talents.length + ""));
+    group.appendChild(h);
+    talents.slice()
+      .sort(function (a, b) { return a.tier - b.tier || String(a.domain).localeCompare(String(b.domain)); })
+      .forEach(function (t) { group.appendChild(talentRow(t, state)); });
+    return group;
+  }
+
+  function talentRow(t, state) {
+    var status = Engine.requirementStatus(t, state);
+    var row = el("div", "talent-row" + (status.met ? "" : " invalid") + (status.granted ? " granted" : ""));
+    row.appendChild(el("span", "talent-icon", t.icon || t.name.charAt(0)));
+
+    var info = el("div", "talent-info");
+    var nameLine = el("span", "talent-name", t.name);
+    if (status.granted) nameLine.appendChild(el("span", "granted-tag", "granted"));
+    var tree = Engine.treeById(t.domain);
+    nameLine.appendChild(el("span", "talent-domain-tag", (tree && tree.name) || t.domain));
+    if (t.ability === "maneuver" && t.uses) nameLine.appendChild(el("span", "talent-uses-tag", "⟳ " + t.uses + " / " + (t.usesPer || "session")));
+    info.appendChild(nameLine);
+    info.appendChild(el("span", "talent-meta", status.granted
+      ? "free at creation · " + tierName(t.tier)
+      : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp · " + tierName(t.tier)));
+    if (!status.met) {
+      var why = status.reasons.filter(function (r) { return !Engine.reasonMet(r); })
+        .map(function (r) { return r.label; }).join(", ");
+      info.appendChild(el("span", "talent-invalid-note", "⚠ requirements no longer met: " + why));
+    }
+    row.appendChild(info);
+
+    var del = el("button", "icon-btn", "✕");
+    del.type = "button";
+    del.disabled = !!status.granted;
+    del.title = status.granted ? "Granted at creation — can't be refunded" : "Refund";
+    del.onclick = function () {
+      var chk = Engine.canRefund(t.id, State.get());
+      if (!chk.ok) { UI.toast("Can't refund " + t.name + " — required by " + (chk.blockedBy || []).join(", "), "error"); return; }
+      State.update(function (s2) { s2.talents = s2.talents.filter(function (id) { return id !== t.id; }); });
+    };
+    row.appendChild(del);
+    return row;
+  }
+
+  // Spells category: one block per magical domain the character casts in or
+  // knows spells from, with its spellcasting level + effective pool.
+  function spellsGroup(state) {
+    var relevant = Engine.magicalDomains().filter(function (d) {
+      return Engine.spellcastingLevel(state, d.id) > 0 ||
+        Engine.spellsForDomain(d.id).some(function (sp) { return Engine.spellOwned(state, sp.id); });
+    });
+    if (!relevant.length) return null;
+
+    var group = el("div", "ability-group");
+    var h = el("h3", "talent-group-title");
+    h.appendChild(el("span", "tg-icon", "✨"));
+    h.appendChild(el("span", null, "Spells"));
+    group.appendChild(h);
+
+    relevant.forEach(function (d) {
+      var block = el("div", "spell-domain-block");
+      var pool = Engine.spellPool(state, d.id);
+      var dh = el("div", "spell-domain-head");
+      dh.appendChild(el("span", "sdh-icon", d.icon));
+      dh.appendChild(el("span", "sdh-name", d.name));
+      dh.appendChild(el("span", "sdh-pool", pool.charKey
+        ? "spellcasting +" + pool.ladder + " · pool " + Engine.charLabel(pool.charKey) +
+          " (" + pool.charVal + ") + " + pool.ladder + " = " + pool.total + " dice"
+        : "spellcasting +" + pool.ladder + " · set a source characteristic to complete the pool"));
+      block.appendChild(dh);
+
+      var owned = Engine.spellsForDomain(d.id).filter(function (sp) { return Engine.spellOwned(state, sp.id); })
+        .sort(function (a, b) { return (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name); });
+      if (!owned.length) {
+        block.appendChild(el("div", "sheet-hint", "Able to cast, but no spells learned yet."));
+      } else {
+        owned.forEach(function (sp) {
+          var castable = Engine.spellCastable(state, sp);
+          var row = el("div", "talent-row spell-sheet-row" + (castable ? "" : " invalid"));
+          row.appendChild(el("span", "talent-icon", sp.icon || sp.name.charAt(0)));
+          var info = el("div", "talent-info");
+          var nameLine = el("span", "talent-name", sp.name);
+          nameLine.appendChild(el("span", "spell-tier-tag", "T" + (sp.tier || 1)));
+          info.appendChild(nameLine);
+          var manaCost = Engine.spellManaCost(sp);
+          info.appendChild(el("span", "talent-meta",
+            (sp.cost || 0) + (sp.pool === "combat" ? " combat" : " non-combat") + " exp · " +
+            (manaCost ? (manaCost + " mana to cast") : "cantrip (free to cast)")));
+          if (sp.description) info.appendChild(el("span", "talent-meta spell-desc-line", sp.description));
+          if (!castable) info.appendChild(el("span", "talent-invalid-note",
+            "⚠ needs Spellcasting +" + (sp.tier || 1) + " to cast"));
+          row.appendChild(info);
+          var del = el("button", "icon-btn", "✕"); del.type = "button"; del.title = "Unlearn";
+          del.onclick = function () {
+            State.update(function (s2) { s2.spells = (s2.spells || []).filter(function (id) { return id !== sp.id; }); });
+          };
+          row.appendChild(del);
+          block.appendChild(row);
+        });
+      }
+      group.appendChild(block);
+    });
+    return group;
   }
 
   // ---- Save data ----------------------------------------------------------

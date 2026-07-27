@@ -9,126 +9,8 @@ window.DOMAINS = [
     accent: "#6b5ca5",
     cols: 5,
     kind: "core",
-    talents: [
-      {
-        id: "dth_deaths_touch",
-        name: "Death's Touch",
-        icon: "🖐️",
-        description: "You sense the ebb of life. Touch a dying creature to learn how it was wounded and how long it has left.",
-        pool: "noncombat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 2,
-        requires: {
-          characteristics: {
-            intelligence: 1
-          }
-        }
-      },
-      {
-        id: "dth_drain_life",
-        name: "Drain Life",
-        icon: "🩸",
-        description: "Siphon vitality from a foe you hit with a spell, healing yourself for 1 plus the reward dice rolled.",
-        pool: "noncombat",
-        cost: 3,
-        tier: 2,
-        row: 1,
-        col: 1,
-        requires: {
-          talents: [
-            "dth_deaths_touch"
-          ],
-          skills: {
-            Occult: 1
-          }
-        }
-      },
-      {
-        id: "dth_soul_reap",
-        name: "Soul Reap",
-        icon: "⚰️",
-        description: "When an enemy dies within 10m, gather its departing essence: your next spell attack this combat rolls +2 dice.",
-        pool: "combat",
-        cost: 3,
-        tier: 2,
-        row: 1,
-        col: 3,
-        requires: {
-          talents: [
-            "dth_deaths_touch"
-          ],
-          skills: {
-            Resist: 1
-          }
-        }
-      },
-      {
-        id: "dth_raise_dead",
-        name: "Raise Dead",
-        icon: "🧟",
-        description: "Over a night's ritual, animate a corpse as a lasting skeletal or zombie servant under your command.",
-        pool: "noncombat",
-        cost: 4,
-        tier: 3,
-        row: 2,
-        col: 1,
-        requires: {
-          talents: [
-            "dth_drain_life"
-          ],
-          skills: {
-            Occult: 2
-          },
-          characteristics: {
-            intelligence: 3
-          }
-        }
-      },
-      {
-        id: "dth_wraith_form",
-        name: "Wraith Form",
-        icon: "👻",
-        description: "Loosen your grip on the flesh. For a few moments you become incorporeal, passing through matter and ignoring physical damage.",
-        pool: "combat",
-        cost: 4,
-        tier: 3,
-        row: 2,
-        col: 3,
-        requires: {
-          talents: [
-            "dth_soul_reap"
-          ],
-          skills: {
-            Resist: 2
-          }
-        }
-      },
-      {
-        id: "dth_lich",
-        name: "Lichdom",
-        icon: "👑",
-        description: "Bind your soul to a phylactery. While it endures, death only banishes you until you reform beside it.",
-        pool: "noncombat",
-        cost: 6,
-        tier: 4,
-        row: 3,
-        col: 2,
-        requires: {
-          talents: [
-            "dth_raise_dead",
-            "dth_wraith_form"
-          ],
-          skills: {
-            Occult: 3
-          },
-          spent: {
-            noncombat: 30
-          }
-        }
-      }
-    ]
+    talents: [],
+    magical: true
   },
   {
     id: "life",
@@ -139,105 +21,25 @@ window.DOMAINS = [
     kind: "core",
     talents: [
       {
-        id: "life_mend",
-        name: "Mend",
-        icon: "🩹",
-        description: "A soothing touch. As a major action, restore HP equal to your successes to an adjacent creature.",
-        pool: "noncombat",
+        id: "life_test2",
+        name: "test2",
+        pool: "combat",
         cost: 1,
         tier: 1,
         row: 0,
-        col: 2,
-        requires: {
-          skills: {
-            Medicine: 1
-          }
-        }
+        col: 0
       },
       {
-        id: "life_heal",
-        name: "Heal",
-        icon: "💚",
-        description: "Channel restorative energy at range, and remove one condition such as poisoned or bleeding.",
-        pool: "noncombat",
-        cost: 3,
-        tier: 2,
-        row: 1,
-        col: 1,
-        requires: {
-          talents: [
-            "life_mend"
-          ],
-          skills: {
-            Medicine: 2
-          }
-        }
-      },
-      {
-        id: "life_bless",
-        name: "Bless",
-        icon: "✨",
-        description: "Grant an ally a shimmering ward: their next test rolls one extra die and one extra reward die.",
-        pool: "noncombat",
-        cost: 3,
-        tier: 2,
-        row: 1,
-        col: 3,
-        requires: {
-          talents: [
-            "life_mend"
-          ],
-          characteristics: {
-            presence: 2
-          }
-        }
-      },
-      {
-        id: "life_revive",
-        name: "Revive",
-        icon: "💗",
-        description: "With a minute's effort, return a creature that died this scene to life at 1 HP.",
-        pool: "noncombat",
-        cost: 4,
-        tier: 3,
-        row: 2,
-        col: 2,
-        requires: {
-          talents: [
-            "life_heal",
-            "life_bless"
-          ],
-          skills: {
-            Medicine: 3
-          },
-          characteristics: {
-            intelligence: 2
-          }
-        }
-      },
-      {
-        id: "life_sanctuary",
-        name: "Sanctuary",
-        icon: "🛐",
-        description: "Consecrate a 10m zone for the scene: allies within regain HP each turn and cannot be critically hit.",
-        pool: "noncombat",
-        cost: 6,
-        tier: 4,
-        row: 3,
-        col: 2,
-        requires: {
-          talents: [
-            "life_revive"
-          ],
-          skills: {
-            Divine: 2
-          },
-          spent: {
-            noncombat: 25
-          }
-        }
+        id: "life_test3",
+        name: "test3",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 4
       }
-    ]
+    ],
+    magical: true
   },
   {
     id: "elemental",
@@ -246,145 +48,8 @@ window.DOMAINS = [
     accent: "#c8792a",
     cols: 5,
     kind: "core",
-    talents: [
-      {
-        id: "elm_spark",
-        name: "Spark",
-        icon: "✴️",
-        description: "A cantrip of raw energy. Make a ranged spell attack for minor damage; the base of all elemental craft.",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 2,
-        requires: {
-          characteristics: {
-            intelligence: 1
-          }
-        }
-      },
-      {
-        id: "elm_firebolt",
-        name: "Firebolt",
-        icon: "🔥",
-        description: "Hurl a mote of flame. On a hit, the target burns for 1 additional damage at the start of its next turn.",
-        pool: "combat",
-        cost: 3,
-        tier: 2,
-        row: 1,
-        col: 1,
-        requires: {
-          talents: [
-            "elm_spark"
-          ],
-          skills: {
-            Arcane: 1
-          }
-        }
-      },
-      {
-        id: "elm_frost",
-        name: "Frost Touch",
-        icon: "❄️",
-        description: "Coat a target in rime. On a hit, its next move costs double, and it rolls one fewer die to dodge.",
-        pool: "combat",
-        cost: 3,
-        tier: 2,
-        row: 1,
-        col: 3,
-        requires: {
-          talents: [
-            "elm_spark"
-          ],
-          skills: {
-            Arcane: 1
-          }
-        }
-      },
-      {
-        id: "elm_fireball",
-        name: "Fireball",
-        icon: "☄️",
-        description: "A roaring blast. Make one spell attack against every creature in a 6m radius.",
-        pool: "combat",
-        cost: 4,
-        tier: 3,
-        row: 2,
-        col: 1,
-        requires: {
-          talents: [
-            "elm_firebolt"
-          ],
-          skills: {
-            Arcane: 2
-          },
-          characteristics: {
-            intelligence: 3
-          }
-        }
-      },
-      {
-        id: "elm_blizzard",
-        name: "Blizzard",
-        icon: "🌨️",
-        description: "Call down a lingering storm of ice over a 6m zone, dealing damage and slowing all within each turn.",
-        pool: "combat",
-        cost: 4,
-        tier: 3,
-        row: 2,
-        col: 3,
-        requires: {
-          talents: [
-            "elm_frost"
-          ],
-          skills: {
-            Arcane: 2
-          }
-        }
-      },
-      {
-        id: "elm_ward_master",
-        name: "Ward Master",
-        icon: "🛡️",
-        description: "Your defensive castings hold firm. When you use Ward, negate the effect entirely on 2+ successes.",
-        pool: "combat",
-        cost: 3,
-        tier: 3,
-        row: 2,
-        col: 4,
-        requires: {
-          talents: [
-            "elm_frost"
-          ],
-          skills: {
-            Ward: 2
-          }
-        }
-      },
-      {
-        id: "elm_archmage",
-        name: "Archmage",
-        icon: "🔮",
-        description: "Master of the elements. Once per turn, cast a known elemental spell of tier 2 or lower as a minor action.",
-        pool: "combat",
-        cost: 6,
-        tier: 4,
-        row: 3,
-        col: 2,
-        requires: {
-          anyTalents: [
-            "elm_fireball",
-            "elm_blizzard"
-          ],
-          skills: {
-            Arcane: 3
-          },
-          characteristics: {
-            intelligence: 4
-          }
-        }
-      }
-    ]
+    talents: [],
+    magical: true
   },
   {
     id: "nature",
@@ -393,129 +58,8 @@ window.DOMAINS = [
     accent: "#6a8f2f",
     cols: 5,
     kind: "core",
-    talents: [
-      {
-        id: "nat_forager",
-        name: "Forager",
-        icon: "🍃",
-        description: "The wilds provide. Given an hour, reliably find food, water, and simple remedies in any natural habitat.",
-        pool: "noncombat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 2,
-        requires: {
-          skills: {
-            Wilderness: 1
-          }
-        }
-      },
-      {
-        id: "nat_beast_speech",
-        name: "Beast Speech",
-        icon: "🦉",
-        description: "Commune with animals, understanding their moods and simple intentions, and making yourself understood in turn.",
-        pool: "noncombat",
-        cost: 3,
-        tier: 2,
-        row: 1,
-        col: 1,
-        requires: {
-          talents: [
-            "nat_forager"
-          ],
-          skills: {
-            "Animal Handling": 1
-          }
-        }
-      },
-      {
-        id: "nat_camouflage",
-        name: "Camouflage",
-        icon: "🌾",
-        description: "Meld into the landscape. In natural terrain you may hide even while lightly observed, and leave no tracks.",
-        pool: "noncombat",
-        cost: 3,
-        tier: 2,
-        row: 1,
-        col: 3,
-        requires: {
-          talents: [
-            "nat_forager"
-          ],
-          skills: {
-            Sneaking: 1
-          }
-        }
-      },
-      {
-        id: "nat_companion",
-        name: "Animal Companion",
-        icon: "🐺",
-        description: "A loyal beast fights at your side, acting on your turn and sharing your sense of the battlefield.",
-        pool: "noncombat",
-        cost: 4,
-        tier: 3,
-        row: 2,
-        col: 1,
-        requires: {
-          talents: [
-            "nat_beast_speech"
-          ],
-          skills: {
-            "Animal Handling": 2
-          },
-          characteristics: {
-            presence: 3
-          }
-        }
-      },
-      {
-        id: "nat_wild_shape",
-        name: "Wild Shape",
-        icon: "🐾",
-        description: "Assume the form of a beast you have studied, trading your gear for its natural weapons and movement.",
-        pool: "combat",
-        cost: 4,
-        tier: 3,
-        row: 2,
-        col: 3,
-        requires: {
-          talents: [
-            "nat_camouflage"
-          ],
-          skills: {
-            Nature: 2
-          },
-          characteristics: {
-            body: 2
-          }
-        }
-      },
-      {
-        id: "nat_avatar",
-        name: "Avatar of the Wild",
-        icon: "🌳",
-        description: "Become an embodiment of nature's fury: a towering primal form for the scene, with reach, resilience, and roots that hold your foes.",
-        pool: "combat",
-        cost: 6,
-        tier: 4,
-        row: 3,
-        col: 2,
-        requires: {
-          talents: [
-            "nat_companion",
-            "nat_wild_shape"
-          ],
-          skills: {
-            Nature: 3
-          },
-          spent: {
-            total: 60
-          }
-        }
-      }
-    ]
+    talents: [],
+    magical: true
   },
   {
     id: "discipline",
@@ -569,7 +113,8 @@ window.DOMAINS = [
     accent: "#8a6d3b",
     cols: 5,
     kind: "core",
-    talents: []
+    talents: [],
+    magical: true
   },
   {
     id: "light",
@@ -578,7 +123,8 @@ window.DOMAINS = [
     accent: "#8a6d3b",
     cols: 5,
     kind: "core",
-    talents: []
+    talents: [],
+    magical: true
   }
 ];
 

@@ -137,7 +137,38 @@ window.ANCESTRIES = [
     accent: "#4a8f7b",
     cols: 3,
     description: "",
-    talents: []
+    talents: [
+      {
+        id: "ancn_nomad_of_the_desert",
+        name: "Nomad of the Desert",
+        description: "Receive a +2 bonus on any checks pertaining to exhaustion or fatigue while traveling",
+        pool: "noncombat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 0
+      },
+      {
+        id: "ancn_shards_of_the_past",
+        name: "Shards of the past:",
+        description: "You have a greater connection to your ancestors and their wisdom. Choose one knowledge skill: you gain a +1 bonus to knowledge test rolls of that skill.",
+        pool: "noncombat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 1
+      },
+      {
+        id: "ancn_emissary",
+        name: "Emissary",
+        description: "Upon making a first impression, add a +2 on a Charm test roll.",
+        pool: "noncombat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 2
+      }
+    ]
   },
   {
     id: "hammerlake_dwarf",
@@ -157,7 +188,6 @@ window.ANCESTRIES = [
     accent: "#4a8f7b",
     cols: 3,
     description: "",
-    pickable: false,
     talents: [
       {
         id: "ance_test_elf_talent_1",

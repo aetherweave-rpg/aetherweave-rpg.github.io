@@ -185,6 +185,31 @@
     }, 3000);
   }
 
+  // ---- Modal --------------------------------------------------------------
+  // A lightweight content modal for the play pages (the editor has its own,
+  // richer `dialog`). `buildBody(body, close)` fills the content and may use
+  // `close` to dismiss it; Escape and a click on the backdrop also close.
+  function modal(title, buildBody) {
+    var overlay = el("div", "modal-overlay");
+    var card = el("div", "modal-card");
+    var head = el("div", "modal-head");
+    head.appendChild(el("h2", "modal-title", title));
+    var x = el("button", "modal-close", "✕");
+    x.type = "button"; x.setAttribute("aria-label", "Close"); x.onclick = close;
+    head.appendChild(x);
+    card.appendChild(head);
+    var body = el("div", "modal-body");
+    card.appendChild(body);
+    overlay.appendChild(card);
+    overlay.onclick = function (ev) { if (ev.target === overlay) close(); };
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(overlay);
+    function onKey(ev) { if (ev.key === "Escape") close(); }
+    function close() { document.removeEventListener("keydown", onKey); overlay.remove(); }
+    buildBody(body, close);
+    return { close: close, body: body };
+  }
+
   // Wire an #export-pdf button to the browser's print → "Save as PDF". A print
   // stylesheet (css/style.css) reshapes the page for paper. `getTitle` sets the
   // document title so the saved file gets a sensible name.
@@ -209,5 +234,6 @@
     renderStorageWarning: renderStorageWarning,
     renderCreationGate: renderCreationGate,
     toast: toast,
+    modal: modal,
   };
 })();

@@ -85,6 +85,7 @@
       version: 2,
       identity: { characterName: "", playerName: "", ancestry: "", sourceOfPower: "", concept: "", notes: "" },
       hp: { max: "", current: "" },
+      mana: { max: "", current: "" },
       characteristics: chars,
       expEarned: {
         combat: window.CONFIG.STARTING_EXP.combat,
@@ -93,6 +94,10 @@
       skills: skills,          // display name -> CURRENT tier 0..4 (granted included)
       proficiencies: [],       // [{ name, kind, tier }]  (granted included)
       talents: [],             // owned talent ids (granted included)
+
+      // Spellcasting (magical domains only; bought after creation, never granted).
+      spellcasting: {},        // domain id -> ladder level 0..MAX_SPELL_TIER
+      spells: [],              // learned spell ids
 
       // What the character-creation wizard chose.
       creation: {
@@ -145,11 +150,14 @@
     var merged = Object.assign({}, def, s);
     merged.identity        = Object.assign({}, def.identity, s.identity);
     merged.hp              = Object.assign({}, def.hp, s.hp);
+    merged.mana            = Object.assign({}, def.mana, s.mana);
     merged.characteristics = Object.assign({}, def.characteristics, s.characteristics);
     merged.expEarned       = Object.assign({}, def.expEarned, s.expEarned);
     merged.skills          = Object.assign({}, def.skills, s.skills);
     merged.proficiencies   = Array.isArray(s.proficiencies) ? s.proficiencies : [];
     merged.talents         = Array.isArray(s.talents) ? s.talents : [];
+    merged.spellcasting    = (s.spellcasting && typeof s.spellcasting === "object") ? s.spellcasting : {};
+    merged.spells          = Array.isArray(s.spells) ? s.spells : [];
     merged.creation        = Object.assign({}, def.creation, s.creation);
     merged.granted         = Object.assign({}, def.granted, s.granted);
     merged.granted.talents       = Array.isArray(merged.granted.talents) ? merged.granted.talents : [];

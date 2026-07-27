@@ -749,6 +749,168 @@ a { color: var(--accent); }
   padding: 1px 6px; border-radius: 999px; background: var(--line); color: var(--ink-soft); vertical-align: middle;
 }
 
+/* ==========================================================================
+   Spellcasting — caster panel (trees), spell-picker modal, sheet categories
+   ========================================================================== */
+
+/* Caster panel on the trees page (magical domains) */
+.caster-panel {
+  --accent: #8a6d3b;
+  position: relative; z-index: 3; margin: 0 0 20px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, #fffdf7), var(--panel-2));
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line-strong));
+  border-left: 4px solid var(--accent);
+  border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.caster-head { display: flex; align-items: center; gap: 10px; }
+.caster-icon {
+  font-size: 20px; width: 40px; height: 40px; flex: none; display: grid; place-items: center;
+  border-radius: 10px; background: #fffdf7; border: 2px solid var(--accent);
+}
+.caster-title { font-family: var(--serif); font-weight: 700; font-size: 17px; }
+.caster-sub { font-size: 12px; color: var(--ink-faint); }
+
+.caster-pool {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; border-radius: 10px; background: #fffdf7; border: 1px solid var(--line);
+}
+.caster-pool-label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-faint); font-weight: 700; }
+.caster-pool-hint { font-size: 12.5px; color: var(--ink-faint); }
+.caster-pool-eq { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.cpp { font-weight: 600; }
+.cpp-op { color: var(--ink-faint); }
+.cpp-total { font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.caster-ladder { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.caster-ladder-label { font-size: 13px; font-weight: 600; }
+.caster-dots { display: flex; gap: 7px; }
+.caster-dot {
+  width: 22px; height: 22px; border-radius: 6px; cursor: pointer; padding: 0;
+  border: 2px solid var(--line-strong); background: #fffdf7;
+  transition: background .08s ease, transform .08s ease;
+}
+.caster-dot:hover:not(:disabled) { transform: scale(1.1); border-color: var(--accent); }
+.caster-dot.filled { background: var(--accent); border-color: color-mix(in srgb, var(--accent) 70%, black); }
+.caster-dot.capped { border-style: dashed; border-color: var(--line); opacity: .5; }
+.caster-dot.capped:hover { transform: none; }
+.caster-dot:disabled { cursor: not-allowed; }
+.caster-ladder-hint { font-size: 11.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+.caster-spells { display: flex; flex-direction: column; gap: 8px; }
+.caster-spells-head { display: flex; align-items: center; gap: 10px; }
+.caster-spells-title { font-size: 14px; font-weight: 700; }
+.caster-learn { margin-left: auto; font-size: 13px; padding: 7px 13px; }
+.caster-spells-empty { font-size: 12.5px; color: var(--ink-faint); font-style: italic; }
+.caster-spell-list { display: flex; flex-direction: column; gap: 6px; }
+.caster-spell-row {
+  display: flex; align-items: center; gap: 10px; padding: 7px 10px;
+  background: #fffdf7; border: 1px solid var(--line); border-radius: 9px;
+}
+.caster-spell-row.invalid { border-color: #f0b4ae; background: #fdf0ee; }
+.spell-icon {
+  width: 34px; height: 34px; flex: none; border-radius: 8px; display: grid; place-items: center;
+  font-size: 18px; background: var(--panel-2); border: 1px solid var(--line-strong);
+}
+.spell-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.spell-name { font-weight: 700; display: flex; align-items: baseline; gap: 8px; }
+.spell-desc { font-size: 12px; color: var(--ink-faint); }
+.spell-invalid-note { font-size: 11.5px; color: var(--unmet); font-weight: 600; margin-top: 2px; }
+.spell-tier-tag {
+  font-size: 10px; font-weight: 800; letter-spacing: .3px; padding: 1px 7px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, #fff); color: color-mix(in srgb, var(--accent) 75%, black);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); font-variant-numeric: tabular-nums;
+}
+
+/* Ability badge in the node tooltip */
+.tt-ability { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-soft); }
+.tt-ability.maneuver { background: #eef2fb; border-color: #b9c8e6; color: #34507e; }
+
+/* Spell-picker modal (shared UI.modal) */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 20px;
+  background: rgba(42, 33, 20, .55); backdrop-filter: blur(3px);
+}
+.modal-card {
+  --accent: #8a6d3b;
+  width: min(680px, 100%); max-height: 86vh; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3); overflow: hidden;
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 18px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #f7efdc, var(--panel-2));
+}
+.modal-title { font-family: var(--serif); font-size: 19px; margin: 0; }
+.modal-close {
+  width: 30px; height: 30px; flex: none; border-radius: 8px; cursor: pointer; font-size: 14px;
+  border: 1px solid var(--line-strong); background: #fffdf7; color: var(--ink-soft);
+}
+.modal-close:hover { background: #fdecea; color: var(--unmet); border-color: #f0b4ae; }
+.modal-body { padding: 16px 18px; overflow-y: auto; }
+
+.spell-picker { display: flex; flex-direction: column; gap: 14px; }
+.picker-note { font-size: 12.5px; color: var(--ink-soft); }
+.picker-tier { display: flex; flex-direction: column; gap: 8px; }
+.picker-tier.locked { opacity: .55; }
+.picker-tier-head {
+  font-family: var(--serif); font-weight: 700; font-size: 14px; display: flex; align-items: baseline;
+  gap: 8px; border-bottom: 1px dashed var(--line); padding-bottom: 4px;
+}
+.picker-spell {
+  text-align: left; font: inherit; cursor: pointer; color: var(--ink);
+  padding: 10px 12px; border-radius: 10px; background: var(--panel-2); border: 2px solid var(--line);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.picker-spell:hover:not(:disabled) { border-color: var(--accent); }
+.picker-spell.owned { border-color: var(--owned); background: color-mix(in srgb, var(--owned) 10%, #fff); }
+.picker-spell.disabled, .picker-spell:disabled { opacity: .5; cursor: not-allowed; }
+.picker-spell-top { display: flex; align-items: center; gap: 9px; }
+.picker-spell-name { font-weight: 700; flex: 1; }
+.picker-owned { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: var(--owned); }
+.picker-spell-desc { font-size: 12.5px; color: var(--ink-soft); }
+
+/* Sheet: ability categories + per-domain spell blocks */
+.ability-group { margin-bottom: 14px; }
+.talent-domain-tag {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .6px; font-weight: 700;
+  margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+  background: var(--panel); color: var(--ink-faint); border: 1px solid var(--line);
+}
+.talent-uses-tag {
+  font-size: 10px; font-weight: 700; margin-left: 8px; padding: 1px 8px; border-radius: 999px;
+  background: #eef2fb; color: #34507e; border: 1px solid #b9c8e6;
+}
+.spell-domain-block { margin-bottom: 10px; }
+.spell-domain-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+.sdh-icon { font-size: 16px; }
+.sdh-name { font-family: var(--serif); font-weight: 700; font-size: 15px; }
+.sdh-pool { font-size: 11.5px; color: var(--ink-faint); }
+.spell-sheet-row .talent-name { display: flex; align-items: baseline; gap: 8px; }
+.spell-desc-line { font-style: italic; opacity: .9; }
+
+/* In-tree spellcasting spine nodes (magical domains) */
+.caster-node .node-box { border-style: solid; }
+.node-cost.known-count { background: var(--panel-2); color: var(--ink-soft); border: 1px solid var(--line); }
+.node-badge.known-badge { background: var(--noncombat); }
+.caster-tag {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  color: color-mix(in srgb, var(--accent) 75%, black);
+}
+
+/* Spell exp-cost + mana tags (picker) */
+.spell-cost-tag { font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px; color: #fff; font-variant-numeric: tabular-nums; }
+.spell-cost-tag.combat { background: var(--combat); }
+.spell-cost-tag.noncombat { background: var(--noncombat); }
+.spell-mana-tag { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #eae6fb; color: #5a4aa0; border: 1px solid #cfc6ef; }
+.spell-mana-tag.cantrip { background: var(--panel-2); color: var(--ink-faint); border-color: var(--line); }
+
+/* Mana box on the character sheet (next to HP) */
+.mana-box { border-color: #cfc6ef; }
+.mana-box .stat-title { color: #5a4aa0; }
+
 /* ---------- Print / Export to PDF ---------------------------------------- */
 @media print {
   body { background: #fff; }
