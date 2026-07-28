@@ -201,7 +201,7 @@
 
   // ---- step 2: ancestry ---------------------------------------------------
   function ancestryChildren(parentId) {
-    return (window.ANCESTRIES || []).filter(function (a) { return (a.parent || null) === (parentId || null); });
+    return (window.ANCESTRIES || []).filter(function (a) { return (a.parent || null) === (parentId || null) && !a.hidden; });
   }
 
   function stepAncestry() {
@@ -296,7 +296,7 @@
       "character can do extraordinary things — it does not grant skills or talents."));
 
     var cards = el("div", "card-grid");
-    (window.SOURCES || []).forEach(function (s) {
+    (window.SOURCES || []).filter(function (s) { return !s.hidden; }).forEach(function (s) {
       var card = el("button", "choice-card" + (draft.source === s.id ? " chosen" : ""));
       card.type = "button";
       card.style.setProperty("--accent", s.accent);
@@ -527,7 +527,7 @@
   function randomAncestry() {
     var picks = CREATION.ancestralTalentPicks;
     // Only ancestries a player could actually pick (grouping-only ones excluded).
-    var all = (window.ANCESTRIES || []).filter(function (a) { return Engine.ancestryPickable(a); });
+    var all = (window.ANCESTRIES || []).filter(function (a) { return Engine.ancestryPickable(a) && !a.hidden; });
     // Prefer those that can offer the required picks (own tree or an ancestor's);
     // fall back to any pickable so a sparse database still rolls.
     var viable = all.filter(function (a) { return Engine.creationPicksForChain(a.id).length >= picks; });
@@ -540,7 +540,7 @@
   }
 
   function randomSource() {
-    var s = pick(window.SOURCES || []);
+    var s = pick((window.SOURCES || []).filter(function (s) { return !s.hidden; }));
     if (s) draft.source = s.id;
   }
 

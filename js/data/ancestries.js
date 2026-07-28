@@ -65,7 +65,8 @@ window.ANCESTRIES = [
         col: 1
       }
     ],
-    parent: "elf"
+    parent: "elf",
+    hidden: true
   },
   {
     id: "snow_elf",
@@ -76,7 +77,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    parent: "elf"
+    parent: "elf",
+    hidden: true
   },
   {
     id: "wood_elf",
@@ -87,7 +89,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    parent: "elf"
+    parent: "elf",
+    hidden: true
   },
   {
     id: "keramish_orc",
@@ -98,7 +101,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    parent: "orc"
+    parent: "orc",
+    hidden: true
   },
   {
     id: "aislir_orc",
@@ -109,7 +113,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    parent: "orc"
+    parent: "orc",
+    hidden: true
   },
   {
     id: "halfling",
@@ -119,7 +124,8 @@ window.ANCESTRIES = [
     accent: "#4a8f7b",
     cols: 3,
     description: "",
-    talents: []
+    talents: [],
+    hidden: true
   },
   {
     id: "dryad",
@@ -129,7 +135,8 @@ window.ANCESTRIES = [
     accent: "#008040",
     cols: 3,
     description: "",
-    talents: []
+    talents: [],
+    hidden: true
   },
   {
     id: "nomad_orc",
@@ -171,7 +178,8 @@ window.ANCESTRIES = [
         col: 2
       }
     ],
-    parent: "orc"
+    parent: "orc",
+    hidden: true
   },
   {
     id: "hammerlake_dwarf",
@@ -182,7 +190,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    parent: "dwarf"
+    parent: "dwarf",
+    hidden: true
   },
   {
     id: "elf",
@@ -211,7 +220,8 @@ window.ANCESTRIES = [
         row: 0,
         col: 1
       }
-    ]
+    ],
+    hidden: true
   },
   {
     id: "dwarf",
@@ -222,7 +232,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    pickable: false
+    pickable: false,
+    hidden: true
   },
   {
     id: "orc",
@@ -233,7 +244,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    pickable: false
+    pickable: false,
+    hidden: true
   },
   {
     id: "ben_duran_dwarf",
@@ -245,7 +257,8 @@ window.ANCESTRIES = [
     description: "",
     talents: [],
     parent: "dwarf",
-    pickable: false
+    pickable: false,
+    hidden: true
   },
   {
     id: "pillar_dwarf",
@@ -256,7 +269,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    parent: "dwarf"
+    parent: "dwarf",
+    hidden: true
   },
   {
     id: "gnome",
@@ -267,7 +281,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    pickable: false
+    pickable: false,
+    hidden: true
   },
   {
     id: "rock_gnome",
@@ -278,7 +293,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    parent: "gnome"
+    parent: "gnome",
+    hidden: true
   },
   {
     id: "traveler_gnome",
@@ -289,7 +305,8 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    parent: "gnome"
+    parent: "gnome",
+    hidden: true
   }
 ];
 

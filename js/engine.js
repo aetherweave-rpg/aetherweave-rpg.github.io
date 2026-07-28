@@ -17,11 +17,11 @@
   function buildTrees() {
     trees = [];
     (window.DOMAINS || []).forEach(function (d) {
-      trees.push({ id: d.id, name: d.name, icon: d.icon, accent: d.accent, cols: d.cols, kind: d.kind || "core", magical: !!d.magical });
+      trees.push({ id: d.id, name: d.name, icon: d.icon, accent: d.accent, cols: d.cols, kind: d.kind || "core", magical: !!d.magical, hidden: !!d.hidden });
     });
     (window.ANCESTRIES || []).forEach(function (a) {
       trees.push({ id: a.treeId, name: a.name, icon: a.icon, accent: a.accent, cols: a.cols || 3,
-        kind: "ancestry", ancestry: a.id, parent: a.parent || null, description: a.description });
+        kind: "ancestry", ancestry: a.id, parent: a.parent || null, description: a.description, hidden: !!a.hidden });
     });
     (window.COMBINATIONS || []).forEach(function (c) {
       trees.push({ id: c.id, name: c.name, icon: c.icon, accent: c.accent, cols: c.cols || 3,
@@ -348,6 +348,7 @@
   }
 
   function treeVisible(tree, state, showAllCombinations) {
+    if (tree.hidden) return false;   // marked hidden in the editor — not shown on the user site
     if (tree.kind === "ancestry") {
       // Visible for the character's own ancestry and all of its ancestors.
       return accessibleAncestryTreeIds(state).indexOf(tree.id) >= 0;
