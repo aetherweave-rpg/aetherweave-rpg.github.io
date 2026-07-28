@@ -3,43 +3,54 @@
 
 window.SOURCES = [
   {
-    id: "arcane_study",
-    name: "Arcane Study",
-    icon: "🔮",
+    id: "old_veteran",
+    name: "Old Veteran",
+    icon: "🎬",
     accent: "#5b6fa5",
-    description: "Years of study, notation and practice. Your power is learned, repeatable, and written down.",
-    benefit: "—"
+    description: "You've had an exciting life already. Perhaps a soldier, or an adventurer. You've since retired, but feel the call back to action. But, your skills are not there anymore. Will they awaken again with time and trials?",
+    benefit: "—",
+    characteristic: "presence",
+    talents: [
+      {
+        tier: 1,
+        name: "Total Recall",
+        icon: "",
+        description: "In a critical moment, you tap into your experiences of the past, feeling the rust disappear under the mounting pressure of the task at hand. \nOnce per session: add 3 dice to any test"
+      }
+    ]
   },
   {
-    id: "divine_calling",
-    name: "Divine Calling",
-    icon: "🛐",
-    accent: "#b09a4a",
-    description: "Something greater than you has taken an interest. Your power is given, and can be asked for.",
-    benefit: "—"
+    id: "rage",
+    name: "Rage",
+    icon: "😡",
+    accent: "#5b6fa5",
+    description: "Your power is fueled by pure rage and anger. You experience a certain loss of control in the heat of combat and at the cost of control, you can exert great power.",
+    benefit: "—",
+    characteristic: "presence",
+    talents: [
+      {
+        tier: 1,
+        name: "Anger",
+        icon: "",
+        description: "You can choose to lose control in the heat of combat. You are more reckless, dealing more damage as you risk injuring yourself. You also shrug off much of the damage you take. \n\nOnce per scene: For the rest of the scene, roll 2 additional Risk dice for every combat test. Every Risk you roll during an attack adds 1 damage to the attack. Every Risk you roll for a defensive roll instead reduces damage by 1 for every Risk rolled."
+      }
+    ]
   },
   {
-    id: "primal_bond",
-    name: "Primal Bond",
-    icon: "🌿",
-    accent: "#4a8f4a",
-    description: "You are bound to the living world, and it answers when you ask in the old way.",
-    benefit: "—"
-  },
-  {
-    id: "martial_discipline",
-    name: "Martial Discipline",
-    icon: "⚔️",
-    accent: "#b23b3b",
-    description: "No spark, no patron, no bargain — only ten thousand repetitions of the same cut.",
-    benefit: "—"
-  },
-  {
-    id: "occult_pact",
-    name: "Occult Pact",
-    icon: "💀",
-    accent: "#6b5ca5",
-    description: "A bargain struck with something that should not have answered. The terms are still being paid.",
-    benefit: "—"
+    id: "study_and_training",
+    name: "Study and Training",
+    icon: "📖",
+    accent: "#5b6fa5",
+    description: "Your power does not come from any special source. Instead, your ability is a craft honed by pure willpower. Where others can be granted their powers, yours come from you alone, gained through study, training, and countless hours of practice.",
+    benefit: "—",
+    characteristic: "intelligence",
+    talents: [
+      {
+        tier: 1,
+        name: "Adaptability",
+        icon: "",
+        description: "You've practiced many forms and styles, while you've not mastered everything just yet, this might be the perfect time to try out something new.\nOnce per session: choose any spell or maneuver which you don't have access to, but do qualify for. You can use it once."
+      }
+    ]
   }
 ];

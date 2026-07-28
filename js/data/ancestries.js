@@ -97,7 +97,8 @@ window.ANCESTRIES = [
     accent: "#ac2d46",
     cols: 3,
     description: "",
-    talents: []
+    talents: [],
+    parent: "orc"
   },
   {
     id: "aislir_orc",
@@ -107,7 +108,8 @@ window.ANCESTRIES = [
     accent: "#4a8f7b",
     cols: 3,
     description: "",
-    talents: []
+    talents: [],
+    parent: "orc"
   },
   {
     id: "halfling",
@@ -168,7 +170,8 @@ window.ANCESTRIES = [
         row: 0,
         col: 2
       }
-    ]
+    ],
+    parent: "orc"
   },
   {
     id: "hammerlake_dwarf",
@@ -178,7 +181,8 @@ window.ANCESTRIES = [
     accent: "#ff8040",
     cols: 3,
     description: "",
-    talents: []
+    talents: [],
+    parent: "dwarf"
   },
   {
     id: "elf",
@@ -208,6 +212,84 @@ window.ANCESTRIES = [
         col: 1
       }
     ]
+  },
+  {
+    id: "dwarf",
+    treeId: "anc_dwarf",
+    name: "Dwarf",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    pickable: false
+  },
+  {
+    id: "orc",
+    treeId: "anc_orc",
+    name: "Orc",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    pickable: false
+  },
+  {
+    id: "ben_duran_dwarf",
+    treeId: "anc_ben_duran_dwarf",
+    name: "Ben Duran Dwarf",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    parent: "dwarf",
+    pickable: false
+  },
+  {
+    id: "pillar_dwarf",
+    treeId: "anc_pillar_dwarf",
+    name: "Pillar Dwarf",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    parent: "dwarf"
+  },
+  {
+    id: "gnome",
+    treeId: "anc_gnome",
+    name: "Gnome",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    pickable: false
+  },
+  {
+    id: "rock_gnome",
+    treeId: "anc_rock_gnome",
+    name: "Rock Gnome",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    parent: "gnome"
+  },
+  {
+    id: "traveler_gnome",
+    treeId: "anc_traveler_gnome",
+    name: "Traveler Gnome",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    parent: "gnome"
   }
 ];
 
