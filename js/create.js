@@ -149,7 +149,7 @@
     var distinct = values.filter(function (v, i, a) { return a.indexOf(v) === i; });
 
     wrap.appendChild(el("p", "step-lead",
-      "Assign " + values.join(", ") + " across the five characteristics — one value each."));
+      "Assign " + values.join(", ") + " across the five characteristics."));
 
     // How many of each value remain unassigned.
     var used = {};
@@ -207,15 +207,16 @@
   function stepAncestry() {
     var wrap = el("div");
     var picks = CREATION.ancestralTalentPicks;
-    wrap.appendChild(el("p", "step-lead",
-      "Choose an ancestry — including a sub-ancestry, where one exists — then take " + picks +
-      " ancestral talent" + (picks === 1 ? "" : "s") + " for free. A sub-ancestry also has access to all of " +
-      "its parent ancestries' talents. Ancestral trees never count toward the tree-access cost."));
+    wrap.appendChild(el("p", "step-lead", "Choose an ancestry."));
 
     // Ancestries render as an indented hierarchy; click any node (top-level,
-    // sub, or sub-sub) to become that ancestry.
+    // sub, or sub-sub) to become that ancestry. Sub-ancestries stay collapsed
+    // until an ancestor along the current selection's chain is expanded, e.g.
+    // picking Orc reveals Orc's sub-ancestries.
+    var expanded = draft.ancestry ? Engine.ancestryChain(draft.ancestry) : [];
     var listWrap = el("div", "ancestry-tree");
     (function renderLevel(parentId, depth) {
+      if (depth > 0 && expanded.indexOf(parentId) < 0) return;
       ancestryChildren(parentId).forEach(function (a) {
         var pickable = Engine.ancestryPickable(a);
         var selected = draft.ancestry === a.id;
@@ -291,9 +292,7 @@
   // ---- step 3: source of power -------------------------------------------
   function stepSource() {
     var wrap = el("div");
-    wrap.appendChild(el("p", "step-lead",
-      "Choose where your power comes from. A source of power explains why your " +
-      "character can do extraordinary things — it does not grant skills or talents."));
+    wrap.appendChild(el("p", "step-lead", "Choose where your power comes from."));
 
     var cards = el("div", "card-grid");
     (window.SOURCES || []).filter(function (s) { return !s.hidden; }).forEach(function (s) {
@@ -303,11 +302,31 @@
       card.appendChild(el("span", "choice-icon", s.icon));
       card.appendChild(el("span", "choice-name", s.name));
       card.appendChild(el("span", "choice-desc", s.description));
-      if (s.benefit && s.benefit !== "—") card.appendChild(el("span", "choice-benefit", s.benefit));
       card.onclick = function () { draft.source = s.id; render(); };
       cards.appendChild(card);
     });
     wrap.appendChild(cards);
+
+    var src = Engine.sourceById(draft.source);
+    if (src) {
+      var sub = el("div", "sub-section");
+      sub.appendChild(el("h3", "sub-title", src.name + " — benefits"));
+      sub.appendChild(el("div", "sheet-hint",
+        "Spellcasting attribute: " + Engine.charLabel(src.characteristic)));
+      var list = el("div", "pick-grid");
+      (src.talents || []).slice().sort(function (a, b) { return (a.tier || 1) - (b.tier || 1); })
+        .forEach(function (t) {
+          var card2 = el("div", "pick-card");
+          var head = el("div", "pick-head");
+          head.appendChild(el("span", "pick-icon", t.icon || t.name.charAt(0)));
+          head.appendChild(el("span", "pick-name", "Tier " + (t.tier || 1) + " — " + t.name));
+          card2.appendChild(head);
+          card2.appendChild(el("span", "pick-desc", t.description));
+          list.appendChild(card2);
+        });
+      sub.appendChild(list);
+      wrap.appendChild(sub);
+    }
     return wrap;
   }
 
@@ -333,8 +352,7 @@
 
   function stepCombat() {
     return spender({
-      lead: "Spend " + CREATION.combatPoints + " points on combat skills and weapon proficiencies. " +
-            "These use the normal advancement costs, but cost no exp.",
+      lead: "Spend " + CREATION.combatPoints + " points on combat skills and weapon proficiencies.",
       budget: CREATION.combatPoints,
       pool: "combat",
       skills: window.SKILLS.combat,
@@ -348,7 +366,7 @@
     var req = CREATION.requiredProficiencies || {};
     var reqText = Object.keys(req).map(function (k) { return req[k] + " " + k; }).join(" and ");
     return spender({
-      lead: "Spend " + CREATION.noncombatPoints + " points on non-combat skills and proficiencies — " +
+      lead: "Spend " + CREATION.noncombatPoints + " points on non-combat skills and proficiencies, " +
             "including at least " + reqText + ".",
       budget: CREATION.noncombatPoints,
       pool: "noncombat",
@@ -401,7 +419,6 @@
       var pcosts = CONFIG.SKILL_COSTS[kind.costKey];
       var sec = el("div", "sub-section");
       var h = el("h3", "sub-title", kind.label + " proficiencies");
-      h.appendChild(el("span", "group-note", "(" + pcosts.join(", ") + " pts)"));
       sec.appendChild(h);
 
       var dl = el("datalist"); dl.id = "cw-suggest-" + kind.id;
@@ -462,10 +479,6 @@
   // ---- step 6: review -----------------------------------------------------
   function stepReview() {
     var wrap = el("div");
-    wrap.appendChild(el("p", "step-lead",
-      "Everything below is granted free. After creating, you will have " +
-      CREATION.freeExp.combat + " combat and " + CREATION.freeExp.noncombat +
-      " non-combat exp to spend as you like."));
 
     var anc = Engine.ancestryById(draft.ancestry);
     var src = Engine.sourceById(draft.source);

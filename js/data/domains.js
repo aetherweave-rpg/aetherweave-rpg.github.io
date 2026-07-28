@@ -77,7 +77,8 @@ window.DOMAINS = [
     accent: "#8a6d3b",
     cols: 5,
     kind: "core",
-    talents: []
+    talents: [],
+    magical: true
   },
   {
     id: "invention",
@@ -125,6 +126,24 @@ window.DOMAINS = [
     kind: "core",
     talents: [],
     magical: true
+  },
+  {
+    id: "blood",
+    name: "Blood",
+    icon: "🩸",
+    accent: "#8a6d3b",
+    cols: 5,
+    kind: "core",
+    talents: []
+  },
+  {
+    id: "guile",
+    name: "Guile",
+    icon: "👊",
+    accent: "#8a6d3b",
+    cols: 5,
+    kind: "core",
+    talents: []
   }
 ];
 

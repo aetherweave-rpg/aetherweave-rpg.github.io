@@ -178,8 +178,7 @@ window.ANCESTRIES = [
         col: 2
       }
     ],
-    parent: "orc",
-    hidden: true
+    parent: "orc"
   },
   {
     id: "hammerlake_dwarf",
@@ -244,8 +243,7 @@ window.ANCESTRIES = [
     cols: 3,
     description: "",
     talents: [],
-    pickable: false,
-    hidden: true
+    pickable: false
   },
   {
     id: "ben_duran_dwarf",
@@ -307,6 +305,40 @@ window.ANCESTRIES = [
     talents: [],
     parent: "gnome",
     hidden: true
+  },
+  {
+    id: "vistavi_elf",
+    treeId: "anc_vistavi_elf",
+    name: "Vistavi Elf",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    parent: "elf",
+    hidden: true
+  },
+  {
+    id: "mokra_nor",
+    treeId: "anc_mokra_nor",
+    name: "Mokra'Nor",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    pickable: false
+  },
+  {
+    id: "grib_morean_mokra_nor",
+    treeId: "anc_grib_morean_mokra_nor",
+    name: "Grib'Morean Mokra'Nor",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "",
+    talents: [],
+    parent: "mokra_nor"
   }
 ];
 

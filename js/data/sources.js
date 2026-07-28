@@ -52,5 +52,39 @@ window.SOURCES = [
         description: "You've practiced many forms and styles, while you've not mastered everything just yet, this might be the perfect time to try out something new.\nOnce per session: choose any spell or maneuver which you don't have access to, but do qualify for. You can use it once."
       }
     ]
+  },
+  {
+    id: "born_for_greatness",
+    name: "Born for greatness",
+    icon: "",
+    accent: "#5b6fa5",
+    description: "From your birth everyone knew you were meant for great things. Perhaps you are the child of nobles, or you were born under the sign of a falling star. \nNonetheless, your power comes to you naturally. ",
+    benefit: "—",
+    characteristic: "presence",
+    talents: [
+      {
+        tier: 1,
+        name: "Inspirational Presence",
+        icon: "",
+        description: "Once per combat scene:\nYou may attempt a test roll with 3 additional Reward dice. In addition to normal Reward effects, for each Reward rolled an ally gains +2 dice on their next test."
+      }
+    ]
+  },
+  {
+    id: "school_of_hard_knocks",
+    name: "School of Hard Knocks",
+    icon: "",
+    accent: "#5b6fa5",
+    description: "Your life has never been easy. The trials you've endured throughout the years have however taught you much. You were forced to learn and adapt quickly, and these lessons are always fresh in your mind.",
+    benefit: "—",
+    characteristic: "intelligence",
+    talents: [
+      {
+        tier: 1,
+        name: "Nine lives",
+        icon: "",
+        description: "You've experienced many setbacks, this is just one more. \nOnce per session: Whenever any damage would reduce your hitpoints to 0, set your hitpoints to 1 instead."
+      }
+    ]
   }
 ];
