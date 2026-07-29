@@ -16,7 +16,7 @@ window.CREATION = {
 
   // Step 4 — points spent on combat skills and weapon proficiencies.
   // These use the normal advancement costs but are NOT exp.
-  combatPoints: 3,
+  combatPoints: 6,
 
   // Step 5 — points spent on non-combat skills, crafting and instrument
   // proficiencies, with a required minimum of each proficiency kind.

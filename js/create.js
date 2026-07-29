@@ -218,9 +218,14 @@
     var expanded = draft.ancestry ? Engine.ancestryChain(draft.ancestry) : [];
     expanded = expanded.concat(draft.expandedAncestors);
     var listWrap = el("div", "ancestry-tree");
-    (function renderLevel(parentId, depth) {
-      if (depth > 0 && expanded.indexOf(parentId) < 0) return;
+    // Once a category's subtree is unrolled, it stays unrolled all the way
+    // down — a pickable node partway down (e.g. Wood Elf) has no toggle of
+    // its own, so its children must inherit the ancestor's expansion rather
+    // than needing to be separately expanded (which would make them
+    // unreachable).
+    (function renderLevel(parentId, depth, unrolled) {
       ancestryChildren(parentId).forEach(function (a) {
+        if (depth > 0 && !unrolled) return;
         var pickable = Engine.ancestryPickable(a);
         var selected = draft.ancestry === a.id;
         // Pickable ancestries are buttons that select them; grouping-only ones
@@ -252,9 +257,9 @@
           render();
         };
         listWrap.appendChild(row);
-        renderLevel(a.id, depth + 1);       // recurse into sub-ancestries
+        renderLevel(a.id, depth + 1, unrolled || expanded.indexOf(a.id) >= 0);
       });
-    })(null, 0);
+    })(null, 0, false);
     wrap.appendChild(listWrap);
 
     if (draft.ancestry) {
@@ -264,6 +269,10 @@
       sub.appendChild(el("h3", "sub-title",
         "Ancestral talent — pick " + picks + " (" + draft.ancestralTalents.length + "/" + picks + " chosen)"));
       if (!options.length) sub.appendChild(el("div", "sheet-hint", "This ancestry has no base talents to pick from yet."));
+      var chainNames = Engine.ancestryChain(draft.ancestry)
+        .map(function (id) { return (Engine.ancestryById(id) || {}).name; })
+        .filter(Boolean);
+      sub.appendChild(el("div", "sheet-hint", "Accessible ancestral trees: " + chainNames.join(" → ")));
       var list = el("div", "pick-grid");
       options.forEach(function (t) {
         var chosen = draft.ancestralTalents.indexOf(t.id) >= 0;
@@ -296,7 +305,9 @@
   // ---- step 3: source of power -------------------------------------------
   function stepSource() {
     var wrap = el("div");
-    wrap.appendChild(el("p", "step-lead", "Choose where your power comes from."));
+    wrap.appendChild(el("p", "step-lead",
+      "Choose where your power comes from. On its own it does not grant skills or talents " +
+      "directly, but may grant a unique talent each tier of play."));
 
     var cards = el("div", "card-grid");
     (window.SOURCES || []).filter(function (s) { return !s.hidden; }).forEach(function (s) {
@@ -396,6 +407,10 @@
 
     // Skills
     var cap = creationLevelCap();
+    if (cap < CONFIG.MAX_SKILL_TIER) {
+      wrap.appendChild(el("div", "sheet-hint",
+        "At tier of play 1 nothing can be taken above level " + cap + "."));
+    }
 
     var grid = el("div", "skill-grid");
     var costs = costsForSkill(opts.pool);
