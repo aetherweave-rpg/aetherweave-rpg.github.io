@@ -37,9 +37,6 @@
     UI.renderHeader("trees");
     UI.renderStorageWarning();
     UI.renderCreationGate();
-    UI.bindPrint(function () {
-      return "Aetherweave — " + (_view ? _view.name : "talent") + " tree";
-    });
     renderTabs();
     render();
     State.subscribe(function () { UI.renderHeader("trees"); renderTabs(); render(); });

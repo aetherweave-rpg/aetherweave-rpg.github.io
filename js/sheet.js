@@ -14,10 +14,14 @@
     UI.bindPrint(function () {
       var n = (State.get().identity.characterName || "aetherweave-character").trim();
       return n + " — character sheet";
-    });
+    }, renderPrint);
     render();
     State.subscribe(function () { UI.renderHeader("sheet"); render(); });
   }
+
+  // The paper copy is a whole second document (js/print-sheet.js), rebuilt
+  // alongside this one so it is never out of date with what is on screen.
+  function renderPrint() { window.PrintSheet.render(State.get()); }
 
   function render() {
     var root = document.getElementById("sheet");
@@ -35,6 +39,7 @@
       if (s) root.appendChild(s);
     });
     root.appendChild(dataSection());
+    renderPrint();
   }
 
   function section(title, note) {

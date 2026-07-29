@@ -16,6 +16,10 @@
     <div id="sheet" class="sheet"></div>
   </main>
 
+  <!-- The printable sheet (js/print-sheet.js). Hidden on screen; in print it is
+       the only thing shown — see the @page block in css/style.css. -->
+  <div id="print-sheet" class="print-root" aria-hidden="true"></div>
+
   <!-- ---------- Editable database (all content is in these files) ---------- -->
   <script src="js/data/creation.js"></script>
   <script src="js/config.js"></script>
@@ -30,6 +34,7 @@
   <script src="js/state.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/ui-shared.js"></script>
+  <script src="js/print-sheet.js"></script>
   <script src="js/sheet.js"></script>
 </body>
 </html>

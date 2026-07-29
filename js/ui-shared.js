@@ -210,13 +210,22 @@
     return { close: close, body: body };
   }
 
-  // Wire an #export-pdf button to the browser's print → "Save as PDF". A print
-  // stylesheet (css/style.css) reshapes the page for paper. `getTitle` sets the
-  // document title so the saved file gets a sensible name.
-  function bindPrint(getTitle) {
+  // Wire an #export-pdf button to the browser's print → "Save as PDF". The page
+  // does not print itself: js/print-sheet.js builds a separate paper document
+  // that the print stylesheet swaps in (css/style.css). `getTitle` sets the
+  // document title so the saved file gets a sensible name, and `prepare` is the
+  // page's chance to refresh that document first.
+  //
+  // `prepare` also runs on `beforeprint`, so Ctrl+P is as correct as the button.
+  // It has to: the sheet saves some edits silently (typing a name must not
+  // re-render under the cursor), so what is on screen can be one keystroke
+  // ahead of what was last built for paper.
+  function bindPrint(getTitle, prepare) {
+    if (prepare) window.addEventListener("beforeprint", function () { safely(prepare); });
     var btn = document.getElementById("export-pdf");
     if (!btn) return;
     btn.addEventListener("click", function () {
+      if (prepare) safely(prepare);
       var prev = document.title;
       if (getTitle) { try { var t = getTitle(); if (t) document.title = t; } catch (e) {} }
       var restore = function () { document.title = prev; window.removeEventListener("afterprint", restore); };
@@ -225,6 +234,10 @@
       window.print();
     });
   }
+
+  // A failure while preparing the paper copy must not cost the user the print
+  // dialog — they would still rather have a stale sheet than none.
+  function safely(fn) { try { fn(); } catch (e) { console.warn("Aetherweave print prepare failed:", e); } }
 
   window.UI = {
     el: el,

@@ -880,22 +880,156 @@ a { color: var(--accent); }
 .mana-box { border-color: #cfc6ef; }
 .mana-box .stat-title { color: #5a4aa0; }
 
-/* ---------- Print / Export to PDF ---------------------------------------- */
+/* ---------- Print / Export to PDF ----------------------------------------
+   Paper renders a different document, not a restyled app: js/print-sheet.js
+   builds a static sheet into #print-sheet, which is hidden on screen and is
+   the ONLY thing shown in print. That inversion is the whole point — the old
+   approach restyled the interactive sheet, which meant form controls on paper,
+   a 1200px layout the browser shrank to ~63% to fit A4, and no rules text at
+   all (descriptions live behind a click on screen).
+
+   Sizes below are in pt because that is what a printer works in; nothing here
+   is shared with the screen theme beyond the two font stacks.
+   ------------------------------------------------------------------------ */
+.print-root { display: none; }
+
 @media print {
-  body { background: #fff; }
-  #app-header, .page-toolbar, .no-print, .legend, .tree-tabs, .combo-toggle,
-  .toast-host, #storage-warning, .validation-banner,
-  .data-row, .btn, .icon-btn, .prof-add, .prof-del { display: none !important; }
-  .page { max-width: none; margin: 0; padding: 0; }
-  .sheet { gap: 12px; }
-  .sheet-section, .tree {
-    box-shadow: none; border-color: #bbb; break-inside: avoid; page-break-inside: avoid;
+  @page { size: A4 portrait; margin: 12mm 12mm 14mm; }
+
+  /* On a page that builds a paper document, that document is the ONLY thing
+     printed. Hiding by exclusion rather than by a list of ids means a new
+     banner can't quietly start appearing on paper. Scoped with :has() so the
+     other pages — which have no paper form — still print their own content
+     instead of a blank sheet. */
+  body:has(.print-root) > *:not(.print-root) { display: none !important; }
+
+  /* Screen furniture, on every page. */
+  #app-header, .page-toolbar, .no-print, .toast-host, #storage-warning,
+  .validation-banner, .gate-overlay, .btn, .icon-btn { display: none !important; }
+
+  html, body {
+    background: #fff; color: #000;
+    font-family: var(--font); font-size: 8.6pt; line-height: 1.32;
   }
+  .print-root { display: block; }
+
+  /* Keep the ink the design asks for: dot fills and rule lines are the sheet's
+     only "color", and browsers drop backgrounds by default when printing. */
+  .ps-doc, .ps-doc * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* -- masthead -- */
+  .ps-masthead { border-bottom: 1.4pt solid #000; padding-bottom: 4pt; margin-bottom: 7pt; }
+  .ps-masthead-top {
+    display: flex; align-items: baseline; gap: 8pt;
+    font-size: 7pt; text-transform: uppercase; letter-spacing: 1.4pt; color: #444;
+  }
+  .ps-wordmark { font-family: var(--serif); font-size: 9pt; letter-spacing: 2pt; color: #000; }
+  .ps-tier { margin-left: auto; letter-spacing: 1pt; font-weight: 700; color: #000; }
+  .ps-charname { font-family: var(--serif); font-size: 19pt; line-height: 1.1; margin-top: 2pt; }
+  .ps-charline { font-size: 8.6pt; color: #333; }
+  .ps-charnotes { font-size: 8pt; color: #444; font-style: italic; margin-top: 2pt; }
+
+  /* -- blocks -- */
+  .ps-block { margin-bottom: 7pt; break-inside: avoid; page-break-inside: avoid; }
+  .ps-h2 {
+    font-size: 7.4pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1.3pt;
+    margin: 0 0 3.5pt; padding-bottom: 1.5pt; border-bottom: 0.5pt solid #999;
+    display: flex; align-items: baseline; gap: 6pt;
+  }
+  .ps-h2-note, .ps-h3-note {
+    font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 7.2pt; color: #555;
+  }
+  .ps-h3 {
+    font-size: 7.4pt; font-weight: 700; margin: 4pt 0 2pt;
+    display: flex; align-items: baseline; gap: 5pt;
+  }
+  .ps-empty { color: #777; font-size: 8pt; }
+
+  /* -- dots -- */
+  .ps-dots { display: inline-flex; gap: 2pt; flex: none; }
+  .ps-dot {
+    width: 5.2pt; height: 5.2pt; border-radius: 50%;
+    border: 0.6pt solid #000; background: #fff; display: inline-block;
+  }
+  .ps-dot.on { background: #000; }
+
+  /* -- vitals -- */
+  .ps-vitals { display: flex; align-items: stretch; gap: 7pt; }
+  .ps-pool, .ps-char {
+    border: 0.6pt solid #666; border-radius: 2pt; padding: 3pt 6pt;
+    display: flex; flex-direction: column; align-items: center; gap: 1.5pt; min-width: 44pt;
+  }
+  .ps-pool-label, .ps-char-abbr {
+    font-size: 6.6pt; text-transform: uppercase; letter-spacing: 1pt; color: #444;
+  }
+  .ps-pool-value { font-size: 11pt; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ps-pool-sep, .ps-pool-max { color: #555; font-weight: 400; }
+  .ps-chars { display: flex; gap: 7pt; flex: 1; }
+  .ps-char { flex: 1; }
+  .ps-char-value { font-size: 9pt; font-weight: 700; }
+
+  /* -- experience -- */
+  .ps-exp-row { display: flex; gap: 10pt; }
+  .ps-exp-pool {
+    flex: 1; display: flex; align-items: center; gap: 8pt;
+    border: 0.6pt solid #666; border-radius: 2pt; padding: 3pt 7pt;
+  }
+  .ps-exp-pool-name { font-weight: 700; font-size: 8pt; }
+  .ps-exp-nums { display: flex; gap: 10pt; margin-left: auto; }
+  .ps-exp-cell { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+  .ps-exp-cell-label { font-size: 6.4pt; text-transform: uppercase; letter-spacing: .8pt; color: #555; }
+  .ps-exp-cell-value { font-size: 10pt; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ps-exp-cell.over .ps-exp-cell-value { color: #b3261e; }
+  .ps-inline { font-size: 7.6pt; margin-top: 3pt; }
+  .ps-inline-label {
+    font-size: 6.6pt; text-transform: uppercase; letter-spacing: 1pt; color: #555; margin-right: 5pt;
+  }
+
+  /* -- skills & proficiencies -- */
+  .ps-skills { display: grid; grid-template-columns: 1fr 2fr; gap: 4pt 16pt; align-items: start; }
+  .ps-skill-list.ps-two-col { column-count: 2; column-gap: 16pt; }
+  .ps-profs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4pt 16pt; align-items: start; }
+
+  /* A row is name … dots, with a leader so the eye tracks across the gap. */
+  .ps-row {
+    display: flex; align-items: center; gap: 4pt; padding: 0.6pt 0;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .ps-row-name {
+    flex: 1; min-width: 0; font-size: 8pt; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    border-bottom: 0.4pt dotted #bbb;
+  }
+  .ps-row-sub { font-size: 6.6pt; color: #666; letter-spacing: .5pt; margin-left: 4pt; }
+  .ps-row.ps-plain .ps-row-name { border-bottom: none; }
+
+  /* -- ability / spell index -- */
+  .ps-index-list { margin-bottom: 2pt; }
+  .ps-tags { display: flex; gap: 4pt; flex: none; }
+  .ps-tag {
+    font-size: 6.6pt; color: #333; border: 0.4pt solid #999; border-radius: 6pt;
+    padding: 0 3.5pt; white-space: nowrap;
+  }
+  .ps-warn { border-color: #b3261e; color: #b3261e; font-weight: 700; }
+
+  /* -- appendix -- */
+  .ps-appendix { break-before: page; page-break-before: always; break-inside: auto; page-break-inside: auto; }
+  .ps-entry {
+    break-inside: avoid; page-break-inside: avoid;
+    margin-bottom: 4pt; padding-bottom: 3.5pt; border-bottom: 0.4pt solid #ddd;
+  }
+  .ps-entry-head { display: flex; align-items: flex-start; gap: 5pt; }
+  .ps-entry-icon {
+    width: 13pt; height: 13pt; flex: none; border: 0.5pt solid #888; border-radius: 2pt;
+    display: flex; align-items: center; justify-content: center; font-size: 8pt;
+  }
+  .ps-entry-titles { flex: 1; min-width: 0; }
+  .ps-entry-name { font-weight: 700; font-size: 8.6pt; display: flex; align-items: baseline; gap: 4pt; }
+  .ps-entry-meta { font-size: 6.8pt; color: #555; text-transform: uppercase; letter-spacing: .6pt; }
+  .ps-entry-desc { font-size: 8pt; color: #111; margin: 1.5pt 0 0 18pt; white-space: pre-line; }
+  .ps-entry-warn { font-size: 7.4pt; color: #b3261e; margin: 1.5pt 0 0 18pt; }
+
   a { color: inherit; text-decoration: none; }
-  .dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .node-cost, .exp-remaining, .adv-btn.chosen {
-    -webkit-print-color-adjust: exact; print-color-adjust: exact;
-  }
 }
 
 /* ---------- Responsive --------------------------------------------------- */
