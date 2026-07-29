@@ -457,7 +457,9 @@
   }
 
   function abilitiesSection(state) {
-    var owned = Engine.ownedTalents(state).filter(function (t) { return t.ability !== "maneuver"; });
+    // Spellcasting rungs are real owned talents too, but they're shown in the
+    // Spells section (as "spellcasting +N") rather than cluttering Abilities.
+    var owned = Engine.ownedTalents(state).filter(function (t) { return t.ability !== "maneuver" && t.ability !== "spellcasting"; });
     if (!owned.length) return null;
     var s = section("Abilities", owned.length + "");
     owned.sort(sortTalents).forEach(function (t) { s.appendChild(talentRow(t, state)); });
@@ -549,9 +551,9 @@
         block.appendChild(el("div", "sheet-hint", "Able to cast, but no spells learned yet."));
       } else {
         owned.forEach(function (sp) {
-          var castable = Engine.spellCastable(state, sp);
+          var status = Engine.spellRequirementStatus(sp, state);
           var isOpen = !!expanded[sp.id];
-          var row = el("div", "talent-row spell-sheet-row expandable" + (castable ? "" : " invalid") + (isOpen ? " expanded" : ""));
+          var row = el("div", "talent-row spell-sheet-row expandable" + (status.met ? "" : " invalid") + (isOpen ? " expanded" : ""));
           row.appendChild(el("span", "talent-icon", sp.icon || sp.name.charAt(0)));
           var info = el("div", "talent-info");
           var nameLine = el("span", "talent-name", sp.name);
@@ -563,8 +565,11 @@
             (sp.cost || 0) + (sp.pool === "combat" ? " combat" : " non-combat") + " exp · " +
             (manaCost ? (manaCost + " mana to cast") : "cantrip (free to cast)") + " · " +
             Engine.castingTimeLabel(sp)));
-          if (!castable) info.appendChild(el("span", "talent-invalid-note",
-            "⚠ needs Spellcasting +" + (sp.tier || 1) + " to cast"));
+          if (!status.met) {
+            var why = status.reasons.filter(function (r) { return !Engine.reasonMet(r); })
+              .map(function (r) { return r.label; }).join(", ");
+            info.appendChild(el("span", "talent-invalid-note", "⚠ requirements no longer met: " + why));
+          }
           if (isOpen && sp.description) info.appendChild(el("div", "talent-desc", sp.description));
           row.appendChild(info);
           var del = el("button", "icon-btn", "✕"); del.type = "button"; del.title = "Unlearn";

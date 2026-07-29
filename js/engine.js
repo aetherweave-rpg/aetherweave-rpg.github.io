@@ -40,6 +40,11 @@
   // Spell index state (declared here so the initial indexTalents() call — which
   // runs indexSpells() — isn't wiped by a later inline initializer).
   var spellsById = {}, spellsByDomain = {}, spellDomainById = {};
+  // Generated spellcasting-rung talents, per magical domain (see §"Spellcasting
+  // rungs" below) — merged into `byId` so they behave like any other talent for
+  // ownership/requirement/refund purposes, but kept OUT of `allTalents` so
+  // validateDB (which only checks authored content) never sees them.
+  var rungsByDomain = {};
 
   function indexTalents() {
     buildTrees();
@@ -53,6 +58,7 @@
       });
     });
     indexSpells();
+    indexSpellcastingRungs();
   }
   indexTalents();
 
@@ -147,7 +153,9 @@
     (state.talents || []).forEach(function (id) {
       if (isGrantedTalent(state, id)) return;
       var t = byId[id];
-      if (!t || seen[t.domain]) return;
+      // Spellcasting rungs never open a tree or push the ladder — spellcasting
+      // is its own axis, priced separately (see the spellcasting section below).
+      if (!t || seen[t.domain] || t.generated === "spellcasting_rung") return;
       var tree = treeById(t.domain);
       if (!tree || exempt.indexOf(tree.kind) >= 0) return;
       seen[t.domain] = true;
@@ -203,6 +211,15 @@
       if (isGrantedTalent(state, id)) return;
       var t = byId[id];
       if (!t) return;
+      // Spellcasting rungs are real talents but priced like a combat skill,
+      // split evenly between both pools (spells serve combat and non-combat
+      // purposes alike) — tracked on their own breakdown line, not "talents".
+      if (t.pool === "split") {
+        spent.combat += (t.costCombat || 0);
+        spent.noncombat += (t.costNoncombat || 0);
+        spent.breakdown.spellcasting += (t.cost || 0);
+        return;
+      }
       spent[t.pool === "combat" ? "combat" : "noncombat"] += (t.cost || 0);
       spent.breakdown.talents += (t.cost || 0);
     });
@@ -210,17 +227,6 @@
     treeAccessCharges(state).forEach(function (c) {
       spent[c.pool] += c.cost;
       spent.breakdown.treeAccess += c.cost;
-    });
-
-    // Spellcasting ladder: priced like a combat skill, split evenly between
-    // both pools (spells serve combat and non-combat purposes alike).
-    Object.keys(state.spellcasting || {}).forEach(function (domainId) {
-      var lvl = state.spellcasting[domainId] || 0;
-      if (!lvl) return;
-      var split = spellcastingCostSplit(lvl);
-      spent.combat += split.combat;
-      spent.noncombat += split.noncombat;
-      spent.breakdown.spellcasting += split.total;
     });
 
     // Learned spells: each carries its own exp cost drawn from its own pool.
@@ -244,7 +250,9 @@
     (state.talents || []).forEach(function (id) {
       if (isGrantedTalent(state, id)) return;
       var t = byId[id];
-      if (t && t.domain === treeId) total += (t.cost || 0);
+      // Spellcasting rungs are exempt — spellcasting is its own axis and never
+      // paces (or is paced by) a tree's ordinary talent tiers.
+      if (t && t.domain === treeId && t.generated !== "spellcasting_rung") total += (t.cost || 0);
     });
     treeAccessCharges(state).forEach(function (c) {
       if (c.treeId === treeId) total += c.cost;
@@ -322,7 +330,7 @@
   function hasTalentInTree(state, treeId) {
     return (state.talents || []).some(function (id) {
       var t = byId[id];
-      return t && t.domain === treeId;
+      return t && t.domain === treeId && t.generated !== "spellcasting_rung";
     });
   }
 
@@ -406,9 +414,10 @@
     });
 
     // The in-tree exp gate does NOT apply to ancestral trees — heritage talents
-    // are gated by tier of play alone, not by investment in the tree.
+    // are gated by tier of play alone, not by investment in the tree — nor to
+    // spellcasting rungs, which pace themselves via their own prerequisite chain.
     var needTree = CONFIG.TALENT_TIER_TREE_EXP[tierNum - 1] || 0;
-    if (needTree > 0 && (!tree || tree.kind !== "ancestry")) {
+    if (needTree > 0 && (!tree || tree.kind !== "ancestry") && talent.generated !== "spellcasting_rung") {
       var haveTree = treeSpent(state, talent.domain);
       reasons.push({
         type: "treeSpent",
@@ -494,7 +503,8 @@
     var tree = treeById(talent.domain);
     var surcharge = 0;
     var opensTree = false;
-    if (tree && (conf.exemptKinds || []).indexOf(tree.kind) < 0) {
+    // Spellcasting rungs never open a tree or pay its surcharge.
+    if (talent.generated !== "spellcasting_rung" && tree && (conf.exemptKinds || []).indexOf(tree.kind) < 0) {
       var already = treeAccessCharges(state).some(function (c) { return c.treeId === talent.domain; });
       if (!already) { opensTree = true; surcharge = nextTreeCost(state); }
     }
@@ -503,12 +513,16 @@
       surcharge: surcharge,
       opensTree: opensTree,
       total: (talent.cost || 0) + surcharge,
-      pool: talent.pool === "combat" ? "combat" : "noncombat",
+      pool: talent.pool === "combat" ? "combat" : talent.pool === "split" ? "split" : "noncombat",
     };
   }
 
   // Granted talents can never be refunded; otherwise refunding is blocked when
-  // another owned talent would lose its requirements.
+  // another owned TALENT would lose its requirements. Spells are deliberately
+  // NOT part of this simulation — dropping a spellcasting rung out from under
+  // a known spell is allowed (matching the sheet's permissive philosophy): the
+  // spell stays owned but stops being castable, flagged red, same as any other
+  // owned-but-unmet requirement.
   function canRefund(talentId, state) {
     if ((state.talents || []).indexOf(talentId) < 0) return { ok: false, reason: "not owned" };
     if (isGrantedTalent(state, talentId)) return { ok: false, reason: "granted", granted: true };
@@ -700,19 +714,41 @@
         if (!(sp.castingTime === "action" || sp.castingTime === "minor_action" ||
               (typeof sp.castingTime === "number" && sp.castingTime > 0)))
           problems.push("spell '" + sp.id + "': castingTime must be 'action', 'minor_action', or a positive number of minutes (got " + JSON.stringify(sp.castingTime) + ")");
+
+        // Spells are placed in their own per-domain grid (the Spells tab),
+        // separate from the talent grid, but use the same row/col scheme.
+        if (tree) {
+          if (typeof sp.col !== "number" || sp.col < 0 || sp.col >= tree.cols)
+            problems.push("spell '" + sp.id + "': col " + sp.col + " out of range 0.." + (tree.cols - 1));
+          if (typeof sp.row !== "number" || sp.row < 0)
+            problems.push("spell '" + sp.id + "': row must be a number ≥ 0 (got " + JSON.stringify(sp.row) + ")");
+        }
+
+        // Spells may carry the same optional requirement kinds a talent can
+        // (in addition to the automatic "owns the matching Spellcasting rung"
+        // gate, which the engine enforces itself and isn't authored data).
+        var sreqs = sp.requires || {};
+        (sreqs.talents || []).concat(sreqs.anyTalents || []).forEach(function (pid) {
+          if (!byId[pid] && !spellsById[pid])
+            problems.push("spell '" + sp.id + "': unknown prerequisite '" + pid + "'");
+        });
+        Object.keys(sreqs.skills || {}).forEach(function (n) {
+          if (!skillNames[n]) problems.push("spell '" + sp.id + "': unknown skill '" + n + "'");
+        });
+        Object.keys(sreqs.characteristics || {}).forEach(function (k) {
+          if (!charKeys[k]) problems.push("spell '" + sp.id + "': unknown characteristic '" + k + "'");
+        });
       });
     });
 
-    // Magical domains reserve the two centre columns for the auto-generated
-    // spellcasting spine + Spells Known gateways; authored talents must not sit there.
+    // Magical domains reserve the centre column for the auto-generated
+    // spellcasting rungs; authored talents must not sit there.
     magicalDomains().forEach(function (tree) {
-      var cols = tree.cols || 5;
-      var c = Math.floor(cols / 2);
-      var side = c + 1 < cols ? c + 1 : c - 1;
+      var c = casterCenterCol(tree);
       talentsForDomain(tree.id).forEach(function (t) {
-        if (t.col === c || t.col === side)
-          problems.push(tree.id + ": talent '" + t.id + "' sits in a centre column (" + t.col +
-            ") reserved for the spellcasting spine — move it to a side column");
+        if (t.col === c)
+          problems.push(tree.id + ": talent '" + t.id + "' sits in the centre column (" + t.col +
+            ") reserved for the spellcasting ladder — move it to a side column");
       });
     });
 
@@ -792,10 +828,12 @@
   }
 
   // ---- Spellcasting -------------------------------------------------------
-  // Magical domains (core trees flagged `magical`) grant spellcasting instead
-  // of hand-authored gateway talents: a per-domain ladder that adds +1 per rung
-  // to spell test rolls, and a pool of individually-learned spells. Both the
-  // ladder height and the learnable spell tier are gated by the tier of play.
+  // Magical domains (core trees flagged `magical`) grow an auto-generated
+  // ladder of "Spellcasting" talents (see indexSpellcastingRungs below) that
+  // adds +1 per rung to spell test rolls, plus a per-domain Spells tab (§4.6
+  // of DESIGN.md) where spells are placed and learned like talents. A spell's
+  // tier gates it on owning the matching rung — enforced by
+  // spellRequirementStatus, not stored as authored data.
   function isMagicalDomain(treeId) {
     var t = treeById(treeId);
     return !!(t && t.kind === "core" && t.magical);
@@ -803,39 +841,24 @@
   function magicalDomains() {
     return trees.filter(function (t) { return t.kind === "core" && t.magical; });
   }
-  // Highest spell tier / ladder rung reachable at the current tier of play.
+  // Highest spellcasting rung reachable at the current tier of play (rung
+  // tiers are [1,1,2,3,4] — see indexSpellcastingRungs).
   function maxCasterTier(state) {
     var conf = CONFIG.SPELL_TIER_UNLOCK || { offset: 1, max: CONFIG.MAX_SPELL_TIER || 5 };
     var top = currentTierIndex(state) + 1;
     return Math.min(conf.max, top + conf.offset);
   }
+  // The ladder level is simply the highest-numbered rung talent owned.
+  // Ownership is always contiguous from rung 1: each rung requires the one
+  // below it, and canRefund blocks removing a rung a higher one still needs.
   function spellcastingLevel(state, domainId) {
-    return (state.spellcasting || {})[domainId] || 0;
-  }
-  // Cumulative exp to reach `level`, priced like a combat skill (total, before
-  // the pool split below).
-  function spellcastingCost(level) {
-    return sumSteps(CONFIG.SKILL_COSTS.combat, level);
-  }
-  // As spellcastingCost, but broken into what each pool actually pays — each
-  // rung's total cost is split evenly between combat and non-combat.
-  function spellcastingCostSplit(level) {
-    var costs = CONFIG.SKILL_COSTS.combat || [];
-    var combat = 0, noncombat = 0;
-    for (var i = 0; i < level; i++) {
-      var step = costs[i] !== undefined ? costs[i] : (costs[costs.length - 1] || 0);
-      var half = splitCost(step);
-      combat += half.combat; noncombat += half.noncombat;
+    var maxT = CONFIG.MAX_SPELL_TIER || 5;
+    var owned = state.talents || [];
+    var level = 0;
+    for (var r = 1; r <= maxT; r++) {
+      if (owned.indexOf(domainId + "__cast" + r) >= 0) level = r; else break;
     }
-    return { combat: combat, noncombat: noncombat, total: combat + noncombat };
-  }
-  // Exp for the NEXT rung (for the UI hint), total across both pools.
-  function spellcastingStepCost(level) {
-    var costs = CONFIG.SKILL_COSTS.combat;
-    return costs[level] !== undefined ? costs[level] : (costs[costs.length - 1] || 0);
-  }
-  function canRaiseSpellcasting(state, domainId) {
-    return spellcastingLevel(state, domainId) < maxCasterTier(state);
+    return level;
   }
   // The characteristic a caster adds to spell rolls comes from the source of
   // power (may be unset until the designer assigns one).
@@ -851,19 +874,96 @@
     return { charKey: key, charVal: charVal, ladder: ladder, total: charVal + ladder };
   }
   function spellOwned(state, id) { return (state.spells || []).indexOf(id) >= 0; }
-  // Is an (owned or offered) spell currently usable? You must have raised the
-  // domain's Spellcasting spine to at least the spell's tier (owning rung T
-  // unlocks tier-T casting).
+
+  // A prerequisite id on a spell may point at either a talent or another
+  // spell — spells are learnable like talents, so they can chain off each
+  // other (e.g. "Ember II" requiring "Ember").
+  function resolveReqTarget(id) { return byId[id] || spellsById[id]; }
+  function isOwnedReqId(state, id) {
+    return (state.talents || []).indexOf(id) >= 0 || (state.spells || []).indexOf(id) >= 0;
+  }
+
+  // Requirement evaluation for a spell — the same shape as requirementStatus
+  // (a `reasons` list, each coloured red/black by reasonMet), so the Spells
+  // tab can reuse the exact same tooltip/requirement rendering as talents.
+  // The first reason is always automatic: you must own the domain's
+  // Spellcasting rung matching the spell's tier. Everything after that is the
+  // spell's own optional `requires` block (talents/anyTalents/skills/
+  // characteristics/spent — identical schema to a talent's).
+  function spellRequirementStatus(spell, state) {
+    var domainId = spellDomain(spell.id);
+    var tierNum = spell.tier || 1;
+    var rungId = domainId + "__cast" + tierNum;
+    var rung = byId[rungId];
+    var reqs = spell.requires || {};
+    var reasons = [];
+    var spent;
+
+    reasons.push({
+      type: "talent", mode: "all", talentId: rungId,
+      label: rung ? rung.name : ("Spellcasting +" + tierNum),
+      crossDomain: false,
+      met: (state.talents || []).indexOf(rungId) >= 0,
+    });
+
+    (reqs.talents || []).forEach(function (pid) {
+      var pre = resolveReqTarget(pid);
+      var preDomain = pre ? (pre.domain || spellDomain(pid)) : null;
+      reasons.push({
+        type: "talent", mode: "all", talentId: pid,
+        label: pre ? pre.name : pid,
+        crossDomain: pre ? preDomain !== domainId : true,
+        crossTreeName: pre && preDomain !== domainId ? ((treeById(preDomain) || {}).name || preDomain) : null,
+        met: isOwnedReqId(state, pid),
+      });
+    });
+    if (reqs.anyTalents && reqs.anyTalents.length) {
+      var anyMet = reqs.anyTalents.some(function (pid) { return isOwnedReqId(state, pid); });
+      reqs.anyTalents.forEach(function (pid) {
+        var pre = resolveReqTarget(pid);
+        var preDomain = pre ? (pre.domain || spellDomain(pid)) : null;
+        reasons.push({
+          type: "talent", mode: "any", talentId: pid, groupMet: anyMet,
+          label: pre ? pre.name : pid,
+          crossDomain: pre ? preDomain !== domainId : true,
+          crossTreeName: pre && preDomain !== domainId ? ((treeById(preDomain) || {}).name || preDomain) : null,
+          met: isOwnedReqId(state, pid),
+        });
+      });
+    }
+    Object.keys(reqs.skills || {}).forEach(function (name) {
+      var need = reqs.skills[name], have = (state.skills || {})[name] || 0;
+      reasons.push({ type: "skill", label: name + " " + need, detail: "have " + have, met: have >= need });
+    });
+    Object.keys(reqs.characteristics || {}).forEach(function (key) {
+      var need = reqs.characteristics[key], have = (state.characteristics || {})[key] || 0;
+      reasons.push({ type: "characteristic", label: charLabel(key) + " " + need, detail: "have " + have, met: have >= need });
+    });
+    if (reqs.spent) {
+      spent = spent || computeSpent(state);
+      Object.keys(reqs.spent).forEach(function (pool) {
+        var need = reqs.spent[pool], have = spent[pool] || 0;
+        reasons.push({ type: "spent", label: need + " " + poolLabel(pool) + " exp spent", detail: "have " + have, met: have >= need });
+      });
+    }
+
+    return {
+      owned: spellOwned(state, spell.id),
+      met: reasons.every(reasonMet),
+      reasons: reasons,
+    };
+  }
+  // Is an (owned or offered) spell currently usable? Requirements (the rung
+  // gate plus any authored requires) must still be met — sheet edits can
+  // break this after the fact, same as a talent going owned-invalid.
   function spellCastable(state, spell) {
     if (!spell) return false;
-    var domainId = spellDomain(spell.id);
-    if (!isMagicalDomain(domainId)) return false;
-    return spellcastingLevel(state, domainId) >= (spell.tier || 1);
+    return spellRequirementStatus(spell, state).met;
   }
-  // Can this spell be learned right now? Castable and not already owned.
+  // Can this spell be learned right now? Requirements met and not already owned.
   function canLearnSpell(state, spell) {
     if (!spell || spellOwned(state, spell.id)) return false;
-    return spellCastable(state, spell);
+    return spellRequirementStatus(spell, state).met;
   }
   // Mana to cast a spell: always the spell's tier minus one, so tier-1 spells
   // are free, repeatable cantrips.
@@ -900,45 +1000,51 @@
     return charVal + Math.floor(spent.breakdown.spellcasting / 10) + charVal * tierIncreases;
   }
 
-  // ---- Spellcasting spine (auto-generated tree nodes) ---------------------
-  // A magical domain grows a central spine: MAX_SPELL_TIER "Spellcasting" rungs
-  // down the centre column (each +1 to spell rolls, priced like a combat skill),
-  // with a free "Spells Known" gateway beside each rung that opens that tier's
-  // spell picker. These nodes are synthetic — never stored in TALENT_DB, never
-  // exported; the tree page merges them into the grid and the ladder level lives
-  // in state.spellcasting. Rung tiers [1,1,2,3,4] gate them by tier of play.
+  // ---- Spellcasting rungs (auto-generated talents) -------------------------
+  // A magical domain grows MAX_SPELL_TIER "Spellcasting" talents down its
+  // centre column (each +1 to spell rolls, priced like a combat skill split
+  // evenly between both pools). They are generated, not authored — never
+  // written to TALENT_DB, never exported — but are otherwise REAL talents:
+  // merged into `byId` (below), learned/refunded through state.talents via
+  // the ordinary talent flow, and subject to the ordinary tier-of-play +
+  // prerequisite-chain gates (rung R requires rung R-1). What they're EXEMPT
+  // from is the tree-access surcharge and the in-tree exp gate — spellcasting
+  // is its own axis (see the skip conditions on treeAccessCharges, treeSpent,
+  // hasTalentInTree and requirementStatus above). Rung tiers [1,1,2,3,4] pace
+  // the ladder against the tier of play.
   function casterCenterCol(tree) { return Math.floor((tree.cols || 5) / 2); }
-  function casterNodes(domainId) {
-    var tree = treeById(domainId);
-    if (!tree || tree.kind !== "core" || !tree.magical) return [];
-    var cols = tree.cols || 5;
+  function buildSpellcastingRungs(tree) {
+    var domainId = tree.id;
     var c = casterCenterCol(tree);
-    var side = c + 1 < cols ? c + 1 : c - 1;        // "Spells Known" column beside the spine
     var maxT = CONFIG.MAX_SPELL_TIER || 5;
     var rungTier = [1, 1, 2, 3, 4];
     var combat = CONFIG.SKILL_COSTS.combat || [];
     var out = [];
     for (var r = 1; r <= maxT; r++) {
-      var tier = rungTier[r - 1] || Math.max(1, r - 1);
+      var tierNum = rungTier[r - 1] || Math.max(1, r - 1);
       var total = combat[r - 1] !== undefined ? combat[r - 1] : 0;
       var half = splitCost(total);
       out.push({
-        id: domainId + "__cast" + r, domain: domainId, synthetic: "cast", rung: r,
-        name: "Spellcasting +" + r, icon: "✨", tier: tier, row: r - 1, col: c,
+        id: domainId + "__cast" + r, domain: domainId, generated: "spellcasting_rung", rung: r,
+        name: "Spellcasting +" + r, icon: "✨", tier: tierNum, row: r - 1, col: c,
         pool: "split", cost: total, costCombat: half.combat, costNoncombat: half.noncombat,
+        ability: "spellcasting",
         requires: r > 1 ? { talents: [domainId + "__cast" + (r - 1)] } : {},
         description: "Raise your " + tree.name + " spellcasting to +" + r + ": +" + r +
           " dice on its spell tests, and access to tier-" + r + " spells.",
       });
-      out.push({
-        id: domainId + "__known" + r, domain: domainId, synthetic: "known", spellTier: r,
-        name: "Spells Known", icon: "📖", tier: tier, row: r - 1, col: side,
-        pool: "split", cost: 0, costCombat: 0, costNoncombat: 0, requires: { talents: [domainId + "__cast" + r] },
-        description: "Browse and learn tier-" + r + " " + tree.name + " spells (needs Spellcasting +" + r + ").",
-      });
     }
     return out;
   }
+  function indexSpellcastingRungs() {
+    rungsByDomain = {};
+    magicalDomains().forEach(function (tree) {
+      var list = buildSpellcastingRungs(tree);
+      rungsByDomain[tree.id] = list;
+      list.forEach(function (r) { byId[r.id] = r; });
+    });
+  }
+  function spellcastingRungs(domainId) { return rungsByDomain[domainId] || []; }
 
   window.Engine = {
     reindex: indexTalents,
@@ -972,12 +1078,11 @@
     // spells & spellcasting
     spellById: spellById, spellsForDomain: spellsForDomain, spellDomain: spellDomain, allSpells: allSpells,
     isMagicalDomain: isMagicalDomain, magicalDomains: magicalDomains,
-    maxCasterTier: maxCasterTier, spellcastingLevel: spellcastingLevel,
-    spellcastingCost: spellcastingCost, spellcastingCostSplit: spellcastingCostSplit,
-    spellcastingStepCost: spellcastingStepCost,
-    canRaiseSpellcasting: canRaiseSpellcasting, casterCharacteristic: casterCharacteristic,
+    maxCasterTier: maxCasterTier, spellcastingLevel: spellcastingLevel, spellcastingRungs: spellcastingRungs,
+    casterCharacteristic: casterCharacteristic,
     spellPool: spellPool, spellOwned: spellOwned, canLearnSpell: canLearnSpell, spellCastable: spellCastable,
-    spellManaCost: spellManaCost, castingTimeLabel: castingTimeLabel, casterNodes: casterNodes,
+    spellRequirementStatus: spellRequirementStatus,
+    spellManaCost: spellManaCost, castingTimeLabel: castingTimeLabel,
     maxHP: maxHP, maxMana: maxMana,
     // misc
     validateDB: validateDB, isCombatSkill: isCombatSkill, findKind: findKind,

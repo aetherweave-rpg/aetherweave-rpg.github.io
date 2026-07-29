@@ -82,7 +82,7 @@
     });
 
     return {
-      version: 2,
+      version: 3,
       identity: { characterName: "", playerName: "", ancestry: "", sourceOfPower: "", concept: "", notes: "" },
       hp: { max: "", current: "" },
       mana: { max: "", current: "" },
@@ -93,11 +93,12 @@
       },
       skills: skills,          // display name -> CURRENT tier 0..4 (granted included)
       proficiencies: [],       // [{ name, kind, tier }]  (granted included)
-      talents: [],             // owned talent ids (granted included)
+      // Owned talent ids (granted included) — this is ALSO where spellcasting
+      // rung ownership lives now: a magical domain's auto-generated "<id>__castN"
+      // talents are learned/refunded through this array like any other talent.
+      talents: [],
 
-      // Spellcasting (magical domains only; bought after creation, never granted).
-      spellcasting: {},        // domain id -> ladder level 0..MAX_SPELL_TIER
-      spells: [],              // learned spell ids
+      spells: [],              // learned spell ids (magical domains; bought after creation, never granted)
 
       // What the character-creation wizard chose.
       creation: {
@@ -156,8 +157,22 @@
     merged.skills          = Object.assign({}, def.skills, s.skills);
     merged.proficiencies   = Array.isArray(s.proficiencies) ? s.proficiencies : [];
     merged.talents         = Array.isArray(s.talents) ? s.talents : [];
-    merged.spellcasting    = (s.spellcasting && typeof s.spellcasting === "object") ? s.spellcasting : {};
     merged.spells          = Array.isArray(s.spells) ? s.spells : [];
+
+    // v2 → v3: spellcasting rungs used to live in a separate state.spellcasting
+    // ladder (domain id -> level); they're now real owned talents. Convert any
+    // old save's ladder levels into owning rungs 1..level, then drop the field.
+    if (s.spellcasting && typeof s.spellcasting === "object") {
+      var haveTalent = {}; merged.talents.forEach(function (id) { haveTalent[id] = true; });
+      Object.keys(s.spellcasting).forEach(function (domainId) {
+        var lvl = s.spellcasting[domainId] || 0;
+        for (var r = 1; r <= lvl; r++) {
+          var id = domainId + "__cast" + r;
+          if (!haveTalent[id]) { merged.talents.push(id); haveTalent[id] = true; }
+        }
+      });
+    }
+    delete merged.spellcasting;
     merged.creation        = Object.assign({}, def.creation, s.creation);
     merged.granted         = Object.assign({}, def.granted, s.granted);
     merged.granted.talents       = Array.isArray(merged.granted.talents) ? merged.granted.talents : [];

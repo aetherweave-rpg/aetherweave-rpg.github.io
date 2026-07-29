@@ -8,6 +8,20 @@
   var Engine = window.Engine, State = window.State, UI = window.UI, el = UI.el, CONFIG = window.CONFIG;
   var LAST_TREE_KEY = "aetherweave.lastTree";
   var SHOW_COMBOS_KEY = "aetherweave.showAllCombinations";
+  var SUBVIEW_KEY_PREFIX = "aetherweave.subview.";
+
+  // Magical domains show two sub-views: "talents" (the ordinary tree, plus the
+  // auto-generated Spellcasting rungs) and "spells" (that domain's spells,
+  // placed and learned like talents). Remembered per domain.
+  var subViewCache = {};
+  function getSubView(domainId) {
+    if (!(domainId in subViewCache)) subViewCache[domainId] = window.SafeStorage.read(SUBVIEW_KEY_PREFIX + domainId) || "talents";
+    return subViewCache[domainId];
+  }
+  function setSubView(domainId, v) {
+    subViewCache[domainId] = v;
+    window.SafeStorage.write(SUBVIEW_KEY_PREFIX + domainId, v);
+  }
 
   // A character sees ONE ancestral tree: the trees of their ancestry chain
   // (self + parents) concatenated side by side. This sentinel selects that
@@ -71,14 +85,37 @@
       else if (ancTrees.length) { currentTree = ANCESTRY_VIEW; return ancestryView(state, ancTrees); }
       else return null;
     }
+    // Magical domains show two sub-views, toggled from the tree header.
+    if (Engine.isMagicalDomain(real.id) && getSubView(real.id) === "spells") return spellsView(state, real);
+
     var talents = Engine.talentsForDomain(real.id);
-    // Magical domains grow an auto-generated central Spellcasting spine + Spells
-    // Known gateways; merge them in so they render as ordinary grid nodes.
-    if (Engine.isMagicalDomain(real.id)) talents = talents.concat(Engine.casterNodes(real.id));
+    // Magical domains grow an auto-generated central Spellcasting ladder — real
+    // talents, so they merge straight into the grid alongside authored ones.
+    if (Engine.isMagicalDomain(real.id)) talents = talents.concat(Engine.spellcastingRungs(real.id));
     return {
       id: real.id, kind: real.kind, name: real.name, icon: real.icon, accent: real.accent,
       description: real.description, cols: real.cols, realTree: real,
       talents: talents, colOf: function (t) { return t.col; },
+    };
+  }
+
+  // A magical domain's Spells sub-view: that domain's spells, reshaped to look
+  // like grid nodes (id/name/row/col/requires), placed and learned exactly
+  // like talents. The automatic "owns the matching Spellcasting rung" gate is
+  // enforced by Engine.spellRequirementStatus, not drawn as a line (the rung
+  // lives in the Talents sub-view — a different tab — so it renders as text).
+  function spellsView(state, real) {
+    var spells = Engine.spellsForDomain(real.id).map(function (sp) {
+      var o = {};
+      Object.keys(sp).forEach(function (k) { o[k] = sp[k]; });
+      o.domain = real.id; o.spellNode = true;
+      o.row = sp.row || 0; o.col = sp.col || 0;
+      return o;
+    });
+    return {
+      id: real.id + "__spells", kind: "spells", name: real.name, icon: real.icon, accent: real.accent,
+      description: real.description, cols: real.cols, realTree: real, isSpellView: true,
+      talents: spells, colOf: function (t) { return t.col || 0; },
     };
   }
 
@@ -212,7 +249,7 @@
 
     var talents = view.talents;
     if (!talents.length) {
-      host.appendChild(el("div", "empty", "No talents defined for this tree yet."));
+      host.appendChild(el("div", "empty", view.isSpellView ? "No spells defined for this domain yet." : "No talents defined for this tree yet."));
       return;
     }
 
@@ -286,6 +323,20 @@
     title.appendChild(txt);
     head.appendChild(title);
 
+    // Magical domains offer two sub-views: Talents (the tree + spellcasting
+    // ladder) and Spells (that domain's spell list). Both views' headers show it.
+    if (view.realTree && Engine.isMagicalDomain(view.realTree.id)) {
+      var subs = el("div", "subview-tabs");
+      [["talents", "Talents"], ["spells", "Spells"]].forEach(function (pair) {
+        var active = getSubView(view.realTree.id) === pair[0];
+        var b = el("button", "subview-tab" + (active ? " active" : ""), pair[1]);
+        b.type = "button";
+        b.onclick = function () { setSubView(view.realTree.id, pair[0]); renderTabs(); render(); };
+        subs.appendChild(b);
+      });
+      head.appendChild(subs);
+    }
+
     var tags = el("div", "tree-head-tags");
 
     // Combined ancestral view: no per-tree exp/access (ancestral trees are free).
@@ -293,6 +344,17 @@
       tags.appendChild(el("span", "tree-tag ok", "Ancestral — no tree-access cost"));
       if (view.blocks && view.blocks.length > 1)
         tags.appendChild(el("span", "tree-tag", "Line: " + view.blocks.map(function (b) { return b.name; }).join(" → ")));
+      head.appendChild(tags);
+      return head;
+    }
+
+    // Spells sub-view: just the effective spell-test pool — no tree-access or
+    // in-tree-exp tags, since spells aren't gated by either.
+    if (view.kind === "spells") {
+      var spool = Engine.spellPool(state, view.realTree.id);
+      tags.appendChild(el("span", "tree-tag caster-tag", spool.charKey
+        ? "Spell test: " + Engine.charLabel(spool.charKey) + " (" + spool.charVal + ") + Spellcasting (" + spool.ladder + ") = " + spool.total + " dice"
+        : "Spellcasting +" + spool.ladder + " · set a source characteristic in the editor"));
       head.appendChild(tags);
       return head;
     }
@@ -340,113 +402,14 @@
     return head;
   }
 
-  // ---- Spellcasting spine nodes (magical domains) -------------------------
-  // The engine hands us synthetic "cast" rungs and "known" gateways (see
-  // Engine.casterNodes); these render as tree nodes down the centre, but their
-  // owned/available state derives from the ladder level, not state.talents.
+  // Spellcasting rungs are now real talents, so ownership for both talents and
+  // rungs is just state.talents membership; spells own via state.spells.
   function nodeOwned(t, state) {
-    if (t.synthetic === "cast") return Engine.spellcastingLevel(state, t.domain) >= t.rung;
-    if (t.synthetic === "known") return Engine.spellcastingLevel(state, t.domain) >= t.spellTier;
+    if (t.spellNode) return Engine.spellOwned(state, t.id);
     return (state.talents || []).indexOf(t.id) >= 0;
   }
 
-  // A rung's cost is split evenly between both pools — "1C+1NC" etc.
-  function castCostLabel(t) {
-    return t.costCombat + "C+" + t.costNoncombat + "NC";
-  }
-
-  // A Spellcasting rung: owned when the ladder is at least this rung; buyable
-  // only when the rung directly below is owned and the tier of play allows it.
-  function castNode(t, state) {
-    var level = Engine.spellcastingLevel(state, t.domain);
-    var cap = Engine.maxCasterTier(state);
-    var owned = level >= t.rung;
-    var isTop = owned && level === t.rung;
-    var available = !owned && level === t.rung - 1 && t.rung <= cap;
-    var node = el("div", "node caster-node cast-node " + (owned ? "owned" : available ? "available" : "locked"));
-    node.dataset.id = t.id;
-    _nodeEls[t.id] = node;
-
-    var box = el("div", "node-box");
-    box.appendChild(el("span", "node-icon", t.icon));
-    if (owned) box.appendChild(el("span", "node-badge", "✓"));
-    node.appendChild(box);
-    node.appendChild(el("div", "node-name", t.name));
-    node.appendChild(el("div", "node-cost split", castCostLabel(t)));
-
-    var info = { owned: owned, available: available, isTop: isTop, cap: cap, level: level };
-    node.addEventListener("mouseenter", function () { showCastTooltip(t, node, info); });
-    node.addEventListener("mousemove", positionTooltip);
-    node.addEventListener("mouseleave", hideTooltip);
-    node.addEventListener("click", function () { onCastClick(t); });
-    return node;
-  }
-
-  // A "Spells Known" gateway: free; active (opens the picker) once the rung
-  // beside it is owned. Shows how many of that tier's spells are known.
-  function knownNode(t, state) {
-    var active = Engine.spellcastingLevel(state, t.domain) >= t.spellTier;
-    var inTier = Engine.spellsForDomain(t.domain).filter(function (sp) { return (sp.tier || 1) === t.spellTier; });
-    var known = inTier.filter(function (sp) { return Engine.spellOwned(state, sp.id); }).length;
-    var node = el("div", "node caster-node known-node " + (active ? "available" : "locked"));
-    node.dataset.id = t.id;
-    _nodeEls[t.id] = node;
-
-    var box = el("div", "node-box");
-    box.appendChild(el("span", "node-icon", t.icon));
-    if (known) box.appendChild(el("span", "node-badge known-badge", known));
-    node.appendChild(box);
-    node.appendChild(el("div", "node-name", t.name));
-    node.appendChild(el("div", "node-cost known-count", known + "/" + inTier.length));
-
-    var info = { active: active, known: known, total: inTier.length };
-    node.addEventListener("mouseenter", function () { showKnownTooltip(t, node, info); });
-    node.addEventListener("mousemove", positionTooltip);
-    node.addEventListener("mouseleave", hideTooltip);
-    node.addEventListener("click", function () { onKnownClick(t); });
-    return node;
-  }
-
-  function onCastClick(t) {
-    hideTooltip();
-    var state = State.get();
-    var level = Engine.spellcastingLevel(state, t.domain);
-    var cap = Engine.maxCasterTier(state);
-    if (level >= t.rung) {
-      if (level !== t.rung) { UI.toast("Refund the higher Spellcasting rung first", "error"); return; }
-      setLadder(t.domain, t.rung - 1);
-      UI.toast("Refunded Spellcasting +" + t.rung);
-    } else {
-      if (level !== t.rung - 1) { UI.toast("Raise Spellcasting +" + (level + 1) + " first", "error"); return; }
-      if (t.rung > cap) { UI.toast("Needs a higher tier of play", "error"); return; }
-      setLadder(t.domain, t.rung);
-      UI.toast("Learned Spellcasting +" + t.rung + " (+" + castCostLabel(t) + " exp)", "success");
-    }
-  }
-
-  function onKnownClick(t) {
-    hideTooltip();
-    var state = State.get();
-    if (Engine.spellcastingLevel(state, t.domain) < t.spellTier) {
-      UI.toast("Raise Spellcasting to +" + t.spellTier + " to learn tier-" + t.spellTier + " spells", "error");
-      return;
-    }
-    openSpellPicker(Engine.treeById(t.domain), t.spellTier);
-  }
-
-  function setLadder(domainId, target) {
-    State.update(function (s) {
-      if (!s.spellcasting) s.spellcasting = {};
-      if (target <= 0) delete s.spellcasting[domainId];
-      else s.spellcasting[domainId] = target;
-    });
-  }
-
-  // Small badges reused by the picker and (via helpers) tooltips.
-  function spellCostTag(sp) {
-    return el("span", "spell-cost-tag " + (sp.pool === "combat" ? "combat" : "noncombat"),
-      (sp.cost || 0) + (sp.pool === "combat" ? "C" : "NC"));
-  }
+  // Small badges reused by spell nodes and their tooltips.
   function spellManaTag(sp) {
     var m = Engine.spellManaCost(sp);
     return el("span", "spell-mana-tag" + (m ? "" : " cantrip"), m ? (m + " mana") : "cantrip");
@@ -455,105 +418,96 @@
     return el("span", "spell-casting-time-tag", Engine.castingTimeLabel(sp));
   }
 
-  function showCastTooltip(t, node, info) {
-    var tip = tooltipEl(); tip.innerHTML = "";
-    tip.appendChild(el("div", "tt-name", t.name));
-    var meta = el("div", "tt-meta");
-    meta.appendChild(el("span", "tt-cost split", castCostLabel(t) + " exp"));
-    meta.appendChild(el("span", "tt-tier", "Spellcasting rung " + t.rung));
-    tip.appendChild(meta);
-    if (t.description) tip.appendChild(el("div", "tt-desc", t.description));
-    var hint = el("div", "tt-hint");
-    if (info.owned) { hint.textContent = info.isTop ? "Click to refund" : "Refund the higher rung first"; hint.classList.add(info.isTop ? "ok" : "no"); }
-    else if (info.available) { hint.textContent = "Click to learn — " + castCostLabel(t) + " exp"; hint.classList.add("ok"); }
-    else if (t.rung > info.cap) { hint.textContent = "Locked — needs a higher tier of play"; hint.classList.add("no"); }
-    else { hint.textContent = "Locked — raise Spellcasting +" + (info.level + 1) + " first"; hint.classList.add("no"); }
-    tip.appendChild(hint);
-    tip.classList.add("show"); lastNodeRect = node.getBoundingClientRect(); positionFromRect();
+  // ---- Spell nodes (Spells sub-view) ---------------------------------------
+  // Placed and learned exactly like a talent node: click to learn (if its
+  // requirements — the automatic rung gate plus any authored requires — are
+  // met) or click an owned one to unlearn (nothing depends on a spell, so
+  // there's no refund-blocking simulation to run).
+  function spellNode(sp, state) {
+    var status = Engine.spellRequirementStatus(sp, state);
+    var owned = status.owned, met = status.met;
+    var cls = "node ";
+    if (owned && met) cls += "owned";
+    else if (owned && !met) cls += "owned-invalid";
+    else if (met) cls += "available";
+    else cls += "locked";
+
+    var node = el("div", cls);
+    node.dataset.id = sp.id;
+    _nodeEls[sp.id] = node;
+
+    var box = el("div", "node-box");
+    box.appendChild(el("span", "node-icon", sp.icon || (sp.name || "?").charAt(0)));
+    if (owned) box.appendChild(el("span", "node-badge", met ? "✓" : "!"));
+    node.appendChild(box);
+    node.appendChild(el("div", "node-name", sp.name));
+    var cost = el("div", "node-cost " + (sp.pool === "combat" ? "combat" : "noncombat"),
+      (sp.cost || 0) + (sp.pool === "combat" ? "C" : "NC"));
+    node.appendChild(cost);
+
+    node.addEventListener("mouseenter", function () { showSpellTooltip(sp, status, node); });
+    node.addEventListener("mousemove", positionTooltip);
+    node.addEventListener("mouseleave", hideTooltip);
+    node.addEventListener("click", function () { onSpellClick(sp); });
+    return node;
   }
 
-  function showKnownTooltip(t, node, info) {
-    var tip = tooltipEl(); tip.innerHTML = "";
-    tip.appendChild(el("div", "tt-name", t.name + " · Tier " + t.spellTier));
-    if (t.description) tip.appendChild(el("div", "tt-desc", t.description));
-    tip.appendChild(el("div", "tt-desc", info.known + " of " + info.total + " tier-" + t.spellTier + " spells known."));
-    var hint = el("div", "tt-hint");
-    if (info.active) { hint.textContent = "Click to browse & learn tier-" + t.spellTier + " spells"; hint.classList.add("ok"); }
-    else { hint.textContent = "Locked — raise Spellcasting +" + t.spellTier + " first"; hint.classList.add("no"); }
-    tip.appendChild(hint);
-    tip.classList.add("show"); lastNodeRect = node.getBoundingClientRect(); positionFromRect();
-  }
-
-  // ---- Spell-selection screen (modal) -------------------------------------
-  // Opened from a "Spells Known" gateway; `focusTier` limits it to that tier.
-  function openSpellPicker(view, focusTier) {
-    UI.modal("Learn a spell — " + view.name + (focusTier ? " · Tier " + focusTier : ""), function (body) {
-      body.classList.add("spell-picker");
-      body.style.setProperty("--accent", view.accent);
-      paintPicker(body, view, focusTier || null);
-    });
-  }
-
-  // Repainted in place after each toggle so the modal reflects state; the page
-  // underneath re-renders on its own via State.subscribe.
-  function paintPicker(body, view, focusTier) {
+  function onSpellClick(sp) {
+    hideTooltip();
     var state = State.get();
-    var domainId = view.id;
-    var level = Engine.spellcastingLevel(state, domainId);
-    body.innerHTML = "";
+    var status = Engine.spellRequirementStatus(sp, state);
+    if (status.owned) {
+      State.update(function (s) { s.spells = (s.spells || []).filter(function (id) { return id !== sp.id; }); });
+      UI.toast("Unlearned " + sp.name);
+    } else {
+      if (!status.met) { UI.toast("Requirements not met for " + sp.name, "error"); return; }
+      State.update(function (s) { s.spells = s.spells || []; s.spells.push(sp.id); });
+      UI.toast("Learned " + sp.name + " (+" + (sp.cost || 0) + (sp.pool === "combat" ? "C" : "NC") + " exp)", "success");
+    }
+  }
 
-    body.appendChild(el("div", "picker-note",
-      "Learnable up to your Spellcasting level (+" + level + "). Each spell costs its own exp; tier-1 spells " +
-      "are free-to-cast cantrips, higher tiers cost mana per cast."));
+  function showSpellTooltip(sp, status, node) {
+    var tip = tooltipEl(); tip.innerHTML = "";
+    tip.appendChild(el("div", "tt-name", sp.name));
 
-    var all = Engine.spellsForDomain(domainId);
-    if (!all.length) {
-      body.appendChild(el("div", "caster-spells-empty", "No spells authored for " + view.name + " yet."));
-      return;
+    var meta = el("div", "tt-meta");
+    meta.appendChild(el("span", "tt-cost " + (sp.pool === "combat" ? "combat" : "noncombat"),
+      (sp.cost || 0) + " " + (sp.pool === "combat" ? "combat" : "non-combat") + " exp"));
+    meta.appendChild(el("span", "tt-tier", "Tier " + (sp.tier || 1)));
+    meta.appendChild(spellManaTag(sp));
+    meta.appendChild(spellCastingTimeTag(sp));
+    tip.appendChild(meta);
+
+    if (sp.description) tip.appendChild(el("div", "tt-desc", sp.description));
+
+    if (status.reasons.length) {
+      var reqs = el("div", "tt-reqs");
+      reqs.appendChild(el("div", "tt-reqs-head", "Requirements"));
+      status.reasons.forEach(function (r) { reqs.appendChild(reqLine(r)); });
+      tip.appendChild(reqs);
     }
 
-    var max = CONFIG.MAX_SPELL_TIER || 5;
-    for (var tier = 1; tier <= max; tier++) {
-      if (focusTier && tier !== focusTier) continue;
-      (function (tier) {
-        var inTier = all.filter(function (sp) { return (sp.tier || 1) === tier; });
-        if (!inTier.length) return;
-        var reachable = level >= tier;
-        var group = el("div", "picker-tier" + (reachable ? "" : " locked"));
-        var gh = el("div", "picker-tier-head", "Tier " + tier);
-        gh.appendChild(el("span", "group-note", tier <= 1 ? "cantrips — free to cast" : "costs mana to cast"));
-        if (!reachable) gh.appendChild(el("span", "group-note", "needs Spellcasting +" + tier));
-        group.appendChild(gh);
-
-        inTier.forEach(function (sp) {
-          var owned = Engine.spellOwned(state, sp.id);
-          var learnable = Engine.canLearnSpell(state, sp);
-          var card = el("button", "picker-spell" + (owned ? " owned" : (learnable ? "" : " disabled")));
-          card.type = "button";
-          card.disabled = !owned && !learnable;
-          var top = el("div", "picker-spell-top");
-          top.appendChild(el("span", "spell-icon", sp.icon || (sp.name || "?").charAt(0)));
-          top.appendChild(el("span", "picker-spell-name", sp.name));
-          top.appendChild(spellCostTag(sp));
-          top.appendChild(spellManaTag(sp));
-          top.appendChild(spellCastingTimeTag(sp));
-          if (owned) top.appendChild(el("span", "picker-owned", "✓ known"));
-          card.appendChild(top);
-          if (sp.description) card.appendChild(el("div", "picker-spell-desc", sp.description));
-          card.onclick = function () {
-            State.update(function (s) {
-              s.spells = s.spells || [];
-              var i = s.spells.indexOf(sp.id);
-              if (i >= 0) s.spells.splice(i, 1); else s.spells.push(sp.id);
-            });
-            UI.toast(owned ? "Unlearned " + sp.name : "Learned " + sp.name, owned ? undefined : "success");
-            paintPicker(body, view, focusTier);
-          };
-          group.appendChild(card);
-        });
-        body.appendChild(group);
-      })(tier);
+    var hint = el("div", "tt-hint");
+    if (status.owned) { hint.textContent = "Click to unlearn"; hint.classList.add("ok"); }
+    else {
+      hint.textContent = status.met ? "Click to learn — " + (sp.cost || 0) + " " + Engine.poolLabel(sp.pool) + " exp" : "Requirements not met";
+      hint.classList.add(status.met ? "ok" : "no");
     }
+    tip.appendChild(hint);
+
+    tip.classList.add("show"); lastNodeRect = node.getBoundingClientRect(); positionFromRect();
+  }
+
+  // One requirement line, shared by talent and spell tooltips.
+  function reqLine(r) {
+    var ok = Engine.reasonMet(r);
+    var line = el("div", "tt-req " + (ok ? "met" : "unmet"));
+    var label = r.label;
+    if (r.type === "talent" && r.mode === "any") label = "Any of: " + label;
+    if (r.type === "talent" && r.crossDomain) label += " (" + (r.crossTreeName || "other tree") + ")";
+    line.appendChild(el("span", "tt-req-mark", ok ? "✓" : "✗"));
+    line.appendChild(el("span", "tt-req-text", label + (r.detail ? " — " + r.detail : "")));
+    return line;
   }
 
   function tierDivider(tierNumber) {
@@ -570,8 +524,7 @@
   }
 
   function makeNode(t, state) {
-    if (t.synthetic === "cast") return castNode(t, state);
-    if (t.synthetic === "known") return knownNode(t, state);
+    if (t.spellNode) return spellNode(t, state);
     var status = Engine.requirementStatus(t, state);
     var owned = status.owned, met = status.met, granted = status.granted;
 
@@ -593,8 +546,10 @@
 
     node.appendChild(el("div", "node-name", t.name));
 
-    var cost = el("div", "node-cost " + (t.pool === "combat" ? "combat" : "noncombat"));
+    // Spellcasting rungs split their cost across both pools ("1C+1NC").
+    var cost = el("div", "node-cost " + (t.pool === "combat" ? "combat" : t.pool === "split" ? "split" : "noncombat"));
     if (granted) { cost.textContent = "free"; cost.className = "node-cost granted"; }
+    else if (t.pool === "split") cost.textContent = t.costCombat + "C+" + t.costNoncombat + "NC";
     else cost.textContent = t.cost + (t.pool === "combat" ? "C" : "NC");
     node.appendChild(cost);
 
@@ -623,9 +578,11 @@
       if (!status.met) { UI.toast("Requirements not met for " + t.name, "error"); return; }
       var lc = Engine.learnCost(t, state);
       State.update(function (s) { s.talents.push(t.id); });
-      UI.toast(lc.opensTree && lc.surcharge
-        ? "Learned " + t.name + " (+" + lc.surcharge + " exp to open this tree)"
-        : "Learned " + t.name, "success");
+      UI.toast(lc.pool === "split"
+        ? "Learned " + t.name + " (+" + t.costCombat + "C+" + t.costNoncombat + "NC exp)"
+        : lc.opensTree && lc.surcharge
+          ? "Learned " + t.name + " (+" + lc.surcharge + " exp to open this tree)"
+          : "Learned " + t.name, "success");
     }
   }
 
@@ -642,8 +599,10 @@
     var hostRect = host.getBoundingClientRect();
     var state = State.get();
 
-    // Prerequisites may point at synthetic spine nodes, which aren't in the
-    // engine's talent index — resolve within the current view first.
+    // A prerequisite may point at something not rendered in THIS view (a spell
+    // whose rung lives in the other sub-tab, or a cross-domain talent) — resolve
+    // within the current view first, then fall back to the engine's index; if
+    // neither has a DOM node for it, the requirement renders as text instead.
     var viewById = {};
     (_view ? _view.talents : []).forEach(function (t) { viewById[t.id] = t; });
 
@@ -671,8 +630,8 @@
 
     var d;
     if (pre.row === child.row) {
-      // Side-by-side prerequisite (Spellcasting rung → its Spells Known gateway):
-      // draw a horizontal connector between the facing edges of the two boxes.
+      // Side-by-side prerequisite (same row): draw a horizontal connector
+      // between the facing edges of the two boxes.
       var leftToRight = (pre.col || 0) <= (child.col || 0);
       var hsx = (leftToRight ? pb.right : pb.left) - hostRect.left;
       var hex = (leftToRight ? cb.left : cb.right) - hostRect.left;
@@ -716,6 +675,8 @@
     var lc = Engine.learnCost(t, state);
     if (status.granted) {
       meta.appendChild(el("span", "tt-cost granted", "granted at creation"));
+    } else if (t.pool === "split") {
+      meta.appendChild(el("span", "tt-cost split", t.costCombat + "C+" + t.costNoncombat + "NC exp"));
     } else {
       meta.appendChild(el("span", "tt-cost " + (t.pool === "combat" ? "combat" : "noncombat"),
         t.cost + " " + (t.pool === "combat" ? "combat" : "non-combat") + " exp"));
@@ -725,6 +686,8 @@
     meta.appendChild(el("span", "tt-tier", (CONFIG.TIERS[t.tier - 1] || {}).name || ("Tier " + t.tier)));
     if (t.ability === "maneuver")
       meta.appendChild(el("span", "tt-ability maneuver", "Maneuver" + (t.uses ? " · " + t.uses + "/" + (t.usesPer || "session") : "")));
+    else if (t.ability === "spellcasting")
+      meta.appendChild(el("span", "tt-ability spellcasting", "Spellcasting"));
     else
       meta.appendChild(el("span", "tt-ability passive", "Passive"));
     tip.appendChild(meta);
@@ -734,16 +697,7 @@
     if (status.reasons.length) {
       var reqs = el("div", "tt-reqs");
       reqs.appendChild(el("div", "tt-reqs-head", "Requirements"));
-      status.reasons.forEach(function (r) {
-        var ok = Engine.reasonMet(r);
-        var line = el("div", "tt-req " + (ok ? "met" : "unmet"));
-        var label = r.label;
-        if (r.type === "talent" && r.mode === "any") label = "Any of: " + label;
-        if (r.type === "talent" && r.crossDomain) label += " (" + (r.crossTreeName || "other tree") + ")";
-        line.appendChild(el("span", "tt-req-mark", ok ? "✓" : "✗"));
-        line.appendChild(el("span", "tt-req-text", label + (r.detail ? " — " + r.detail : "")));
-        reqs.appendChild(line);
-      });
+      status.reasons.forEach(function (r) { reqs.appendChild(reqLine(r)); });
       tip.appendChild(reqs);
     }
 
@@ -757,7 +711,7 @@
       hint.classList.add(chk.ok ? "ok" : "no");
     } else {
       hint.textContent = status.met
-        ? "Click to learn — " + lc.total + " " + Engine.poolLabel(lc.pool) + " exp"
+        ? "Click to learn — " + (lc.pool === "split" ? t.costCombat + "C+" + t.costNoncombat + "NC" : lc.total + " " + Engine.poolLabel(lc.pool)) + " exp"
         : "Requirements not met";
       hint.classList.add(status.met ? "ok" : "no");
     }

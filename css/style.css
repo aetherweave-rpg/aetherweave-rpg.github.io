@@ -145,6 +145,15 @@ a { color: var(--accent); }
 .tree-tag.locked { border-color: #f0b4ae; background: #fdecea; color: #8c2820; }
 .tree-tag.cost { border-color: #e0c48a; background: #fdf4e2; color: #8a6320; }
 
+/* ---------- Talents / Spells sub-tabs (magical domains) ------------------ */
+.subview-tabs { display: flex; gap: 6px; margin: 2px 0 0; flex: none; }
+.subview-tab {
+  font-size: 12.5px; font-weight: 700; padding: 5px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: var(--panel-2); color: var(--ink-soft);
+}
+.subview-tab:hover { color: var(--ink); }
+.subview-tab.active { color: #fff; background: var(--accent); border-color: color-mix(in srgb, var(--accent) 70%, black 30%); }
+
 /* ---------- Domain tabs -------------------------------------------------- */
 .domain-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
 .domain-tab {
@@ -813,8 +822,9 @@ a { color: var(--accent); }
 /* Ability badge in the node tooltip */
 .tt-ability { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-soft); }
 .tt-ability.maneuver { background: #eef2fb; border-color: #b9c8e6; color: #34507e; }
+.tt-ability.spellcasting { background: #eae6fb; border-color: #cfc6ef; color: #5a4aa0; }
 
-/* Spell-picker modal (shared UI.modal) */
+/* Shared modal chrome (UI.modal — used by dialogs elsewhere) */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 20px;
   background: rgba(42, 33, 20, .55); backdrop-filter: blur(3px);
@@ -838,27 +848,6 @@ a { color: var(--accent); }
 .modal-close:hover { background: #fdecea; color: var(--unmet); border-color: #f0b4ae; }
 .modal-body { padding: 16px 18px; overflow-y: auto; }
 
-.spell-picker { display: flex; flex-direction: column; gap: 14px; }
-.picker-note { font-size: 12.5px; color: var(--ink-soft); }
-.picker-tier { display: flex; flex-direction: column; gap: 8px; }
-.picker-tier.locked { opacity: .55; }
-.picker-tier-head {
-  font-family: var(--serif); font-weight: 700; font-size: 14px; display: flex; align-items: baseline;
-  gap: 8px; border-bottom: 1px dashed var(--line); padding-bottom: 4px;
-}
-.picker-spell {
-  text-align: left; font: inherit; cursor: pointer; color: var(--ink);
-  padding: 10px 12px; border-radius: 10px; background: var(--panel-2); border: 2px solid var(--line);
-  display: flex; flex-direction: column; gap: 4px;
-}
-.picker-spell:hover:not(:disabled) { border-color: var(--accent); }
-.picker-spell.owned { border-color: var(--owned); background: color-mix(in srgb, var(--owned) 10%, #fff); }
-.picker-spell.disabled, .picker-spell:disabled { opacity: .5; cursor: not-allowed; }
-.picker-spell-top { display: flex; align-items: center; gap: 9px; }
-.picker-spell-name { font-weight: 700; flex: 1; }
-.picker-owned { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: var(--owned); }
-.picker-spell-desc { font-size: 12.5px; color: var(--ink-soft); }
-
 /* Sheet: ability categories + per-domain spell blocks */
 .talent-domain-tag {
   font-size: 9.5px; text-transform: uppercase; letter-spacing: .6px; font-weight: 700;
@@ -876,20 +865,14 @@ a { color: var(--accent); }
 .sdh-pool { font-size: 11.5px; color: var(--ink-faint); }
 .spell-sheet-row .talent-name { display: flex; align-items: baseline; gap: 8px; }
 
-/* In-tree spellcasting spine nodes (magical domains) */
-.caster-node .node-box { border-style: solid; }
-.node-cost.known-count { background: var(--panel-2); color: var(--ink-soft); border: 1px solid var(--line); }
-.node-badge.known-badge { background: var(--noncombat); }
+/* Spell-test pool tag (trees-page header, magical domains) */
 .caster-tag {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
   background: color-mix(in srgb, var(--accent) 10%, #fff);
   color: color-mix(in srgb, var(--accent) 75%, black);
 }
 
-/* Spell exp-cost + mana tags (picker) */
-.spell-cost-tag { font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px; color: #fff; font-variant-numeric: tabular-nums; }
-.spell-cost-tag.combat { background: var(--combat); }
-.spell-cost-tag.noncombat { background: var(--noncombat); }
+/* Spell mana tag (tooltip + sheet) */
 .spell-mana-tag { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #eae6fb; color: #5a4aa0; border: 1px solid #cfc6ef; }
 .spell-mana-tag.cantrip { background: var(--panel-2); color: var(--ink-faint); border-color: var(--line); }
 
