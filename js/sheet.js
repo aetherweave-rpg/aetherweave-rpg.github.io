@@ -561,7 +561,8 @@
           var manaCost = Engine.spellManaCost(sp);
           info.appendChild(el("span", "talent-meta",
             (sp.cost || 0) + (sp.pool === "combat" ? " combat" : " non-combat") + " exp · " +
-            (manaCost ? (manaCost + " mana to cast") : "cantrip (free to cast)")));
+            (manaCost ? (manaCost + " mana to cast") : "cantrip (free to cast)") + " · " +
+            Engine.castingTimeLabel(sp)));
           if (!castable) info.appendChild(el("span", "talent-invalid-note",
             "⚠ needs Spellcasting +" + (sp.tier || 1) + " to cast"));
           if (isOpen && sp.description) info.appendChild(el("div", "talent-desc", sp.description));

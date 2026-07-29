@@ -451,6 +451,9 @@
     var m = Engine.spellManaCost(sp);
     return el("span", "spell-mana-tag" + (m ? "" : " cantrip"), m ? (m + " mana") : "cantrip");
   }
+  function spellCastingTimeTag(sp) {
+    return el("span", "spell-casting-time-tag", Engine.castingTimeLabel(sp));
+  }
 
   function showCastTooltip(t, node, info) {
     var tip = tooltipEl(); tip.innerHTML = "";
@@ -533,6 +536,7 @@
           top.appendChild(el("span", "picker-spell-name", sp.name));
           top.appendChild(spellCostTag(sp));
           top.appendChild(spellManaTag(sp));
+          top.appendChild(spellCastingTimeTag(sp));
           if (owned) top.appendChild(el("span", "picker-owned", "✓ known"));
           card.appendChild(top);
           if (sp.description) card.appendChild(el("div", "picker-spell-desc", sp.description));

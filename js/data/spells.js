@@ -9,7 +9,7 @@ window.SPELLS = {
       tier: 1,
       pool: "combat",
       cost: 1,
-      mana: 0
+      castingTime: "action"
     }
   ]
 };

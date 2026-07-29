@@ -697,6 +697,9 @@
           problems.push("spell '" + sp.id + "': pool must be 'combat' or 'noncombat' (got '" + sp.pool + "')");
         if (typeof sp.cost !== "number" || sp.cost < 0)
           problems.push("spell '" + sp.id + "': cost must be a non-negative number");
+        if (!(sp.castingTime === "action" || sp.castingTime === "minor_action" ||
+              (typeof sp.castingTime === "number" && sp.castingTime > 0)))
+          problems.push("spell '" + sp.id + "': castingTime must be 'action', 'minor_action', or a positive number of minutes (got " + JSON.stringify(sp.castingTime) + ")");
       });
     });
 
@@ -862,11 +865,19 @@
     if (!spell || spellOwned(state, spell.id)) return false;
     return spellCastable(state, spell);
   }
-  // Mana to cast a spell. Tier-1 spells are free, repeatable cantrips; higher
-  // tiers use the `mana` cost from the spell list.
+  // Mana to cast a spell: always the spell's tier minus one, so tier-1 spells
+  // are free, repeatable cantrips.
   function spellManaCost(spell) {
-    if (!spell || (spell.tier || 1) <= 1) return 0;
-    return spell.mana || 0;
+    if (!spell) return 0;
+    return Math.max(0, (spell.tier || 1) - 1);
+  }
+  // Human-readable casting time: "action", "minor action", or "N min" for a
+  // longer ritual cast (castingTime holds a number of minutes in that case).
+  function castingTimeLabel(spell) {
+    var ct = spell && spell.castingTime;
+    if (ct === "minor_action") return "minor action";
+    if (typeof ct === "number") return ct + " min";
+    return "action";
   }
 
   // ---- Max HP / Max Mana ---------------------------------------------------
@@ -966,7 +977,7 @@
     spellcastingStepCost: spellcastingStepCost,
     canRaiseSpellcasting: canRaiseSpellcasting, casterCharacteristic: casterCharacteristic,
     spellPool: spellPool, spellOwned: spellOwned, canLearnSpell: canLearnSpell, spellCastable: spellCastable,
-    spellManaCost: spellManaCost, casterNodes: casterNodes,
+    spellManaCost: spellManaCost, castingTimeLabel: castingTimeLabel, casterNodes: casterNodes,
     maxHP: maxHP, maxMana: maxMana,
     // misc
     validateDB: validateDB, isCombatSkill: isCombatSkill, findKind: findKind,

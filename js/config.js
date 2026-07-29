@@ -90,8 +90,9 @@ window.CONFIG = {
   // NON-COMBAT pools (spells serve both purposes, so their cost draws from both).
   // Owning rung R unlocks casting tier-R spells; beside each rung a free "Spells
   // Known" node opens that tier's spell picker. Individual spells
-  // (js/data/spells.js) carry their own exp `cost`/`pool` and a `mana` cost to
-  // cast (tier-1 spells are free cantrips).
+  // (js/data/spells.js) carry their own exp `cost`/`pool` and a `castingTime`
+  // ("action" / "minor_action" / minutes); mana cost is never authored — it's
+  // always tier - 1, so tier-1 spells are free cantrips.
   //
   // The highest reachable rung / spell tier is gated by the tier of play:
   //   available = min(max, tierOfPlay + offset).
