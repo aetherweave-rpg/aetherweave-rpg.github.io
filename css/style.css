@@ -226,6 +226,7 @@ a { color: var(--accent); }
 }
 .node-cost.combat { background: var(--combat); }
 .node-cost.noncombat { background: var(--noncombat); }
+.node-cost.split { background: linear-gradient(90deg, var(--combat) 50%, var(--noncombat) 50%); }
 .node-badge {
   position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%;
   display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff;
@@ -307,6 +308,7 @@ a { color: var(--accent); }
 .tt-cost { font-size: 11px; font-weight: 700; color: #fff; padding: 2px 8px; border-radius: 999px; }
 .tt-cost.combat { background: var(--combat); }
 .tt-cost.noncombat { background: var(--noncombat); }
+.tt-cost.split { background: linear-gradient(90deg, var(--combat) 50%, var(--noncombat) 50%); }
 .tt-tier { font-size: 11px; font-weight: 700; color: var(--ink-soft); padding: 2px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); }
 .tt-desc { font-size: 13px; color: var(--ink-soft); margin-bottom: 10px; }
 .tt-reqs-head { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-faint); margin-bottom: 4px; }
@@ -349,17 +351,20 @@ a { color: var(--accent); }
 /* Identity */
 .id-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 26px; }
 .id-field { display: flex; flex-direction: column; gap: 4px; }
+.id-field-wide { grid-column: 1 / -1; }
 .id-label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-faint); font-weight: 600; }
 .id-input, .hp-input, .exp-earned-input, .prof-name {
   font: inherit; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px;
   background: #fffdf7; color: var(--ink);
 }
+.id-fixed { display: inline-block; box-sizing: border-box; border-color: var(--line); background: var(--panel); }
 .id-input:focus, .hp-input:focus, .exp-earned-input:focus, .prof-name:focus {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(138, 109, 59, .15);
 }
 
 /* Stats: HP + characteristics */
-.stats-wrap { display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; }
+.hp-mana-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; align-items: stretch; margin-bottom: 16px; }
+.char-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; align-items: stretch; }
 .hp-box, .char-box {
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px;
   padding: 12px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 120px;
@@ -399,8 +404,8 @@ a { color: var(--accent); }
 
 /* Skills */
 .skill-group { margin-bottom: 14px; }
-.skill-group-title, .prof-title, .talent-group-title { font-size: 15px; margin: 4px 0 10px; display: flex; align-items: baseline; gap: 8px; }
-.skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 20px; }
+.skill-group-title, .prof-title { font-size: 15px; margin: 4px 0 10px; display: flex; align-items: baseline; gap: 8px; }
+.skill-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 20px; }
 .skill-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
 .skill-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1; overflow: hidden; }
 .skill-name-text { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -409,7 +414,7 @@ a { color: var(--accent); }
 
 /* Proficiencies */
 .prof-wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-.prof-col { display: flex; flex-direction: column; gap: 8px; }
+.prof-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .prof-row { display: flex; align-items: center; gap: 8px; }
 .prof-name { flex: 1; min-width: 0; }
 .prof-add {
@@ -426,20 +431,22 @@ a { color: var(--accent); }
 .icon-btn:hover { background: #fdecea; color: var(--unmet); border-color: #f0b4ae; }
 
 /* Talents summary */
-.talent-group { margin-bottom: 12px; }
-.tg-icon { margin-right: 2px; }
 .talent-row {
   display: flex; align-items: center; gap: 12px; padding: 8px 10px; margin-bottom: 6px;
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
 }
 .talent-row.invalid { border-color: #f0b4ae; background: #fdf0ee; }
+.talent-row.expandable { cursor: pointer; }
+.talent-row.expandable:hover { border-color: var(--accent); }
 .talent-icon {
   width: 38px; height: 38px; flex: none; border-radius: 9px; display: grid; place-items: center;
   font-size: 20px; background: #fffdf7; border: 1px solid var(--line-strong);
 }
 .talent-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .talent-name { font-weight: 700; }
+.talent-expand-icon { color: var(--ink-faint); font-size: 10px; margin-left: 4px; }
 .talent-meta { font-size: 12px; color: var(--ink-faint); }
+.talent-desc { font-size: 12px; color: var(--ink-soft); margin-top: 4px; white-space: pre-line; }
 .talent-invalid-note { font-size: 12px; color: var(--unmet); font-weight: 600; margin-top: 2px; }
 
 /* Save data */
@@ -698,29 +705,6 @@ a { color: var(--accent); }
 /* ---------- Page toolbar (Export to PDF) --------------------------------- */
 .page-toolbar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 14px; }
 
-/* ---------- Source-of-power talents (sheet) ------------------------------ */
-.source-talents { margin-top: 14px; }
-.source-talent-row {
-  display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin-bottom: 6px;
-  background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-}
-.source-talent-row.locked { opacity: .6; }
-.st-tier {
-  font-family: var(--serif); font-weight: 700; font-size: 12px; min-width: 58px; flex: none;
-  color: var(--ink-soft);
-}
-.st-icon {
-  font-size: 20px; width: 38px; height: 38px; flex: none; display: grid; place-items: center;
-  border-radius: 9px; background: #fffdf7; border: 1px solid var(--line-strong);
-}
-.source-talent-row.unlocked .st-icon { border-color: var(--granted); }
-.st-info { display: flex; flex-direction: column; min-width: 0; }
-.st-name { font-weight: 700; }
-.st-desc { font-size: 12px; color: var(--ink-faint); }
-.st-flag { font-size: 9.5px; text-transform: uppercase; letter-spacing: .8px; font-weight: 800; margin-left: 8px; padding: 1px 7px; border-radius: 999px; }
-.st-flag.on { background: var(--granted); color: #3a2c00; }
-.st-flag.off { background: var(--line); color: var(--ink-faint); }
-
 /* ---------- Ancestry hierarchy (creation) -------------------------------- */
 .ancestry-tree { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .ancestry-row {
@@ -734,9 +718,9 @@ a { color: var(--accent); }
   background: linear-gradient(180deg, #fffdf7, color-mix(in srgb, var(--accent) 12%, #fff));
   border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
-/* Grouping-only ancestry: shown for context, but not selectable. */
+/* Grouping-only ancestry: not selectable, but click to expand/collapse its sub-ancestries. */
 .ancestry-row.category {
-  cursor: default; background: transparent; border-style: dashed; opacity: .8;
+  background: transparent; border-style: dashed; opacity: .8;
 }
 .ancestry-row.category:hover { border-color: var(--line); }
 .ancestry-row.category .ancestry-row-name { color: var(--ink-soft); }
@@ -876,7 +860,6 @@ a { color: var(--accent); }
 .picker-spell-desc { font-size: 12.5px; color: var(--ink-soft); }
 
 /* Sheet: ability categories + per-domain spell blocks */
-.ability-group { margin-bottom: 14px; }
 .talent-domain-tag {
   font-size: 9.5px; text-transform: uppercase; letter-spacing: .6px; font-weight: 700;
   margin-left: 8px; padding: 1px 7px; border-radius: 999px;
@@ -892,7 +875,6 @@ a { color: var(--accent); }
 .sdh-name { font-family: var(--serif); font-weight: 700; font-size: 15px; }
 .sdh-pool { font-size: 11.5px; color: var(--ink-faint); }
 .spell-sheet-row .talent-name { display: flex; align-items: baseline; gap: 8px; }
-.spell-desc-line { font-style: italic; opacity: .9; }
 
 /* In-tree spellcasting spine nodes (magical domains) */
 .caster-node .node-box { border-style: solid; }
@@ -926,10 +908,9 @@ a { color: var(--accent); }
   .sheet-section, .tree {
     box-shadow: none; border-color: #bbb; break-inside: avoid; page-break-inside: avoid;
   }
-  .source-talent-row.locked { opacity: 1; }   /* show all source talents in the sheet */
   a { color: inherit; text-decoration: none; }
   .dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .node-cost, .st-flag, .exp-remaining, .adv-btn.chosen {
+  .node-cost, .exp-remaining, .adv-btn.chosen {
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
 }
@@ -944,10 +925,12 @@ a { color: var(--accent); }
   .counters { width: 100%; margin-left: 0; }
   .id-grid, .exp-wrap, .prof-wrap { grid-template-columns: 1fr; }
   .header-bar { gap: 12px; }
+  .skill-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 620px) {
   .node { width: 92px; }
   .node-box { width: 52px; height: 52px; font-size: 24px; }
   .tree-row { gap: 6px; }
   .tree { padding: 18px 12px; }
+  .skill-grid { grid-template-columns: 1fr; }
 }

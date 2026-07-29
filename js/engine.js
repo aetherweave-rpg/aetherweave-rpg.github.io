@@ -112,6 +112,12 @@
     if (toTier <= fromTier) return 0;
     return sumSteps(costArray, toTier) - sumSteps(costArray, fromTier);
   }
+  // Splits a total cost evenly between the combat and non-combat pools (an odd
+  // total, should the data ever produce one, rounds the combat half up).
+  function splitCost(total) {
+    var combat = Math.ceil(total / 2);
+    return { combat: combat, noncombat: total - combat };
+  }
 
   var COMBAT_SKILL_NAMES = null;
   function isCombatSkill(name) {
@@ -206,13 +212,15 @@
       spent.breakdown.treeAccess += c.cost;
     });
 
-    // Spellcasting ladder: priced like a combat skill, out of the combat pool.
+    // Spellcasting ladder: priced like a combat skill, split evenly between
+    // both pools (spells serve combat and non-combat purposes alike).
     Object.keys(state.spellcasting || {}).forEach(function (domainId) {
       var lvl = state.spellcasting[domainId] || 0;
       if (!lvl) return;
-      var cost = spellcastingCost(lvl);
-      spent.combat += cost;
-      spent.breakdown.spellcasting += cost;
+      var split = spellcastingCostSplit(lvl);
+      spent.combat += split.combat;
+      spent.noncombat += split.noncombat;
+      spent.breakdown.spellcasting += split.total;
     });
 
     // Learned spells: each carries its own exp cost drawn from its own pool.
@@ -756,9 +764,28 @@
         return {
           id: t.id || sourceTalentId(src.id, t.tier || 1),
           tier: t.tier || 1, name: t.name, icon: t.icon || "", description: t.description || "",
+          ability: t.ability || "passive", uses: t.uses, usesPer: t.usesPer,
+          sourceName: src.name,
           unlocked: cur >= (t.tier || 1),
         };
       });
+  }
+
+  // All talents a character currently has: owned tree talents plus any source-
+  // of-power talents unlocked by tier of play. Normalized to one shape so the
+  // sheet can group both by `ability` (Abilities vs Maneuvers) without caring
+  // which kind a given entry is.
+  function ownedTalents(state) {
+    var tree = (state.talents || []).map(talentById).filter(Boolean);
+    var src = sourceTalents(state).filter(function (t) { return t.unlocked; })
+      .map(function (t) {
+        return {
+          id: t.id, name: t.name, icon: t.icon, description: t.description,
+          tier: t.tier, ability: t.ability, uses: t.uses, usesPer: t.usesPer,
+          fromSource: true, sourceName: t.sourceName,
+        };
+      });
+    return tree.concat(src);
   }
 
   // ---- Spellcasting -------------------------------------------------------
@@ -782,11 +809,24 @@
   function spellcastingLevel(state, domainId) {
     return (state.spellcasting || {})[domainId] || 0;
   }
-  // Cumulative exp to reach `level`, priced like a combat skill (combat pool).
+  // Cumulative exp to reach `level`, priced like a combat skill (total, before
+  // the pool split below).
   function spellcastingCost(level) {
     return sumSteps(CONFIG.SKILL_COSTS.combat, level);
   }
-  // Exp for the NEXT rung (for the UI hint).
+  // As spellcastingCost, but broken into what each pool actually pays — each
+  // rung's total cost is split evenly between combat and non-combat.
+  function spellcastingCostSplit(level) {
+    var costs = CONFIG.SKILL_COSTS.combat || [];
+    var combat = 0, noncombat = 0;
+    for (var i = 0; i < level; i++) {
+      var step = costs[i] !== undefined ? costs[i] : (costs[costs.length - 1] || 0);
+      var half = splitCost(step);
+      combat += half.combat; noncombat += half.noncombat;
+    }
+    return { combat: combat, noncombat: noncombat, total: combat + noncombat };
+  }
+  // Exp for the NEXT rung (for the UI hint), total across both pools.
   function spellcastingStepCost(level) {
     var costs = CONFIG.SKILL_COSTS.combat;
     return costs[level] !== undefined ? costs[level] : (costs[costs.length - 1] || 0);
@@ -869,10 +909,12 @@
     var out = [];
     for (var r = 1; r <= maxT; r++) {
       var tier = rungTier[r - 1] || Math.max(1, r - 1);
+      var total = combat[r - 1] !== undefined ? combat[r - 1] : 0;
+      var half = splitCost(total);
       out.push({
         id: domainId + "__cast" + r, domain: domainId, synthetic: "cast", rung: r,
         name: "Spellcasting +" + r, icon: "✨", tier: tier, row: r - 1, col: c,
-        pool: "combat", cost: combat[r - 1] !== undefined ? combat[r - 1] : 0,
+        pool: "split", cost: total, costCombat: half.combat, costNoncombat: half.noncombat,
         requires: r > 1 ? { talents: [domainId + "__cast" + (r - 1)] } : {},
         description: "Raise your " + tree.name + " spellcasting to +" + r + ": +" + r +
           " dice on its spell tests, and access to tier-" + r + " spells.",
@@ -880,7 +922,7 @@
       out.push({
         id: domainId + "__known" + r, domain: domainId, synthetic: "known", spellTier: r,
         name: "Spells Known", icon: "📖", tier: tier, row: r - 1, col: side,
-        pool: "combat", cost: 0, requires: { talents: [domainId + "__cast" + r] },
+        pool: "split", cost: 0, costCombat: 0, costNoncombat: 0, requires: { talents: [domainId + "__cast" + r] },
         description: "Browse and learn tier-" + r + " " + tree.name + " spells (needs Spellcasting +" + r + ").",
       });
     }
@@ -915,12 +957,13 @@
     // creation helpers
     creationPicksFor: creationPicksFor, creationPicksForChain: creationPicksForChain,
     ancestryById: ancestryById, ancestryPickable: ancestryPickable,
-    sourceById: sourceById, sourceTalents: sourceTalents,
+    sourceById: sourceById, sourceTalents: sourceTalents, ownedTalents: ownedTalents,
     // spells & spellcasting
     spellById: spellById, spellsForDomain: spellsForDomain, spellDomain: spellDomain, allSpells: allSpells,
     isMagicalDomain: isMagicalDomain, magicalDomains: magicalDomains,
     maxCasterTier: maxCasterTier, spellcastingLevel: spellcastingLevel,
-    spellcastingCost: spellcastingCost, spellcastingStepCost: spellcastingStepCost,
+    spellcastingCost: spellcastingCost, spellcastingCostSplit: spellcastingCostSplit,
+    spellcastingStepCost: spellcastingStepCost,
     canRaiseSpellcasting: canRaiseSpellcasting, casterCharacteristic: casterCharacteristic,
     spellPool: spellPool, spellOwned: spellOwned, canLearnSpell: canLearnSpell, spellCastable: spellCastable,
     spellManaCost: spellManaCost, casterNodes: casterNodes,

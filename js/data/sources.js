@@ -15,7 +15,7 @@ window.SOURCES = [
         tier: 1,
         name: "Total Recall",
         icon: "",
-        description: "In a critical moment, you tap into your experiences of the past, feeling the rust disappear under the mounting pressure of the task at hand. \nOnce per session: add 3 dice to any test"
+        description: "In a critical moment, you tap into your experiences of the past, feeling the rust disappear under the mounting pressure of the task at hand. \nOnce per session: add 3 dice to any test."
       }
     ]
   },
@@ -83,7 +83,26 @@ window.SOURCES = [
         tier: 1,
         name: "Nine lives",
         icon: "",
-        description: "You've experienced many setbacks, this is just one more. \nOnce per session: Whenever any damage would reduce your hitpoints to 0, set your hitpoints to 1 instead."
+        description: "You've experienced many setbacks, this is just one more. \nOnce per session: Whenever any damage would reduce your hitpoints to 0, set your hitpoints to 1 instead. After this happens, add 2 dice to your next test roll."
+      }
+    ]
+  },
+  {
+    id: "musical_talent",
+    name: "Musical Talent",
+    icon: "🎻",
+    accent: "#5b6fa5",
+    description: "Your talent for music is more magical than what many conjurers can do with years of study. Your music, perhaps unknowingly, directly manipulates the Aetherweave, the fabric that connects magic to reality. Your music can grants you strength, supernatural abilities, or even emulate magic.",
+    benefit: "—",
+    characteristic: "presence",
+    talents: [
+      {
+        tier: 1,
+        name: "Musical Weaving",
+        icon: "",
+        description: "As a minor action you can use your music to manipulate the working of the world around you. Choose one of the following each time you use this ability:\n- Heal an ally for 1 hitpoints\n- Give an ally 2 dice on their next test\n- Deal 1 damage to an enemy\nPerform a Presence + Musical Instrument test of difficulty 2, the ability succeeds if you pass.",
+        ability: "maneuver",
+        uses: 4
       }
     ]
   }

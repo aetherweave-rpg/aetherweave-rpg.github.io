@@ -19,6 +19,7 @@
       chars: {},              // characteristic key -> assigned value
       ancestry: null,
       ancestralTalents: [],   // picked talent ids
+      expandedAncestors: [],  // grouping-only ancestry ids manually expanded
       source: null,
       combatSkills: {},       // name -> tier
       combatProfs: [],        // [{ name, kind, tier }]
@@ -209,22 +210,24 @@
     var picks = CREATION.ancestralTalentPicks;
     wrap.appendChild(el("p", "step-lead", "Choose an ancestry."));
 
-    // Ancestries render as an indented hierarchy; click any node (top-level,
-    // sub, or sub-sub) to become that ancestry. Sub-ancestries stay collapsed
-    // until an ancestor along the current selection's chain is expanded, e.g.
-    // picking Orc reveals Orc's sub-ancestries.
+    // Ancestries render as an indented hierarchy; click a pickable node to
+    // become that ancestry, or a grouping-only ("category") node to expand it
+    // and reveal its sub-ancestries. Selecting an ancestry also keeps its own
+    // chain expanded (e.g. so randomizing straight to a sub-ancestry still
+    // shows the path that got you there).
     var expanded = draft.ancestry ? Engine.ancestryChain(draft.ancestry) : [];
+    expanded = expanded.concat(draft.expandedAncestors);
     var listWrap = el("div", "ancestry-tree");
     (function renderLevel(parentId, depth) {
       if (depth > 0 && expanded.indexOf(parentId) < 0) return;
       ancestryChildren(parentId).forEach(function (a) {
         var pickable = Engine.ancestryPickable(a);
         var selected = draft.ancestry === a.id;
-        // Pickable ancestries are buttons; grouping-only ones are inert rows
-        // (still shown so their sub-ancestries make sense) that can't be chosen.
-        var row = el(pickable ? "button" : "div",
+        // Pickable ancestries are buttons that select them; grouping-only ones
+        // are buttons that just toggle their children open.
+        var row = el("button",
           "ancestry-row" + (selected ? " chosen" : "") + (pickable ? "" : " category"));
-        if (pickable) row.type = "button";
+        row.type = "button";
         row.style.setProperty("--accent", a.accent);
         row.style.paddingLeft = (12 + depth * 22) + "px";
         if (depth > 0) row.appendChild(el("span", "ancestry-branch", "↳"));
@@ -233,12 +236,19 @@
         var nameLine = el("div", "ancestry-row-name", a.name);
         if (depth === 1) nameLine.appendChild(el("span", "ancestry-tag", "sub"));
         else if (depth >= 2) nameLine.appendChild(el("span", "ancestry-tag", "sub-sub"));
-        if (!pickable) nameLine.appendChild(el("span", "ancestry-tag", "pick a sub-ancestry"));
+        if (!pickable) nameLine.appendChild(el("span", "ancestry-tag",
+          expanded.indexOf(a.id) >= 0 ? "▾ sub-ancestries" : "▸ sub-ancestries"));
         txt.appendChild(nameLine);
         if (a.description) txt.appendChild(el("div", "ancestry-row-desc", a.description));
         row.appendChild(txt);
         if (pickable) row.onclick = function () {
           if (draft.ancestry !== a.id) { draft.ancestry = a.id; draft.ancestralTalents = []; }
+          render();
+        };
+        else row.onclick = function () {
+          var i = draft.expandedAncestors.indexOf(a.id);
+          if (i >= 0) draft.expandedAncestors.splice(i, 1);
+          else draft.expandedAncestors.push(a.id);
           render();
         };
         listWrap.appendChild(row);
@@ -248,13 +258,7 @@
     wrap.appendChild(listWrap);
 
     if (draft.ancestry) {
-      var chain = Engine.ancestryChain(draft.ancestry);
       var selfTree = (Engine.ancestryById(draft.ancestry) || {}).treeId;
-      if (chain.length > 1) {
-        var names = chain.map(function (aid) { return (Engine.ancestryById(aid) || {}).name; });
-        wrap.appendChild(el("div", "sheet-hint", "Accessible ancestral trees: " + names.join(" → ")));
-      }
-
       var options = Engine.creationPicksForChain(draft.ancestry);
       var sub = el("div", "sub-section");
       sub.appendChild(el("h3", "sub-title",
@@ -392,8 +396,6 @@
 
     // Skills
     var cap = creationLevelCap();
-    wrap.appendChild(el("div", "sheet-hint",
-      "At tier of play 1 nothing can be taken above level " + cap + "."));
 
     var grid = el("div", "skill-grid");
     var costs = costsForSkill(opts.pool);

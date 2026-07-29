@@ -321,22 +321,54 @@ window.ANCESTRIES = [
   {
     id: "mokra_nor",
     treeId: "anc_mokra_nor",
-    name: "Mokra'Nor",
+    name: "Mokra'nor",
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
     description: "",
-    talents: [],
+    talents: [
+      {
+        id: "ancm_imposing",
+        name: "Imposing",
+        description: "Few sapient peoples in Aera are as tall as the Mokra'nor. \nWhenever you roll an Intimidation test, add 1 die to your test roll.",
+        pool: "noncombat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 1
+      },
+      {
+        id: "ancm_horned",
+        name: "Horned",
+        description: "Mokra'nor sport natural horns and bone growths, protecting against the fearsome predators of their ancestral lands.\nOnce per combat scene: Reduce any physical damage taken by 1.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 2
+      }
+    ],
     pickable: false
   },
   {
     id: "grib_morean_mokra_nor",
     treeId: "anc_grib_morean_mokra_nor",
-    name: "Grib'Morean Mokra'Nor",
+    name: "Grib'morean Mokra'nor",
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
     description: "",
+    talents: [],
+    parent: "mokra_nor"
+  },
+  {
+    id: "bor_gan_mokra_nor",
+    treeId: "anc_bor_gan_mokra_nor",
+    name: "Bor'gan Mokra'nor",
+    icon: "",
+    accent: "#804000",
+    cols: 3,
+    description: "A rugged people, the so-called half-giants of the Bor'gan mountain range live a relatively isolated pastoral existence. \nThe Mokra’nor are a tall people. Females are between 1,90 and 2,20 meters tall, males are between 2,10 and 2,40 meters tall. \nThe southern Mokra’nor have a light-brown skin, their horns not only cover their head like a crown, but bone protrudes from the spine and shoulders as well. ",
     talents: [],
     parent: "mokra_nor"
   }

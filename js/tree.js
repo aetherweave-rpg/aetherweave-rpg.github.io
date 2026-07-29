@@ -350,6 +350,11 @@
     return (state.talents || []).indexOf(t.id) >= 0;
   }
 
+  // A rung's cost is split evenly between both pools — "1C+1NC" etc.
+  function castCostLabel(t) {
+    return t.costCombat + "C+" + t.costNoncombat + "NC";
+  }
+
   // A Spellcasting rung: owned when the ladder is at least this rung; buyable
   // only when the rung directly below is owned and the tier of play allows it.
   function castNode(t, state) {
@@ -367,7 +372,7 @@
     if (owned) box.appendChild(el("span", "node-badge", "✓"));
     node.appendChild(box);
     node.appendChild(el("div", "node-name", t.name));
-    node.appendChild(el("div", "node-cost combat", t.cost + "C"));
+    node.appendChild(el("div", "node-cost split", castCostLabel(t)));
 
     var info = { owned: owned, available: available, isTop: isTop, cap: cap, level: level };
     node.addEventListener("mouseenter", function () { showCastTooltip(t, node, info); });
@@ -415,7 +420,7 @@
       if (level !== t.rung - 1) { UI.toast("Raise Spellcasting +" + (level + 1) + " first", "error"); return; }
       if (t.rung > cap) { UI.toast("Needs a higher tier of play", "error"); return; }
       setLadder(t.domain, t.rung);
-      UI.toast("Learned Spellcasting +" + t.rung + " (+" + t.cost + " combat exp)", "success");
+      UI.toast("Learned Spellcasting +" + t.rung + " (+" + castCostLabel(t) + " exp)", "success");
     }
   }
 
@@ -451,13 +456,13 @@
     var tip = tooltipEl(); tip.innerHTML = "";
     tip.appendChild(el("div", "tt-name", t.name));
     var meta = el("div", "tt-meta");
-    meta.appendChild(el("span", "tt-cost combat", t.cost + " combat exp"));
+    meta.appendChild(el("span", "tt-cost split", castCostLabel(t) + " exp"));
     meta.appendChild(el("span", "tt-tier", "Spellcasting rung " + t.rung));
     tip.appendChild(meta);
     if (t.description) tip.appendChild(el("div", "tt-desc", t.description));
     var hint = el("div", "tt-hint");
     if (info.owned) { hint.textContent = info.isTop ? "Click to refund" : "Refund the higher rung first"; hint.classList.add(info.isTop ? "ok" : "no"); }
-    else if (info.available) { hint.textContent = "Click to learn — " + t.cost + " combat exp"; hint.classList.add("ok"); }
+    else if (info.available) { hint.textContent = "Click to learn — " + castCostLabel(t) + " exp"; hint.classList.add("ok"); }
     else if (t.rung > info.cap) { hint.textContent = "Locked — needs a higher tier of play"; hint.classList.add("no"); }
     else { hint.textContent = "Locked — raise Spellcasting +" + (info.level + 1) + " first"; hint.classList.add("no"); }
     tip.appendChild(hint);

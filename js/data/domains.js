@@ -99,15 +99,6 @@ window.DOMAINS = [
     talents: []
   },
   {
-    id: "psychic",
-    name: "Psychic",
-    icon: "🌀",
-    accent: "#8a6d3b",
-    cols: 5,
-    kind: "core",
-    talents: []
-  },
-  {
     id: "aether",
     name: "Aether",
     icon: "💠",
@@ -128,19 +119,19 @@ window.DOMAINS = [
     magical: true
   },
   {
-    id: "blood",
-    name: "Blood",
-    icon: "🩸",
+    id: "guile",
+    name: "Guile",
+    icon: "👊",
     accent: "#8a6d3b",
     cols: 5,
     kind: "core",
     talents: []
   },
   {
-    id: "guile",
-    name: "Guile",
-    icon: "👊",
-    accent: "#8a6d3b",
+    id: "will",
+    name: "Will",
+    icon: "🧠",
+    accent: "#ac1aac",
     cols: 5,
     kind: "core",
     talents: []
