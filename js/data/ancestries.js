@@ -54,17 +54,7 @@ window.ANCESTRIES = [
     accent: "#4a8f7b",
     cols: 3,
     description: "The once immortal high elves had a thriving civilization, prizing culture and arts from the alabaster city of Kinara. Since the loss of the Alabaster stone, the high elves found themselves confronted with imminent mortality, and lost most of their population overnight. What remains is a proud people, desperately hanging on to what is left of their once great society.",
-    talents: [
-      {
-        id: "anch_test_high_elf_talent_1",
-        name: "test high elf talent 1",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 1
-      }
-    ],
+    talents: [],
     parent: "elf",
     hidden: true
   },
@@ -200,26 +190,7 @@ window.ANCESTRIES = [
     accent: "#4a8f7b",
     cols: 3,
     description: "",
-    talents: [
-      {
-        id: "ance_test_elf_talent_1",
-        name: "test elf talent 1",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 0
-      },
-      {
-        id: "ance_test_elf_talent_2",
-        name: "test elf talent 2",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 1
-      }
-    ],
+    talents: [],
     hidden: true
   },
   {

@@ -19,26 +19,7 @@ window.DOMAINS = [
     accent: "#2f8f5b",
     cols: 5,
     kind: "core",
-    talents: [
-      {
-        id: "life_test2",
-        name: "test2",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 0
-      },
-      {
-        id: "life_test3",
-        name: "test3",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 4
-      }
-    ],
+    talents: [],
     magical: true
   },
   {
@@ -87,7 +68,20 @@ window.DOMAINS = [
     accent: "#8a6d3b",
     cols: 5,
     kind: "core",
-    talents: []
+    talents: [
+      {
+        id: "inve_improvised_gadget",
+        name: "Improvised gadget",
+        description: "Make a crafting check threshold 1: relevant to the gadget you make: if succesful, add a die to the next test for which you use the gadget.",
+        pool: "noncombat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 2,
+        ability: "maneuver",
+        uses: 3
+      }
+    ]
   },
   {
     id: "arms",
@@ -96,7 +90,53 @@ window.DOMAINS = [
     accent: "#8a6d3b",
     cols: 5,
     kind: "core",
-    talents: []
+    talents: [
+      {
+        id: "arms_flurry",
+        name: "Flurry",
+        description: "Requires the character to dual wield weapons:\nMake 2 single-handed attacks. If both hit, deal an additional 3 damage based on the weapon type.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 3,
+        ability: "maneuver",
+        uses: 2
+      },
+      {
+        id: "arms_ricochet",
+        name: "Ricochet",
+        description: "You can hit multiple enemies with a single throw of your weapon. \nMake an attack with your throwing weapon against an enemy in range. If succesful, you can make another attack against and enemy in range. \n\nRisk: If a Risk is rolled, no further attacks are made.\nReward: If least 1 Reward is rolled the next risk effect is cancelled.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 1,
+        requires: {
+          characteristics: {
+            cunning: 2
+          },
+          proficiencies: {
+            "Throwing Weapons": 2
+          }
+        }
+      },
+      {
+        id: "arms_advanced_ricochet",
+        name: "Advanced Ricochet",
+        description: "Your ricochet ability targets one additional enemy in its chain.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 1,
+        requires: {
+          talents: [
+            "arms_ricochet"
+          ]
+        }
+      }
+    ]
   },
   {
     id: "aether",
@@ -125,7 +165,30 @@ window.DOMAINS = [
     accent: "#8a6d3b",
     cols: 5,
     kind: "core",
-    talents: []
+    talents: [
+      {
+        id: "guil_pocket_sand",
+        name: "Pocket sand",
+        description: "Make a throwing weapon cunning test. If successful add 2 dice to your next dodge or evade test against this enemy",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 1,
+        ability: "maneuver",
+        uses: 2
+      },
+      {
+        id: "guil_poke_holes",
+        name: "Poke holes",
+        description: "When flanking an enemy: every Reward you roll adds 1 damage to attack tests against the flanked enemy",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 2
+      }
+    ]
   },
   {
     id: "will",
@@ -134,7 +197,57 @@ window.DOMAINS = [
     accent: "#ac1aac",
     cols: 5,
     kind: "core",
-    talents: []
+    talents: [],
+    magical: true
+  },
+  {
+    id: "leadership",
+    name: "Leadership",
+    icon: "",
+    accent: "#8a6d3b",
+    cols: 5,
+    kind: "core",
+    talents: [
+      {
+        id: "lead_battle_cry",
+        name: "Battle cry",
+        description: "Minor action:\nTarget up to 5 enemies in a radius of 10m. Make an Intimidation test against their. Roll the check once for each distinct threshold amongst the enemies. Every succesful check demoralizes the enemy, reducing the next damage they would deal in their next turn by 1.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 2,
+        ability: "maneuver",
+        uses: 2,
+        requires: {
+          skills: {
+            Intimidation: 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    id: "alchemy",
+    name: "Alchemy",
+    icon: "",
+    accent: "#8a6d3b",
+    cols: 5,
+    kind: "core",
+    talents: [
+      {
+        id: "alch_fire_bomb",
+        name: "Fire bomb",
+        description: "Choose a point within 10m: Make a throwing weapon test against all enemies' unique Fire thresholds. Deal fire damage equal to the number of succes past the threshold and inflict Burning 2.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 2,
+        ability: "maneuver",
+        uses: 2
+      }
+    ]
   }
 ];
 
