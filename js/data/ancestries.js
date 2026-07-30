@@ -371,6 +371,51 @@ window.ANCESTRIES = [
     description: "A rugged people, the so-called half-giants of the Bor'gan mountain range live a relatively isolated pastoral existence. \nThe Mokra’nor are a tall people. Females are between 1,90 and 2,20 meters tall, males are between 2,10 and 2,40 meters tall. \nThe southern Mokra’nor have a light-brown skin, their horns not only cover their head like a crown, but bone protrudes from the spine and shoulders as well. ",
     talents: [],
     parent: "mokra_nor"
+  },
+  {
+    id: "automaton",
+    treeId: "anc_automaton",
+    name: "Automaton",
+    icon: "",
+    accent: "#4a8f7b",
+    cols: 3,
+    description: "A recent invention from the Pillars, Automatons are arcanomechanical constructs with distinct personalities. While there is still debate on whether Automatons can be considered alive, or have souls, it is clear that they can have agency beyond what their creators originally intended.",
+    talents: [
+      {
+        id: "anca_shock_prod",
+        name: "Shock Prod",
+        description: "You have a built in electrical weapon. You can use it to shock enemies. \nMake an unarmed attack roll against an enemy. If it hits, it deal 2 additional damage and all damage is considered lightning damage.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 0,
+        ability: "maneuver",
+        uses: 2
+      },
+      {
+        id: "anca_self_repair_systems",
+        name: "Self-repair systems",
+        description: "You can perform quick field repairs on yourself. You heal yourself a number of hitpoints up to your Clockwork proficiency.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 1,
+        ability: "maneuver",
+        uses: 1
+      },
+      {
+        id: "anca_clockwork_physiology",
+        name: "Clockwork Physiology",
+        description: "Due to your arcanomechanical body, you are not as easily affected by normal bodily effects. You add an additional dice to any Endure tests",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 2
+      }
+    ]
   }
 ];
 

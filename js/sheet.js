@@ -566,10 +566,15 @@
           if (sp.description) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
           info.appendChild(nameLine);
           var manaCost = Engine.spellManaCost(sp);
-          info.appendChild(el("span", "talent-meta",
-            (sp.cost || 0) + (sp.pool === "combat" ? " combat" : " non-combat") + " exp · " +
-            (manaCost ? (manaCost + " mana to cast") : "cantrip (free to cast)") + " · " +
-            Engine.castingTimeLabel(sp)));
+          info.appendChild(el("span", "talent-meta", [
+            (sp.cost || 0) + (sp.pool === "combat" ? " combat" : " non-combat") + " exp",
+            manaCost ? (manaCost + " mana to cast") : "cantrip (free to cast)",
+            Engine.castingTimeLabel(sp),
+            Engine.rangeLabel(sp),
+            Engine.targetLabel(sp),
+            Engine.durationLabel(sp),
+            Engine.aoeLabel(sp),
+          ].filter(Boolean).join(" · ")));
           if (!status.met) {
             var why = status.reasons.filter(function (r) { return !Engine.reasonMet(r); })
               .map(function (r) { return r.label; }).join(", ");

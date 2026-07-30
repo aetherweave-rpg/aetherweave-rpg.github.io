@@ -414,6 +414,8 @@
   function spellCastingTimeTag(sp) {
     return el("span", "spell-casting-time-tag", Engine.castingTimeLabel(sp));
   }
+  // Range/target/duration are always present; AOE tag is omitted for "none".
+  function spellMetaTag(cls, label) { return label ? el("span", cls, label) : null; }
 
   // ---- Spell nodes (Spells sub-view) ---------------------------------------
   // Placed and learned exactly like a talent node: click to learn (if its
@@ -473,6 +475,11 @@
     meta.appendChild(el("span", "tt-tier", "Tier " + (sp.tier || 1)));
     meta.appendChild(spellManaTag(sp));
     meta.appendChild(spellCastingTimeTag(sp));
+    [spellMetaTag("spell-range-tag", Engine.rangeLabel(sp)),
+     spellMetaTag("spell-target-tag", Engine.targetLabel(sp)),
+     spellMetaTag("spell-duration-tag", Engine.durationLabel(sp)),
+     spellMetaTag("spell-aoe-tag", Engine.aoeLabel(sp))]
+      .forEach(function (tag) { if (tag) meta.appendChild(tag); });
     tip.appendChild(meta);
 
     if (sp.description) tip.appendChild(el("div", "tt-desc", sp.description));

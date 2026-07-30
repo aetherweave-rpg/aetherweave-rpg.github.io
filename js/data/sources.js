@@ -105,5 +105,44 @@ window.SOURCES = [
         uses: 4
       }
     ]
+  },
+  {
+    id: "mentor",
+    name: "Mentor",
+    icon: "",
+    accent: "#5b6fa5",
+    description: "You were taught by an extremely skillful mentor. While not all lessons were clear to you then, you can see the wisdom and hidden knowledge now.\n",
+    benefit: "—",
+    characteristic: "intelligence",
+    talents: [
+      {
+        tier: 1,
+        name: "Hidden lesson",
+        icon: "",
+        description: "What seemed like a typical everyday activity was actually a clever lesson in disguise.\n\nWhen you perform a test you can describe a flashback to a lesson or interaction with a mentor. If you do, add 1 die and 1 reward to the test roll.",
+        ability: "maneuver",
+        uses: 2
+      }
+    ]
+  },
+  {
+    id: "freak_accident",
+    name: "Freak accident",
+    icon: "",
+    accent: "#5b6fa5",
+    description: "Due to some weird happenstance you've been granted unstable,  but useful powers. Some aspects you've skillfully managed to master, but others remain unpredictable. ",
+    benefit: "—",
+    characteristic: "presence",
+    talents: [
+      {
+        tier: 1,
+        name: "Unstable ability",
+        icon: "",
+        description: "At the start of each scene, roll a d6. For that scene,  you can use the ability associated with that roll once. For spell tests you add a profiency equal to the tier of play\n1: You gain 2 dice on your next Body test\n2: You can cast the Flame Tier 1 elemental spell\n3: You can cast the Chill Tier 1 elemental spell\n4: You can cast the Darken Tier 1 Shadow spell\n5: You can cast the Alight Tier 1 Light spell\n6: You can heal target ally for 1 hp in touch range",
+        ability: "maneuver",
+        uses: 1,
+        usesPer: "scene"
+      }
+    ]
   }
 ];

@@ -255,7 +255,8 @@
     return {
       id: sp.id, icon: sp.icon || sp.name.charAt(0), name: sp.name, description: sp.description || "",
       source: "T" + (sp.tier || 1),
-      tags: [mana ? mana + " mana" : "cantrip", Engine.castingTimeLabel(sp)],
+      tags: [mana ? mana + " mana" : "cantrip", Engine.castingTimeLabel(sp),
+        Engine.rangeLabel(sp), Engine.targetLabel(sp), Engine.durationLabel(sp), Engine.aoeLabel(sp)].filter(Boolean),
       meta: (sp.cost || 0) + (sp.pool === "combat" ? " combat" : " non-combat") + " exp",
       warn: unmetNote(Engine.spellRequirementStatus(sp, state)),
     };

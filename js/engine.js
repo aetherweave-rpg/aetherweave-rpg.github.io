@@ -546,6 +546,8 @@
       (window.SKILLS[g] || []).forEach(function (s) { skillNames[s.name] = true; });
     });
     var charKeys = (CONFIG.CHARACTERISTICS || []).reduce(function (m, c) { m[c.key] = true; return m; }, {});
+    var validSpellTargets = { self: true, ally: true, enemy: true, object: true };
+    var validDurationUnits = { minutes: true, hours: true, days: true, weeks: true };
 
     allTalents.forEach(function (t) {
       if (seen[t.id]) problems.push("Duplicate talent id: " + t.id);
@@ -714,6 +716,36 @@
         if (!(sp.castingTime === "action" || sp.castingTime === "minor_action" ||
               (typeof sp.castingTime === "number" && sp.castingTime > 0)))
           problems.push("spell '" + sp.id + "': castingTime must be 'action', 'minor_action', or a positive number of minutes (got " + JSON.stringify(sp.castingTime) + ")");
+        if (!(sp.range === "self" || sp.range === "touch" || (typeof sp.range === "number" && sp.range > 0)))
+          problems.push("spell '" + sp.id + "': range must be 'self', 'touch', or a positive number of meters (got " + JSON.stringify(sp.range) + ")");
+        if (!Array.isArray(sp.target) || !sp.target.length || sp.target.some(function (t) { return !validSpellTargets[t]; }))
+          problems.push("spell '" + sp.id + "': target must be a non-empty list from self/ally/enemy/object (got " + JSON.stringify(sp.target) + ")");
+        var dur = sp.duration;
+        var durOk = dur === "instantaneous" || dur === "indefinite" ||
+          (!!dur && typeof dur === "object" && typeof dur.value === "number" && dur.value > 0 && validDurationUnits[dur.unit]);
+        if (!durOk)
+          problems.push("spell '" + sp.id + "': duration must be 'instantaneous', 'indefinite', or { value, unit: minutes|hours|days|weeks } (got " + JSON.stringify(dur) + ")");
+        if (sp.aoe) {
+          var aoe = sp.aoe;
+          if (aoe.shape !== "cone" && aoe.shape !== "line" && aoe.shape !== "circle")
+            problems.push("spell '" + sp.id + "': aoe.shape must be 'cone', 'line', or 'circle' (got " + JSON.stringify(aoe.shape) + ")");
+          if (aoe.origin !== "self" && aoe.origin !== "point")
+            problems.push("spell '" + sp.id + "': aoe.origin must be 'self' or 'point' (got " + JSON.stringify(aoe.origin) + ")");
+          if (typeof aoe.size !== "number" || aoe.size <= 0)
+            problems.push("spell '" + sp.id + "': aoe.size must be a positive number of meters");
+          if (aoe.shape === "line") {
+            if (typeof aoe.width !== "number" || aoe.width <= 0)
+              problems.push("spell '" + sp.id + "': a line aoe needs a positive 'width' in meters");
+          } else if (aoe.width != null) {
+            problems.push("spell '" + sp.id + "': only a line aoe may set 'width'");
+          }
+          if (aoe.shape === "cone") {
+            if (aoe.arc != null && aoe.arc !== 90 && aoe.arc !== 180)
+              problems.push("spell '" + sp.id + "': a cone aoe's 'arc' must be 90 or 180 (got " + JSON.stringify(aoe.arc) + ")");
+          } else if (aoe.arc != null) {
+            problems.push("spell '" + sp.id + "': only a cone aoe may set 'arc'");
+          }
+        }
 
         // Spells are placed in their own per-domain grid (the Spells tab),
         // separate from the talent grid, but use the same row/col scheme.
@@ -979,6 +1011,37 @@
     if (typeof ct === "number") return ct + " min";
     return "action";
   }
+  // Human-readable range: "Self", "Touch", or "Nm".
+  function rangeLabel(spell) {
+    var r = spell && spell.range;
+    if (r === "self") return "Self";
+    if (r === "touch") return "Touch";
+    if (typeof r === "number") return r + "m";
+    return "";
+  }
+  var TARGET_LABELS = { self: "Self", ally: "Ally", enemy: "Enemy", object: "Object" };
+  // Human-readable target list, e.g. "Enemy" or "Self, Ally".
+  function targetLabel(spell) {
+    return ((spell && spell.target) || []).map(function (t) { return TARGET_LABELS[t] || t; }).join(", ");
+  }
+  // Human-readable duration: "Instantaneous", "Indefinite", or "N unit".
+  function durationLabel(spell) {
+    var d = spell && spell.duration;
+    if (d === "instantaneous") return "Instantaneous";
+    if (d === "indefinite") return "Indefinite";
+    if (d && typeof d === "object") return d.value + " " + d.unit;
+    return "";
+  }
+  // Human-readable area of effect, or "" when the spell has none. Cones are
+  // always 90°, unless `arc: 180` widens them to a half-circle "Arc".
+  function aoeLabel(spell) {
+    var a = spell && spell.aoe;
+    if (!a) return "";
+    var originLabel = a.origin === "self" ? "self" : "point in range";
+    if (a.shape === "line") return a.size + "m x " + a.width + "m Line (" + originLabel + ")";
+    if (a.shape === "cone") return a.size + "m " + (a.arc === 180 ? "Arc" : "Cone") + " (" + originLabel + ")";
+    return a.size + "m Circle (" + originLabel + ")";
+  }
 
   // ---- Max HP / Max Mana ---------------------------------------------------
   // Max HP: 5 + Body at creation, +1 per 10 combat exp spent (any pool use),
@@ -1083,6 +1146,7 @@
     spellPool: spellPool, spellOwned: spellOwned, canLearnSpell: canLearnSpell, spellCastable: spellCastable,
     spellRequirementStatus: spellRequirementStatus,
     spellManaCost: spellManaCost, castingTimeLabel: castingTimeLabel,
+    rangeLabel: rangeLabel, targetLabel: targetLabel, durationLabel: durationLabel, aoeLabel: aoeLabel,
     maxHP: maxHP, maxMana: maxMana,
     // misc
     validateDB: validateDB, isCombatSkill: isCombatSkill, findKind: findKind,
