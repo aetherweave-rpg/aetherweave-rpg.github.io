@@ -25,6 +25,76 @@ window.SPELLS = {
       row: 2,
       col: 3,
       castingTime: "action"
+    },
+    {
+      id: "aeth_spell_shockwave",
+      name: "Shockwave",
+      description: "Make a spellcasting check against the Physical defense of all enemies within 6m. If succesful deal 1 damage and push that enemy up to 2m for every success beyond the threshold.\n\nRisk: For every rolled Risk, this spell also targets a random ally within range.",
+      tier: 2,
+      pool: "combat",
+      cost: 1,
+      row: 2,
+      col: 2,
+      castingTime: "action",
+      requires: {
+        talents: [
+          "aeth_spell_force_blast"
+        ]
+      }
+    },
+    {
+      id: "aeth_spell_accelerate",
+      name: "Accelerate",
+      description: "Target ally within 10m or self can move up to 10 meters more on their next move.",
+      tier: 1,
+      pool: "combat",
+      cost: 1,
+      row: 0,
+      col: 1,
+      castingTime: "minor_action"
+    },
+    {
+      id: "aeth_spell_burst",
+      name: "Burst",
+      description: "Target ally within 10m or self can move up to 3 times their normal speed on their next move action.",
+      tier: 2,
+      pool: "combat",
+      cost: 1,
+      row: 2,
+      col: 1,
+      castingTime: "minor_action",
+      requires: {
+        talents: [
+          "aeth_spell_accelerate"
+        ]
+      }
+    },
+    {
+      id: "aeth_spell_hover",
+      name: "Hover",
+      description: "Target object you can touch will hover at the height it had during the casting of the spell. It can be moved laterally, but excessive upward or downward force breaks the spell. Can be cast on objects up to 10kg and last up to 10 minutes.",
+      tier: 1,
+      pool: "noncombat",
+      cost: 1,
+      row: 0,
+      col: 4,
+      castingTime: 1
+    },
+    {
+      id: "aeth_spell_levitate",
+      name: "Levitate",
+      description: "Target ally can levitate 20 centimeters above ground. When they do so, they move at half speed. Range: touch. Duration: 1m",
+      tier: 2,
+      pool: "noncombat",
+      cost: 1,
+      row: 2,
+      col: 4,
+      castingTime: 1,
+      requires: {
+        talents: [
+          "aeth_spell_hover"
+        ]
+      }
     }
   ]
 };
