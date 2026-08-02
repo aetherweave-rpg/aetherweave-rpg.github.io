@@ -339,7 +339,7 @@
 
     // Combined ancestral view: no per-tree exp/access (ancestral trees are free).
     if (view.kind === "ancestry-combined") {
-      tags.appendChild(el("span", "tree-tag ok", "Ancestral — no tree-access cost"));
+      tags.appendChild(el("span", "tree-tag ok", "Ancestral (free)"));
       if (view.blocks && view.blocks.length > 1)
         tags.appendChild(el("span", "tree-tag", "Line: " + view.blocks.map(function (b) { return b.name; }).join(" → ")));
       head.appendChild(tags);
@@ -377,7 +377,7 @@
       var unlocked = Engine.combinationUnlocked(tree, state);
       tags.appendChild(el("span", "tree-tag " + (unlocked ? "ok" : "locked"),
         (unlocked ? "✓ " : "🔒 ") + "Needs talents in " + parents.join(" + ")));
-      tags.appendChild(el("span", "tree-tag ok", "Combination — no tree-access cost"));
+      tags.appendChild(el("span", "tree-tag ok", "Combination (free)"));
     }
 
     // One-time surcharge for opening this tree, if it isn't open already.
@@ -388,12 +388,12 @@
       if (already) {
         var mine = charges.filter(function (c) { return c.treeId === tree.id; })[0];
         tags.appendChild(el("span", "tree-tag ok",
-          mine.cost ? "Opened — paid " + mine.cost + " exp access" : "Opened — first tree, free"));
+          mine.cost ? "Opened (" + mine.cost + " exp)" : "Opened (free)"));
       } else {
         var next = Engine.nextTreeCost(state);
         tags.appendChild(el("span", "tree-tag " + (next ? "cost" : "ok"),
           next ? "Opening this tree costs +" + next + " exp (tree " + (charges.length + 1) + ")"
-               : "First tree — no access cost"));
+               : "First tree, free"));
       }
     }
     head.appendChild(tags);
@@ -495,7 +495,7 @@
     var hint = el("div", "tt-hint");
     if (status.owned) { hint.textContent = "Click to unlearn"; hint.classList.add("ok"); }
     else {
-      hint.textContent = status.met ? "Click to learn — " + (sp.cost || 0) + " " + Engine.poolLabel(sp.pool) + " exp" : "Requirements not met";
+      hint.textContent = status.met ? "Click to learn (" + (sp.cost || 0) + " " + Engine.poolLabel(sp.pool) + " exp)" : "Requirements not met";
       hint.classList.add(status.met ? "ok" : "no");
     }
     tip.appendChild(hint);
@@ -511,7 +511,7 @@
     if (r.type === "talent" && r.mode === "any") label = "Any of: " + label;
     if (r.type === "talent" && r.crossDomain) label += " (" + (r.crossTreeName || "other tree") + ")";
     line.appendChild(el("span", "tt-req-mark", ok ? "✓" : "✗"));
-    line.appendChild(el("span", "tt-req-text", label + (r.detail ? " — " + r.detail : "")));
+    line.appendChild(el("span", "tt-req-text", label + (r.detail ? ": " + r.detail : "")));
     return line;
   }
 
@@ -572,9 +572,9 @@
 
     if (status.owned) {
       var chk = Engine.canRefund(t.id, state);
-      if (chk.granted) { UI.toast(t.name + " was granted at character creation — it can't be refunded.", "error"); return; }
+      if (chk.granted) { UI.toast(t.name + " was granted at creation, can't be refunded.", "error"); return; }
       if (!chk.ok) {
-        UI.toast("Can't refund " + t.name + " — still required by " + (chk.blockedBy || []).join(", "), "error");
+        UI.toast("Can't refund " + t.name + ": needed by " + (chk.blockedBy || []).join(", "), "error");
         return;
       }
       State.update(function (s) { s.talents = s.talents.filter(function (id) { return id !== t.id; }); });
@@ -708,15 +708,15 @@
 
     var hint = el("div", "tt-hint");
     if (status.granted) {
-      hint.textContent = "Granted at character creation — free, and cannot be refunded";
+      hint.textContent = "Granted at creation, free, can't be refunded";
       hint.classList.add("ok");
     } else if (status.owned) {
       var chk = Engine.canRefund(t.id, state);
-      hint.textContent = chk.ok ? "Click to refund" : "Locked — required by " + (chk.blockedBy || []).join(", ");
+      hint.textContent = chk.ok ? "Click to refund" : "Locked: needed by " + (chk.blockedBy || []).join(", ");
       hint.classList.add(chk.ok ? "ok" : "no");
     } else {
       hint.textContent = status.met
-        ? "Click to learn — " + (lc.pool === "split" ? t.costCombat + "C+" + t.costNoncombat + "NC" : lc.total + " " + Engine.poolLabel(lc.pool)) + " exp"
+        ? "Click to learn (" + (lc.pool === "split" ? t.costCombat + "C+" + t.costNoncombat + "NC" : lc.total + " " + Engine.poolLabel(lc.pool)) + " exp)"
         : "Requirements not met";
       hint.classList.add(status.met ? "ok" : "no");
     }

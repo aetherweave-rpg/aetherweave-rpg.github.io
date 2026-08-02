@@ -12,4 +12,10 @@
 // ============================================================================
 
 window.CHANGELOG_CONTENT = [
+  {
+    date: "2026-08-02",
+    entries: [
+      "Added spell \"Ethereal Ward\" (tier 1) to the Aether domain.",
+    ],
+  },
 ];

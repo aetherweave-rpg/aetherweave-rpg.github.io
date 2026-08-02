@@ -144,6 +144,30 @@ window.SPELLS = {
           "aeth_spell_hover"
         ]
       }
+    },
+    {
+      id: "aeth_spell_ethereal_ward",
+      name: "Ethereal Ward",
+      description: "An ethereal shield ohever around you, aiding in your defense.\n\nReduce the number of rolled Risk dice rolled due to melee opponents by 3. (to a minimum of 0)\nYou roll 2 additional dice on Deflect rolls.",
+      tier: 1,
+      pool: "combat",
+      cost: 1,
+      row: 2,
+      col: 0,
+      castingTime: "minor_action",
+      range: "self",
+      target: [
+        "self"
+      ],
+      duration: {
+        value: 1,
+        unit: "minutes"
+      },
+      requires: {
+        skills: {
+          Deflect: 1
+        }
+      }
     }
   ]
 };

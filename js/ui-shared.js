@@ -111,8 +111,8 @@
     card.appendChild(el("div", "gate-icon", "❖"));
     card.appendChild(el("h2", "gate-title", "Create your character first"));
     card.appendChild(el("p", "gate-text",
-      "Aetherweave characters are built in six prompted steps — characteristics, ancestry, " +
-      "source of power, and starting training. None of it costs experience."));
+      "Aetherweave characters are built in six prompted steps: characteristics, ancestry, " +
+      "source of power, and starting training. "));
 
     var row = el("div", "gate-actions");
     var go = el("a", "btn btn-primary", "Begin character creation");
@@ -170,11 +170,11 @@
     box.appendChild(el("div", "sw-head", "⚠ This browser won't save your character permanently"));
     var p = el("div", "sw-text");
     p.appendChild(document.createTextNode(
-      "The page was opened directly from disk, so the browser blocks persistent storage. " +
-      "Your character is kept for this browser tab only, and will be lost when you close it. " +
-      "To save between sessions, serve the folder over http — run "));
+      "The page was opened from disk, so the browser blocks persistent storage. " +
+      "Your character is kept for this tab only and lost when you close it. " +
+      "To save between sessions, run "));
     p.appendChild(el("code", null, "tools\\serve.ps1"));
-    p.appendChild(document.createTextNode(" and open http://localhost:8777/ — or use Export JSON on the character sheet."));
+    p.appendChild(document.createTextNode(" and open http://localhost:8777/, or use Export JSON."));
     box.appendChild(p);
     header.parentNode.insertBefore(box, header.nextSibling);
   }
@@ -186,7 +186,7 @@
     host.innerHTML = "";
     if (!problems.length) { host.style.display = "none"; return; }
     host.style.display = "";
-    host.appendChild(el("div", "vb-head", "⚠ Talent database has " + problems.length + " problem(s) — check your data files:"));
+    host.appendChild(el("div", "vb-head", "⚠ Talent database has " + problems.length + " problem(s):"));
     var ul = el("ul", "vb-list");
     problems.slice(0, 25).forEach(function (p) { ul.appendChild(el("li", null, p)); });
     host.appendChild(ul);

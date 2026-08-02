@@ -14,7 +14,7 @@
     UI.renderCreationGate();
     UI.bindPrint(function () {
       var n = (State.get().identity.characterName || "aetherweave-character").trim();
-      return n + " — character sheet";
+      return n + " · character sheet";
     }, renderPrint);
     render();
     State.subscribe(function () { UI.renderHeader("sheet"); render(); });
@@ -66,7 +66,7 @@
           (isGranted ? " granted" : "") + (beyondCap ? " capped" : ""));
         dot.type = "button";
         dot.setAttribute("aria-label", "set to " + (i + 1));
-        if (isGranted) dot.title = "Granted at character creation — free";
+        if (isGranted) dot.title = "Granted at creation, free";
         else if (beyondCap) dot.title = "Locked until a higher tier of play";
         dot.disabled = beyondCap && i + 1 > value;
         dot.onclick = function () {
@@ -292,7 +292,7 @@
     });
 
     block.appendChild(el("div", "sheet-hint",
-      "Two different characteristics per tier — a characteristic can be raised again at the next tier."));
+      "Two different characteristics per tier. Repeatable next tier."));
     return block;
   }
 
@@ -428,7 +428,7 @@
           State.update(function (s2) { s2.proficiencies[idx].tier = v; });
         }, free, Engine.skillCap(state)));
         var del = el("button", "icon-btn", "✕");
-        del.title = free ? "Granted at creation — can't be removed" : "Remove";
+        del.title = free ? "Granted at creation, can't be removed" : "Remove";
         del.type = "button";
         del.disabled = !!free;
         del.onclick = function () { State.update(function (s2) { s2.proficiencies.splice(idx, 1); }); };
@@ -512,11 +512,11 @@
       var del = el("button", "icon-btn", "✕");
       del.type = "button";
       del.disabled = !!status.granted;
-      del.title = status.granted ? "Granted at creation — can't be refunded" : "Refund";
+      del.title = status.granted ? "Granted at creation, can't be refunded" : "Refund";
       del.onclick = function (e) {
         e.stopPropagation();
         var chk = Engine.canRefund(t.id, State.get());
-        if (!chk.ok) { UI.toast("Can't refund " + t.name + " — required by " + (chk.blockedBy || []).join(", "), "error"); return; }
+        if (!chk.ok) { UI.toast("Can't refund " + t.name + ": needed by " + (chk.blockedBy || []).join(", "), "error"); return; }
         State.update(function (s2) { s2.talents = s2.talents.filter(function (id) { return id !== t.id; }); });
       };
       row.appendChild(del);
@@ -638,7 +638,7 @@
     var reader = new FileReader();
     reader.onload = function () {
       try { State.set(JSON.parse(reader.result)); UI.toast("Character imported", "success"); }
-      catch (err) { UI.toast("Import failed — not valid JSON", "error"); }
+      catch (err) { UI.toast("Import failed: not valid JSON", "error"); }
     };
     reader.readAsText(f);
     e.target.value = "";

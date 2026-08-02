@@ -268,7 +268,7 @@
       var options = Engine.creationPicksForChain(draft.ancestry);
       var sub = el("div", "sub-section");
       sub.appendChild(el("h3", "sub-title",
-        "Ancestral talent — pick " + picks + " (" + draft.ancestralTalents.length + "/" + picks + " chosen)"));
+        "Ancestral talent: pick " + picks + " (" + draft.ancestralTalents.length + "/" + picks + " chosen)"));
       if (!options.length) sub.appendChild(el("div", "sheet-hint", "This ancestry has no base talents to pick from yet."));
       var chainNames = Engine.ancestryChain(draft.ancestry)
         .map(function (id) { return (Engine.ancestryById(id) || {}).name; })
@@ -326,7 +326,7 @@
     var src = Engine.sourceById(draft.source);
     if (src) {
       var sub = el("div", "sub-section");
-      sub.appendChild(el("h3", "sub-title", src.name + " — benefits"));
+      sub.appendChild(el("h3", "sub-title", src.name + " benefits"));
       sub.appendChild(el("div", "sheet-hint",
         "Spellcasting attribute: " + Engine.charLabel(src.characteristic)));
       var list = el("div", "pick-grid");
@@ -335,7 +335,7 @@
           var card2 = el("div", "pick-card");
           var head = el("div", "pick-head");
           head.appendChild(el("span", "pick-icon", t.icon || t.name.charAt(0)));
-          head.appendChild(el("span", "pick-name", "Tier " + (t.tier || 1) + " — " + t.name));
+          head.appendChild(el("span", "pick-name", "Tier " + (t.tier || 1) + ": " + t.name));
           card2.appendChild(head);
           card2.appendChild(el("span", "pick-desc", t.description));
           list.appendChild(card2);
@@ -688,7 +688,7 @@
 
     if (key === "ancestry") {
       if (!draft.ancestry) return "Choose an ancestry.";
-      if (!Engine.ancestryPickable(draft.ancestry)) return "That ancestry can't be chosen — pick a sub-ancestry.";
+      if (!Engine.ancestryPickable(draft.ancestry)) return "Not directly choosable; pick a sub-ancestry.";
       var picks = CREATION.ancestralTalentPicks;
       if (draft.ancestralTalents.length !== picks)
         return "Pick " + picks + " ancestral talent" + (picks === 1 ? "" : "s") + ".";
