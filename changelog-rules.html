@@ -3,14 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Aetherweave — Character Creation</title>
+  <title>Aetherweave — Rulebook Changelog</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body data-changelog="rules">
   <header id="app-header"></header>
 
-  <main class="page page-create">
-    <div id="wizard" class="wizard"></div>
+  <main class="page page-changelog">
+    <h1 class="changelog-title">Rulebook changelog</h1>
+    <p class="changelog-lead">
+      High-level changes to the rulebook. For talent/skill/spell content changes, see the
+      <a class="inline-link" href="changelog-content.html">content changelog</a>.
+    </p>
+    <div id="changelog"></div>
   </main>
 
   <footer id="app-footer"></footer>
@@ -24,11 +29,13 @@
   <script src="js/data/combinations.js"></script>
   <script src="js/data/sources.js"></script>
   <script src="js/data/spells.js"></script>
+  <script src="js/data/changelog-content.js"></script>
+  <script src="js/data/changelog-rules.js"></script>
 
   <!-- ---------- Application ---------- -->
   <script src="js/state.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/ui-shared.js"></script>
-  <script src="js/create.js"></script>
+  <script src="js/changelog.js"></script>
 </body>
 </html>

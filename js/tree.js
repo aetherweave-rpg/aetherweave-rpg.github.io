@@ -35,6 +35,7 @@
 
   function init() {
     UI.renderHeader("trees");
+    UI.renderFooter();
     UI.renderStorageWarning();
     UI.renderCreationGate();
     renderTabs();

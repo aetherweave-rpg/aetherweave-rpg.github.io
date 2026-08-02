@@ -78,6 +78,27 @@
     host.appendChild(bar);
   }
 
+  // Small footnote-style links to the two changelogs, shown at the foot of
+  // every public page. `base` mirrors renderHeader's link-base handling.
+  function renderFooter(opts) {
+    opts = opts || {};
+    var host = document.getElementById("app-footer");
+    if (!host) return;
+    var base = opts.linkBase || "";
+
+    host.innerHTML = "";
+    var bar = el("div", "footer-bar");
+    bar.appendChild(el("span", "footer-label", "Changelog:"));
+    var content = el("a", "footer-link", "Content changes");
+    content.href = base + "changelog-content.html";
+    bar.appendChild(content);
+    bar.appendChild(el("span", "footer-sep", "·"));
+    var rules = el("a", "footer-link", "Rulebook changes");
+    rules.href = base + "changelog-rules.html";
+    bar.appendChild(rules);
+    host.appendChild(bar);
+  }
+
   // Character creation runs before anything else. Until it is completed (or
   // explicitly skipped for prototyping) both other pages sit behind this gate.
   function renderCreationGate() {
@@ -243,6 +264,7 @@
     el: el,
     bindPrint: bindPrint,
     renderHeader: renderHeader,
+    renderFooter: renderFooter,
     renderValidation: renderValidation,
     renderStorageWarning: renderStorageWarning,
     renderCreationGate: renderCreationGate,

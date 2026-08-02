@@ -9,6 +9,7 @@
 
   function init() {
     UI.renderHeader("sheet");
+    UI.renderFooter();
     UI.renderStorageWarning();
     UI.renderCreationGate();
     UI.bindPrint(function () {

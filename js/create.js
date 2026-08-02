@@ -40,6 +40,7 @@
   function init() {
     draft = freshDraft();
     UI.renderHeader("create", { minimal: true });
+    UI.renderFooter();
     UI.renderStorageWarning();
     // ?random=1 (from the gate's "Random character" button) rolls everything
     // and drops you on Review, so a playable character is one click away.
