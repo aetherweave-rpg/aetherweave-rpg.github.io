@@ -12,10 +12,13 @@ window.CHANGELOG_RULES = [
     date: "2026-08-03",
     entries: [
       "Changed: Mana",
-      "Changed: Spell Rules: Range, Target, Area of Effect, and Duration",
       "Changed: Skills",
-      "Changed: Talents",
+      "Changed: Combat",
+      "Changed: Attacking",
+      "Changed: NPC Defenses",
       "Changed: Weapons",
     ],
+  },
+  {
   },
 ];

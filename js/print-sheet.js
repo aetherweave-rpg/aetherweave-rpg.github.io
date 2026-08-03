@@ -220,6 +220,68 @@
     return b;
   }
 
+  // ---- inventory -------------------------------------------------------------
+  // Unlike Abilities/Maneuvers/Spells, this block always prints, blank
+  // character or not: the app is for building a character, but once play
+  // starts, loot picked up mid-session gets written straight onto the paper
+  // sheet rather than round-tripped back through the app. So it always
+  // carries a few ruled lines and a few blank weapon rows to write into,
+  // the same "leave it to a pencil" idea as the HP/Mana current-value boxes.
+  var MIN_NOTES_LINES = 5;
+  var NOTES_PADDING_LINES = 2;
+  var BLANK_WEAPON_ROWS = 3;
+  var NBSP = " ";
+  var DASH = "—";
+
+  function blankWeaponRow() {
+    var row = el("div", "ps-row ps-inv-blank-row");
+    row.appendChild(el("span", "ps-row-name", NBSP));
+    var tags = el("span", "ps-tags");
+    tags.appendChild(el("span", "ps-tag ps-tag-blank", "___ dice"));
+    tags.appendChild(el("span", "ps-tag ps-tag-blank", "___"));
+    row.appendChild(tags);
+    return row;
+  }
+
+  function wieldingLabel(w, cat) {
+    if (cat.hands === "2h") return "Two-Handed";
+    return w.wielding === "dual" ? "Dual-Wielding" : w.wielding === "2h" ? "Two-Handed" : "One-Handed";
+  }
+
+  function inventory(state) {
+    var inv = state.inventory || {};
+    var notes = String(inv.notes || "").trim();
+    var weapons = inv.weapons || [];
+
+    var b = block("Inventory");
+
+    var noteLines = notes ? notes.split("\n") : [];
+    var lineCount = Math.max(MIN_NOTES_LINES, noteLines.length + NOTES_PADDING_LINES);
+    var notesBox = el("div", "ps-inv-notes");
+    for (var i = 0; i < lineCount; i++) {
+      notesBox.appendChild(el("div", "ps-inv-notes-line", noteLines[i] || NBSP));
+    }
+    b.appendChild(notesBox);
+
+    b.appendChild(el("h3", "ps-h3", "Weapons Carried"));
+    var list = el("div", "ps-inv-weapons");
+    weapons.forEach(function (w) {
+      var cat = Engine.weaponCategoryById(w.category);
+      if (!cat) return;
+      var row = el("div", "ps-row");
+      var name = el("span", "ps-row-name", w.name ? w.name + " " + DASH + " " + cat.label : cat.label);
+      name.appendChild(el("span", "ps-row-sub", wieldingLabel(w, cat)));
+      row.appendChild(name);
+      var tags = el("span", "ps-tags");
+      tags.appendChild(el("span", "ps-tag", Engine.weaponDicePool(state, cat.id) + " dice"));
+      tags.appendChild(el("span", "ps-tag", Engine.weaponDamageNote(w.wielding)));
+      row.appendChild(tags);
+      list.appendChild(row);
+    });
+    for (var j = 0; j < BLANK_WEAPON_ROWS; j++) list.appendChild(blankWeaponRow());
+    b.appendChild(list);
+    return b;
+  }
   // ---- the entries (abilities · maneuvers · spells) ------------------------
   // Collected once and rendered twice: as a scannable index on the play sheet,
   // and in full in the appendix. One collection means the two can never
@@ -393,6 +455,7 @@
     sheet.appendChild(experience(state));
     sheet.appendChild(skills(state));
     sheet.appendChild(proficiencies(state));
+    sheet.appendChild(inventory(state));
 
     var groups = entryGroups(state);
     var index = entryIndex(groups);

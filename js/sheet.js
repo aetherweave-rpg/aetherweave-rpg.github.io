@@ -35,6 +35,7 @@
     root.appendChild(expSection(state));
     root.appendChild(skillsSection(state));
     root.appendChild(profSection(state));
+    root.appendChild(inventorySection(state));
     [abilitiesSection, maneuversSection, spellsSection].forEach(function (fn) {
       var s = fn(state);
       if (s) root.appendChild(s);
@@ -455,6 +456,110 @@
       wrap.appendChild(side);
     });
     s.appendChild(wrap);
+    return s;
+  }
+
+  // ---- Inventory ------------------------------------------------------------
+  // General gear is a free-text "box of lines" (like the paper sheet); carried
+  // weapons are picked from the fixed WEAPON_CATEGORIES so the dice pool and
+  // damage note can be computed rather than typed in.
+  function selectInput(options, value, onChange) {
+    var s = el("select", "inv-select");
+    options.forEach(function (o) {
+      var opt = el("option", "", o.label);
+      opt.value = o.value;
+      if (o.value === value) opt.selected = true;
+      s.appendChild(opt);
+    });
+    s.onchange = function () { onChange(s.value); };
+    return s;
+  }
+
+  function wieldingOptions(hands) {
+    var opts = [];
+    if (hands !== "2h") opts.push({ value: "1h", label: "One-Handed" });
+    if (hands === "either") opts.push({ value: "2h", label: "Two-Handed" });
+    if (hands !== "2h") opts.push({ value: "dual", label: "Dual-Wielding" });
+    return opts;
+  }
+
+  function weaponRow(state, w, idx) {
+    var categories = Engine.weaponCategories();
+    var cat = Engine.weaponCategoryById(w.category) || categories[0];
+    var row = el("div", "inv-weapon-row");
+
+    row.appendChild(selectInput(
+      categories.map(function (c) { return { value: c.id, label: c.label }; }),
+      cat.id,
+      function (v) {
+        State.update(function (s2) {
+          var w2 = s2.inventory.weapons[idx];
+          w2.category = v;
+          var newCat = Engine.weaponCategoryById(v);
+          if (newCat.hands !== "either" && w2.wielding === "2h" && newCat.hands !== "2h") w2.wielding = "1h";
+          if (newCat.hands === "2h") w2.wielding = "2h";
+        });
+      }
+    ));
+
+    row.appendChild(textInput(w.name, function (v) {
+      State.update(function (s2) { s2.inventory.weapons[idx].name = v; }, true);
+    }, { cls: "inv-name", placeholder: "name (optional)…" }));
+
+    if (cat.hands === "2h") {
+      row.appendChild(el("span", "inv-wield-fixed", "Two-Handed"));
+    } else {
+      row.appendChild(selectInput(wieldingOptions(cat.hands), w.wielding, function (v) {
+        State.update(function (s2) { s2.inventory.weapons[idx].wielding = v; });
+      }));
+    }
+
+    var stats = el("div", "inv-weapon-stats");
+    stats.appendChild(el("span", "inv-stat", Engine.weaponDicePool(state, cat.id) + " dice"));
+    stats.appendChild(el("span", "inv-stat", Engine.weaponDamageNote(w.wielding)));
+    row.appendChild(stats);
+
+    var del = el("button", "icon-btn", "✕");
+    del.type = "button";
+    del.title = "Remove";
+    del.onclick = function () { State.update(function (s2) { s2.inventory.weapons.splice(idx, 1); }); };
+    row.appendChild(del);
+
+    return row;
+  }
+
+  function inventorySection(state) {
+    var s = section("Inventory");
+
+    var notesField = el("label", "inv-notes-field");
+    notesField.appendChild(el("span", "inv-label", "Items & Gear"));
+    var notesArea = el("textarea", "inv-notes");
+    notesArea.value = state.inventory.notes || "";
+    notesArea.placeholder = "Armor, tools, coin, trinkets…";
+    notesArea.oninput = function () {
+      State.update(function (s2) { s2.inventory.notes = notesArea.value; }, true);
+    };
+    notesArea.onblur = function () { State.notify(); };
+    notesField.appendChild(notesArea);
+    s.appendChild(notesField);
+
+    s.appendChild(withNote(el("h3", "prof-title", "Weapons Carried"),
+      "dice pool = characteristic + trained tier; damage = successes rolled"));
+
+    var list = el("div", "inv-weapon-list");
+    state.inventory.weapons.forEach(function (w, idx) { list.appendChild(weaponRow(state, w, idx)); });
+    s.appendChild(list);
+
+    var add = el("button", "prof-add", "+ Add Carried Weapon");
+    add.type = "button";
+    add.onclick = function () {
+      var first = Engine.weaponCategories()[0];
+      State.update(function (s2) {
+        s2.inventory.weapons.push({ category: first.id, wielding: first.hands === "2h" ? "2h" : "1h", name: "" });
+      });
+    };
+    s.appendChild(add);
+
     return s;
   }
 

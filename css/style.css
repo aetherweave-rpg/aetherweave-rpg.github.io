@@ -431,6 +431,32 @@ a { color: var(--accent); }
 }
 .icon-btn:hover { background: #fdecea; color: var(--unmet); border-color: #f0b4ae; }
 
+/* Inventory — a ruled "box of lines" for general gear, plus a weapon list
+   where each row's dice pool/damage is computed, not typed in. */
+.inv-notes-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
+.inv-label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-faint); font-weight: 600; }
+.inv-notes {
+  font: inherit; color: var(--ink); resize: vertical; min-height: 96px;
+  padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px;
+  background-color: #fffdf7;
+  background-image: repeating-linear-gradient(to bottom, transparent, transparent 23px, var(--line) 24px);
+  line-height: 24px;
+}
+.inv-notes:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(138, 109, 59, .15); }
+.inv-weapon-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.inv-weapon-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.inv-select, .inv-name {
+  font: inherit; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px;
+  background: #fffdf7; color: var(--ink);
+}
+.inv-name { flex: 1; min-width: 120px; }
+.inv-wield-fixed { font-size: 12.5px; color: var(--ink-faint); padding: 0 4px; }
+.inv-weapon-stats { display: flex; gap: 10px; margin-left: auto; }
+.inv-stat {
+  font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+}
+
 /* Talents summary */
 .talent-row {
   display: flex; align-items: center; gap: 12px; padding: 8px 10px; margin-bottom: 6px;
@@ -1031,6 +1057,17 @@ a { color: var(--accent); }
     padding: 0 3.5pt; white-space: nowrap;
   }
   .ps-warn { border-color: #b3261e; color: #b3261e; font-weight: 700; }
+
+  /* -- inventory -- */
+  /* Ruled lines for a pencil, same idea as the HP/Mana "___" current value:
+     the printed sheet is what a player actually writes on during a session. */
+  .ps-inv-notes { font-size: 8pt; margin-bottom: 3pt; }
+  .ps-inv-notes-line {
+    min-height: 10pt; line-height: 10pt; border-bottom: 0.4pt dotted #bbb;
+  }
+  .ps-inv-weapons { margin-top: 2pt; }
+  .ps-inv-blank-row .ps-row-name { color: transparent; }
+  .ps-tag-blank { color: #999; border-style: dashed; }
 
   /* -- appendix -- */
   .ps-appendix { break-before: page; page-break-before: always; break-inside: auto; page-break-inside: auto; }

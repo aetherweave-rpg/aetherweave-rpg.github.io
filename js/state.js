@@ -82,7 +82,7 @@
     });
 
     return {
-      version: 3,
+      version: 4,
       identity: { characterName: "", playerName: "", ancestry: "", sourceOfPower: "", concept: "", notes: "" },
       hp: { max: "", current: "" },
       mana: { max: "", current: "" },
@@ -94,6 +94,14 @@
       skills: skills,          // display name -> CURRENT tier 0..4 (granted included)
       proficiencies: [],       // [{ name, kind, tier }]  (granted included)
       talents: [],             // Owned talent ids (granted included)
+
+      // General gear (free text, "box of lines" on the sheet) plus the
+      // weapons the character is actually carrying — each entry names a
+      // WEAPON_CATEGORIES id, so the sheet can look up its dice pool/damage.
+      inventory: {
+        notes: "",
+        weapons: [],          // [{ category, wielding, name }] — wielding: "1h" | "2h" | "dual"
+      },
 
       spells: [],              // learned spell ids (magical domains; bought, or handed out by a grant)
 
@@ -161,6 +169,11 @@
     merged.proficiencies   = Array.isArray(s.proficiencies) ? s.proficiencies : [];
     merged.talents         = Array.isArray(s.talents) ? s.talents : [];
     merged.spells          = Array.isArray(s.spells) ? s.spells : [];
+
+    // v3 → v4: inventory (general notes + carried weapons) is new; backfill
+    // for any older save that predates it.
+    merged.inventory         = Object.assign({}, def.inventory, s.inventory);
+    merged.inventory.weapons = Array.isArray(merged.inventory.weapons) ? merged.inventory.weapons : [];
 
     // v2 → v3: spellcasting used to live in a separate state.spellcasting
     // ladder (domain id -> level). Levels are now a Spellcasting proficiency

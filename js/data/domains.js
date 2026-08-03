@@ -135,7 +135,7 @@ window.DOMAINS = [
         duration: "instantaneous",
         requires: {
           proficiencies: {
-            "Throwing Weapons": 2
+            "Heavy Throwing Weapons": 2
           }
         }
       },

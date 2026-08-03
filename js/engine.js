@@ -127,6 +127,26 @@
     return (window.PROFICIENCY_KINDS || []).filter(function (k) { return k.id === id; })[0];
   }
 
+  // ---- Weapon categories (inventory section) -------------------------------
+  function weaponCategories() { return window.WEAPON_CATEGORIES || []; }
+  function weaponCategoryById(id) {
+    return weaponCategories().filter(function (c) { return c.id === id; })[0];
+  }
+  // Dice pool for a weapon's attack test: its characteristic score + the
+  // character's trained tier in that category (0 if untrained) — talent and
+  // circumstantial bonuses are situational and not shown on the static sheet.
+  function weaponDicePool(state, categoryId) {
+    var cat = weaponCategoryById(categoryId);
+    if (!cat) return 0;
+    var charScore = (state.characteristics || {})[cat.characteristic] || 0;
+    return charScore + profTier(state, cat.label);
+  }
+  // Damage note for a chosen wielding: two-handed or dual-wielding adds +1 to
+  // the number of successes rolled (main.tex "Attacking").
+  function weaponDamageNote(wielding) {
+    return (wielding === "2h" || wielding === "dual") ? "1 + successes" : "successes";
+  }
+
   // ---- Tree-access surcharge ---------------------------------------------
   // Your first tree containing a PURCHASED talent is free; each further tree
   // costs a one-time surcharge from CONFIG.TREE_ACCESS.costs, charged to the
@@ -546,9 +566,9 @@
   // the message prefix already used by the caller's other problems for this
   // object (e.g. `t.id` for a talent, `"spell '" + sp.id + "'"` for a spell).
   function validateCastableFields(problems, label, obj) {
-    if (!(obj.castingTime === "action" || obj.castingTime === "minor_action" ||
+    if (!(obj.castingTime === "action" || obj.castingTime === "minor_action" || obj.castingTime === "reaction" ||
           (typeof obj.castingTime === "number" && obj.castingTime > 0)))
-      problems.push(label + ": castingTime must be 'action', 'minor_action', or a positive number of minutes (got " + JSON.stringify(obj.castingTime) + ")");
+      problems.push(label + ": castingTime must be 'action', 'minor_action', 'reaction', or a positive number of minutes (got " + JSON.stringify(obj.castingTime) + ")");
     if (obj.range != null &&
         !(obj.range === "self" || obj.range === "touch" || obj.range === "weapon" || (typeof obj.range === "number" && obj.range > 0)))
       problems.push(label + ": range must be 'self', 'touch', 'weapon', or a positive number of yards (got " + JSON.stringify(obj.range) + ")");
@@ -1624,11 +1644,13 @@
     if (!spell) return 0;
     return Math.max(0, (spell.tier || 1) - 1);
   }
-  // Human-readable casting time: "action", "minor action", or "N min" for a
-  // longer ritual cast (castingTime holds a number of minutes in that case).
+  // Human-readable casting time: "action", "minor action", "reaction", or
+  // "N min" for a longer ritual cast (castingTime holds a number of minutes
+  // in that case).
   function castingTimeLabel(spell) {
     var ct = spell && spell.castingTime;
     if (ct === "minor_action") return "minor action";
+    if (ct === "reaction") return "reaction";
     if (typeof ct === "number") return ct + " min";
     return "action";
   }
@@ -1737,5 +1759,8 @@
     // misc
     validateDB: validateDB, isCombatSkill: isCombatSkill, findKind: findKind,
     profTier: profTier, charLabel: charLabel, poolLabel: poolLabel,
+    // weapon categories (inventory section)
+    weaponCategories: weaponCategories, weaponCategoryById: weaponCategoryById,
+    weaponDicePool: weaponDicePool, weaponDamageNote: weaponDamageNote,
   };
 })();

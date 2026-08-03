@@ -15,6 +15,20 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-08-03",
     entries: [
+      "Changed talent \"Ricochet\" (tier 1) in the Arms domain: requires: \"proficiencies Throwing Weapons 2\" -> \"proficiencies Heavy Throwing Weapons 2\".",
+      "Removed skill/proficiency \"Riposte\".",
+      "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / creation points).",
+    ],
+  },
+  {
+    date: "2026-08-03",
+    entries: [
+      "Removed skill/proficiency \"Riposte\".",
+    ],
+  },
+  {
+    date: "2026-08-03",
+    entries: [
       "Changed talent \"Ricochet\" (tier 1) in the Arms domain: description: \"You can hit multiple enemies with a single throw of your wea...\" -> \"Make an attack with your throwing weapon against an enemy in...\"; ability: (none) -> \"maneuver\"; uses: (none) -> 2; castingTime: (none) -> \"action\"; range: (none) -> \"weapon\"; duration: (none) -> \"instantaneous\"; requires: \"characteristics cunning 2; proficiencies Throwing Weapons 2\" -> \"proficiencies Throwing Weapons 2\".",
       "Changed talent \"Advanced Ricochet\" (tier 1) in the Arms domain: ability: (none) -> \"modifier\".",
       "Added talent \"Frost arrow\" (tier 1) to the Elemental Arms combination tree.",
