@@ -252,7 +252,10 @@
     }
     return {
       id: t.id, icon: t.icon || t.name.charAt(0), name: t.name,
-      flavour: t.flavour || "", description: t.description || "",
+      // Resolved here, so the index and the appendix can't disagree and the
+      // paper sheet carries the same modified text the screen does (§4.7).
+      flavour: Engine.resolveText(t.flavour || "", state),
+      description: Engine.resolveText(t.description || "", state),
       source: source, tags: tags, meta: cost + " · " + tierName(t.tier), warn: unmetNote(status),
     };
   }
@@ -261,7 +264,8 @@
     var mana = Engine.spellManaCost(sp);
     return {
       id: sp.id, icon: sp.icon || sp.name.charAt(0), name: sp.name,
-      flavour: sp.flavour || "", description: sp.description || "",
+      flavour: Engine.resolveText(sp.flavour || "", state),
+      description: Engine.resolveText(sp.description || "", state),
       source: "T" + (sp.tier || 1),
       tags: [mana ? mana + " mana" : "cantrip", Engine.castingTimeLabel(sp),
         Engine.rangeLabel(sp), Engine.targetLabel(sp), Engine.durationLabel(sp), Engine.aoeLabel(sp)].filter(Boolean),

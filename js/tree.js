@@ -542,8 +542,11 @@
     }
     tip.appendChild(meta);
 
-    if (t.flavour) tip.appendChild(el("div", "tt-flavour", t.flavour));
-    if (t.description) tip.appendChild(el("div", "tt-desc", t.description));
+    // Text hooks resolve against what the character owns, so a node modified
+    // by an owned modifier talent reads as its final text (§4.7).
+    var tipState = State.get();
+    if (t.flavour) tip.appendChild(el("div", "tt-flavour", Engine.resolveText(t.flavour, tipState)));
+    if (t.description) tip.appendChild(el("div", "tt-desc", Engine.resolveText(t.description, tipState)));
 
     if (status.reasons.length) {
       var reqs = el("div", "tt-reqs");

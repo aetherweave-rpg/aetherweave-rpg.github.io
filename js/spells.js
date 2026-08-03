@@ -255,8 +255,9 @@
       .forEach(function (tag) { if (tag) meta.appendChild(tag); });
     tip.appendChild(meta);
 
-    if (sp.flavour) tip.appendChild(el("div", "tt-flavour", sp.flavour));
-    if (sp.description) tip.appendChild(el("div", "tt-desc", sp.description));
+    var tipState = State.get();
+    if (sp.flavour) tip.appendChild(el("div", "tt-flavour", Engine.resolveText(sp.flavour, tipState)));
+    if (sp.description) tip.appendChild(el("div", "tt-desc", Engine.resolveText(sp.description, tipState)));
 
     if (status.reasons.length) {
       var reqs = el("div", "tt-reqs");

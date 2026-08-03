@@ -114,7 +114,7 @@ window.DOMAINS = [
       {
         id: "arms_ricochet",
         name: "Ricochet",
-        description: "You can hit multiple enemies with a single throw of your weapon. \nMake an attack with your throwing weapon against an enemy in range. If succesful, you can make another attack against and enemy in range. \n\nRisk: If a Risk is rolled, no further attacks are made.\nReward: If least 1 Reward is rolled the next risk effect is cancelled.",
+        description: "You can hit multiple enemies with a single throw of your weapon. \nMake an attack with your throwing weapon against an enemy in weapon range. If successful, you can make another attack against an enemy in range. {arms_advanced_ricochet:\"If this additional attack is successful, make another attack against a third enemy in range.\">arms_ricochet:\"\"}\n\nRisk: If a Risk is rolled, no further attacks are made.\nReward: If least 1 Reward is rolled the next risk effect is cancelled.",
         pool: "combat",
         cost: 2,
         tier: 1,

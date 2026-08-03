@@ -15,6 +15,12 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-08-03",
     entries: [
+      "Changed talent \"Ricochet\" (tier 1) in the Arms domain: description: wording changed (both start \"You can hit multiple enemies with a sing...\").",
+    ],
+  },
+  {
+    date: "2026-08-03",
+    entries: [
       "Spellcasting proficiency is now no longer part of the talent system, but listed as a combat proficiency.",
     ],
   },

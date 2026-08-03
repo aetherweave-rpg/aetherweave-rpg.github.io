@@ -523,8 +523,8 @@
     }
     if (isOpen && (t.flavour || t.description)) {
       var descBlock = el("div", "talent-desc");
-      if (t.flavour) descBlock.appendChild(el("div", "talent-flavour", t.flavour));
-      if (t.description) descBlock.appendChild(el("div", "talent-desc-text", t.description));
+      if (t.flavour) descBlock.appendChild(el("div", "talent-flavour", Engine.resolveText(t.flavour, state)));
+      if (t.description) descBlock.appendChild(el("div", "talent-desc-text", Engine.resolveText(t.description, state)));
       info.appendChild(descBlock);
     }
     row.appendChild(info);
@@ -605,7 +605,7 @@
           if (isOpen && (sp.flavour || sp.description)) {
             var spDescBlock = el("div", "talent-desc");
             if (sp.flavour) spDescBlock.appendChild(el("div", "talent-flavour", sp.flavour));
-            if (sp.description) spDescBlock.appendChild(el("div", "talent-desc-text", sp.description));
+            if (sp.description) spDescBlock.appendChild(el("div", "talent-desc-text", Engine.resolveText(sp.description, state)));
             info.appendChild(spDescBlock);
           }
           row.appendChild(info);
