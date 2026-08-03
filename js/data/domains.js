@@ -66,7 +66,7 @@ window.DOMAINS = [
     name: "Invention",
     icon: "⚙️",
     accent: "#8a6d3b",
-    cols: 5,
+    cols: 8,
     kind: "core",
     talents: [
       {
@@ -77,7 +77,7 @@ window.DOMAINS = [
         cost: 2,
         tier: 1,
         row: 0,
-        col: 2,
+        col: 0,
         ability: "maneuver",
         uses: 3,
         castingTime: 1,
@@ -86,6 +86,26 @@ window.DOMAINS = [
           "self"
         ],
         duration: "indefinite"
+      },
+      {
+        id: "inve_arsenal",
+        name: "Arsenal",
+        flavour: "You are an expert at crafting improvised technological weaponry to deal with the dangers at hand. You can combine different materials at hand in order to come up with lethal contraptions.\n\nWhen you select this talent, pick two Material Knowledge talents for which you qualify.",
+        description: "You can add up to {inve_arsenal:\"2\"} of the following additional effects based on your Material Knowledge to this maneuver:",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 5,
+        ability: "maneuver",
+        castingTime: "action",
+        range: 10,
+        duration: "instantaneous",
+        aoe: {
+          shape: "circle",
+          origin: "point",
+          size: 4
+        }
       }
     ]
   },

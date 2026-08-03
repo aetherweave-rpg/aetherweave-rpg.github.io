@@ -15,6 +15,12 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-08-03",
     entries: [
+      "Added talent \"Arsenal\" (tier 1) to the Invention domain.",
+    ],
+  },
+  {
+    date: "2026-08-03",
+    entries: [
       "Changed talent \"Ricochet\" (tier 1) in the Arms domain: requires: \"proficiencies Throwing Weapons 2\" -> \"proficiencies Heavy Throwing Weapons 2\".",
       "Removed skill/proficiency \"Riposte\".",
       "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / creation points).",
