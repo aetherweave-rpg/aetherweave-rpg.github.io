@@ -93,10 +93,7 @@
       },
       skills: skills,          // display name -> CURRENT tier 0..4 (granted included)
       proficiencies: [],       // [{ name, kind, tier }]  (granted included)
-      // Owned talent ids (granted included) — this is ALSO where spellcasting
-      // rung ownership lives now: a magical domain's auto-generated "<id>__castN"
-      // talents are learned/refunded through this array like any other talent.
-      talents: [],
+      talents: [],             // Owned talent ids (granted included)
 
       spells: [],              // learned spell ids (magical domains; bought after creation, never granted)
 
@@ -159,17 +156,20 @@
     merged.talents         = Array.isArray(s.talents) ? s.talents : [];
     merged.spells          = Array.isArray(s.spells) ? s.spells : [];
 
-    // v2 → v3: spellcasting rungs used to live in a separate state.spellcasting
-    // ladder (domain id -> level); they're now real owned talents. Convert any
-    // old save's ladder levels into owning rungs 1..level, then drop the field.
+    // v2 → v3: spellcasting used to live in a separate state.spellcasting
+    // ladder (domain id -> level). Levels are now a Spellcasting proficiency
+    // named after the domain (PROFICIENCY_KINDS in data/skills.js) — convert
+    // any old save's ladder levels into that shape, then drop the field.
     if (s.spellcasting && typeof s.spellcasting === "object") {
-      var haveTalent = {}; merged.talents.forEach(function (id) { haveTalent[id] = true; });
+      var haveProf = {};
+      merged.proficiencies.forEach(function (p) { haveProf[p.kind + ":" + String(p.name || "").toLowerCase()] = true; });
       Object.keys(s.spellcasting).forEach(function (domainId) {
         var lvl = s.spellcasting[domainId] || 0;
-        for (var r = 1; r <= lvl; r++) {
-          var id = domainId + "__cast" + r;
-          if (!haveTalent[id]) { merged.talents.push(id); haveTalent[id] = true; }
-        }
+        if (!lvl) return;
+        var domain = (window.DOMAINS || []).filter(function (d) { return d.id === domainId; })[0];
+        var name = domain ? domain.name : domainId;
+        var key = "spellcasting:" + name.toLowerCase();
+        if (!haveProf[key]) { merged.proficiencies.push({ name: name, kind: "spellcasting", tier: lvl }); haveProf[key] = true; }
       });
     }
     delete merged.spellcasting;

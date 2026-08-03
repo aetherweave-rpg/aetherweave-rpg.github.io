@@ -51,6 +51,7 @@
     // never link to it — only the editor's own header links back to the site.
     var nav = el("nav", "nav");
     [{ href: "index.html", label: "Talent Trees", key: "trees" },
+     { href: "spells.html", label: "Spells", key: "spells" },
      { href: "sheet.html", label: "Character Sheet", key: "sheet" }].forEach(function (l) {
       var a = el("a", "nav-link" + (l.key === activePage ? " active" : ""), l.label);
       a.href = base + l.href;

@@ -7,7 +7,7 @@ window.SOURCES = [
     name: "Old Veteran",
     icon: "🎬",
     accent: "#5b6fa5",
-    description: "You've had an exciting life already. Perhaps a soldier, or an adventurer. You've since retired, but feel the call back to action. But, your skills are not there anymore. Will they awaken again with time and trials?",
+    flavour: "You've had an exciting life already. Perhaps a soldier, or an adventurer. You've since retired, but feel the call back to action. But, your skills are not there anymore. Will they awaken again with time and trials?",
     benefit: "—",
     characteristic: "presence",
     talents: [
@@ -24,7 +24,7 @@ window.SOURCES = [
     name: "Rage",
     icon: "😡",
     accent: "#5b6fa5",
-    description: "Your power is fueled by pure rage and anger. You experience a certain loss of control in the heat of combat and at the cost of control, you can exert great power.",
+    flavour: "Your power is fueled by pure rage and anger. You experience a certain loss of control in the heat of combat and at the cost of control, you can exert great power.",
     benefit: "—",
     characteristic: "presence",
     talents: [
@@ -41,7 +41,7 @@ window.SOURCES = [
     name: "Study and Training",
     icon: "📖",
     accent: "#5b6fa5",
-    description: "Your power does not come from any special source. Instead, your ability is a craft honed by pure willpower. Where others can be granted their powers, yours come from you alone, gained through study, training, and countless hours of practice.",
+    flavour: "Your power does not come from any special source. Instead, your ability is a craft honed by pure willpower. Where others can be granted their powers, yours come from you alone, gained through study, training, and countless hours of practice.",
     benefit: "—",
     characteristic: "intelligence",
     talents: [
@@ -58,7 +58,7 @@ window.SOURCES = [
     name: "Born for greatness",
     icon: "",
     accent: "#5b6fa5",
-    description: "From your birth everyone knew you were meant for great things. Perhaps you are the child of nobles, or you were born under the sign of a falling star. \nNonetheless, your power comes to you naturally. ",
+    flavour: "From your birth everyone knew you were meant for great things. Perhaps you are the child of nobles, or you were born under the sign of a falling star. \nNonetheless, your power comes to you naturally. ",
     benefit: "—",
     characteristic: "presence",
     talents: [
@@ -75,7 +75,7 @@ window.SOURCES = [
     name: "School of Hard Knocks",
     icon: "",
     accent: "#5b6fa5",
-    description: "Your life has never been easy. The trials you've endured throughout the years have however taught you much. You were forced to learn and adapt quickly, and these lessons are always fresh in your mind.",
+    flavour: "Your life has never been easy. The trials you've endured throughout the years have however taught you much. You were forced to learn and adapt quickly, and these lessons are always fresh in your mind.",
     benefit: "—",
     characteristic: "intelligence",
     talents: [
@@ -92,7 +92,7 @@ window.SOURCES = [
     name: "Musical Talent",
     icon: "🎻",
     accent: "#5b6fa5",
-    description: "Your talent for music is more magical than what many conjurers can do with years of study. Your music, perhaps unknowingly, directly manipulates the Aetherweave, the fabric that connects magic to reality. Your music can grants you strength, supernatural abilities, or even emulate magic.",
+    flavour: "Your talent for music is more magical than what many conjurers can do with years of study. Your music, perhaps unknowingly, directly manipulates the Aetherweave, the fabric that connects magic to reality. Your music can grants you strength, supernatural abilities, or even emulate magic.",
     benefit: "—",
     characteristic: "presence",
     talents: [
@@ -102,7 +102,11 @@ window.SOURCES = [
         icon: "",
         description: "As a minor action you can use your music to manipulate the working of the world around you. Choose one of the following each time you use this ability:\n- Heal an ally for 1 hitpoints\n- Give an ally 2 dice on their next test\n- Deal 1 damage to an enemy\nPerform a Presence + Musical Instrument test of difficulty 2, the ability succeeds if you pass.",
         ability: "maneuver",
-        uses: 4
+        uses: 4,
+        castingTime: "minor_action",
+        range: 10,
+        target: ["ally", "enemy"],
+        duration: "instantaneous"
       }
     ]
   },
@@ -111,7 +115,7 @@ window.SOURCES = [
     name: "Mentor",
     icon: "",
     accent: "#5b6fa5",
-    description: "You were taught by an extremely skillful mentor. While not all lessons were clear to you then, you can see the wisdom and hidden knowledge now.\n",
+    flavour: "You were taught by an extremely skillful mentor. While not all lessons were clear to you then, you can see the wisdom and hidden knowledge now.\n",
     benefit: "—",
     characteristic: "intelligence",
     talents: [
@@ -121,7 +125,11 @@ window.SOURCES = [
         icon: "",
         description: "What seemed like a typical everyday activity was actually a clever lesson in disguise.\n\nWhen you perform a test you can describe a flashback to a lesson or interaction with a mentor. If you do, add 1 die and 1 reward to the test roll.",
         ability: "maneuver",
-        uses: 2
+        uses: 2,
+        castingTime: "minor_action",
+        range: "self",
+        target: ["self"],
+        duration: "instantaneous"
       }
     ]
   },
@@ -130,7 +138,7 @@ window.SOURCES = [
     name: "Freak accident",
     icon: "",
     accent: "#5b6fa5",
-    description: "Due to some weird happenstance you've been granted unstable,  but useful powers. Some aspects you've skillfully managed to master, but others remain unpredictable. ",
+    flavour: "Due to some weird happenstance you've been granted unstable,  but useful powers. Some aspects you've skillfully managed to master, but others remain unpredictable. ",
     benefit: "—",
     characteristic: "presence",
     talents: [
@@ -141,7 +149,11 @@ window.SOURCES = [
         description: "At the start of each scene, roll a d6. For that scene,  you can use the ability associated with that roll once. For spell tests you add a profiency equal to the tier of play\n1: You gain 2 dice on your next Body test\n2: You can cast the Flame Tier 1 elemental spell\n3: You can cast the Chill Tier 1 elemental spell\n4: You can cast the Darken Tier 1 Shadow spell\n5: You can cast the Alight Tier 1 Light spell\n6: You can heal target ally for 1 hp in touch range",
         ability: "maneuver",
         uses: 1,
-        usesPer: "scene"
+        usesPer: "scene",
+        castingTime: "action",
+        range: 10,
+        target: ["self", "ally", "enemy"],
+        duration: "instantaneous"
       }
     ]
   }

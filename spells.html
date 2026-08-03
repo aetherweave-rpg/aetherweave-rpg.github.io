@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aetherweave — Spells</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="app-header"></header>
+
+  <main class="page page-spells">
+    <!-- No PDF export here: a spell grid is a screen artifact (a wide grid with
+         an SVG line overlay) and never printed well. The character sheet is the
+         page that has a paper form — see sheet.html / js/print-sheet.js. -->
+    <div id="spell-tabs" class="tree-tabs"></div>
+    <div id="spell-grid" class="tree"></div>
+
+    <div class="legend">
+      <span class="legend-title">How to read the grid</span>
+      <span class="legend-item"><span class="swatch node-available"></span> Available — click to learn</span>
+      <span class="legend-item"><span class="swatch node-owned"></span> Learned (✓)</span>
+      <span class="legend-item"><span class="swatch node-locked"></span> Locked — requirements unmet</span>
+      <span class="legend-item"><span class="swatch node-invalid"></span> Learned but now invalid</span>
+      <span class="legend-item"><span class="line-swatch"></span> Prerequisite link (dashed = any-of)</span>
+      <span class="legend-item">Horizontal dividers separate tiers of play. Hover a spell for its requirements.</span>
+    </div>
+  </main>
+
+  <footer id="app-footer"></footer>
+
+  <!-- ---------- Editable database (all content is in these files) ---------- -->
+  <script src="js/data/creation.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/data/skills.js"></script>
+  <script src="js/data/domains.js"></script>
+  <script src="js/data/ancestries.js"></script>
+  <script src="js/data/combinations.js"></script>
+  <script src="js/data/sources.js"></script>
+  <script src="js/data/spells.js"></script>
+
+  <!-- ---------- Application ---------- -->
+  <script src="js/state.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/ui-shared.js"></script>
+  <script src="js/spells.js"></script>
+</body>
+</html>

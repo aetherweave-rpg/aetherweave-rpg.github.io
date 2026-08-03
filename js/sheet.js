@@ -116,7 +116,7 @@
       body.appendChild(el("span", "creation-icon", obj ? obj.icon : "—"));
       var t = el("div");
       t.appendChild(el("div", "creation-name", obj ? obj.name : "—"));
-      if (obj) t.appendChild(el("div", "creation-desc", obj.benefit || obj.description));
+      if (obj) t.appendChild(el("div", "creation-desc", obj.benefit || obj.flavour));
       body.appendChild(t);
       card.appendChild(body);
       row.appendChild(card);
@@ -403,44 +403,56 @@
   function withNote(h, note) { h.appendChild(el("span", "group-note", note)); return h; }
 
   // ---- Proficiencies ------------------------------------------------------
+  // Two columns — non-combat kinds on the left, combat kinds on the right —
+  // driven entirely by PROFICIENCY_KINDS' own `pool`, so a new kind (of
+  // either pool) slots into the right side automatically with no layout change.
   function profSection(state) {
     var s = section("Proficiencies");
     var wrap = el("div", "prof-wrap");
-    window.PROFICIENCY_KINDS.forEach(function (kind) {
-      var costs = CONFIG.SKILL_COSTS[kind.costKey];
-      var col = el("div", "prof-col");
-      col.appendChild(withNote(el("h3", "prof-title", kind.label), "(" + costs.join(", ") + " exp)"));
+    ["noncombat", "combat"].forEach(function (poolName) {
+      var side = el("div", "prof-side");
+      window.PROFICIENCY_KINDS.filter(function (k) { return k.pool === poolName; }).forEach(function (kind) {
+        var costs = CONFIG.SKILL_COSTS[kind.costKey];
+        var col = el("div", "prof-col");
+        col.appendChild(withNote(el("h3", "prof-title", kind.label), "(" + costs.join(", ") + " exp)"));
 
-      var dl = el("datalist"); dl.id = "prof-suggest-" + kind.id;
-      (kind.suggestions || []).forEach(function (name) { var o = el("option"); o.value = name; dl.appendChild(o); });
-      col.appendChild(dl);
+        // A Spellcasting proficiency is named after a magical domain, so its
+        // suggestions are the domains that exist, not a static authored list.
+        var suggestions = kind.id === "spellcasting"
+          ? Engine.magicalDomains().map(function (d) { return d.name; })
+          : (kind.suggestions || []);
+        var dl = el("datalist"); dl.id = "prof-suggest-" + kind.id;
+        suggestions.forEach(function (name) { var o = el("option"); o.value = name; dl.appendChild(o); });
+        col.appendChild(dl);
 
-      state.proficiencies.forEach(function (p, idx) {
-        if (p.kind !== kind.id) return;
-        var free = Engine.grantedProfTier(state, p.name);
-        var row = el("div", "prof-row");
-        var nameInput = textInput(p.name, function (v) {
-          State.update(function (s2) { s2.proficiencies[idx].name = v; }, true);
-        }, { cls: "prof-name", placeholder: "name…", list: "prof-suggest-" + kind.id });
-        if (free) { nameInput.readOnly = true; nameInput.title = "Granted at character creation"; }
-        row.appendChild(nameInput);
-        row.appendChild(dots(p.tier || 0, CONFIG.MAX_SKILL_TIER, function (v) {
-          State.update(function (s2) { s2.proficiencies[idx].tier = v; });
-        }, free, Engine.skillCap(state)));
-        var del = el("button", "icon-btn", "✕");
-        del.title = free ? "Granted at creation, can't be removed" : "Remove";
-        del.type = "button";
-        del.disabled = !!free;
-        del.onclick = function () { State.update(function (s2) { s2.proficiencies.splice(idx, 1); }); };
-        row.appendChild(del);
-        col.appendChild(row);
+        state.proficiencies.forEach(function (p, idx) {
+          if (p.kind !== kind.id) return;
+          var free = Engine.grantedProfTier(state, p.name);
+          var row = el("div", "prof-row");
+          var nameInput = textInput(p.name, function (v) {
+            State.update(function (s2) { s2.proficiencies[idx].name = v; }, true);
+          }, { cls: "prof-name", placeholder: "name…", list: "prof-suggest-" + kind.id });
+          if (free) { nameInput.readOnly = true; nameInput.title = "Granted at character creation"; }
+          row.appendChild(nameInput);
+          row.appendChild(dots(p.tier || 0, CONFIG.MAX_SKILL_TIER, function (v) {
+            State.update(function (s2) { s2.proficiencies[idx].tier = v; });
+          }, free, Engine.skillCap(state)));
+          var del = el("button", "icon-btn", "✕");
+          del.title = free ? "Granted at creation, can't be removed" : "Remove";
+          del.type = "button";
+          del.disabled = !!free;
+          del.onclick = function () { State.update(function (s2) { s2.proficiencies.splice(idx, 1); }); };
+          row.appendChild(del);
+          col.appendChild(row);
+        });
+
+        var add = el("button", "prof-add", "+ Add " + kind.label);
+        add.type = "button";
+        add.onclick = function () { State.update(function (s2) { s2.proficiencies.push({ name: "", kind: kind.id, tier: 0 }); }); };
+        col.appendChild(add);
+        side.appendChild(col);
       });
-
-      var add = el("button", "prof-add", "+ Add " + kind.label);
-      add.type = "button";
-      add.onclick = function () { State.update(function (s2) { s2.proficiencies.push({ name: "", kind: kind.id, tier: 0 }); }); };
-      col.appendChild(add);
-      wrap.appendChild(col);
+      wrap.appendChild(side);
     });
     s.appendChild(wrap);
     return s;
@@ -463,9 +475,7 @@
   }
 
   function abilitiesSection(state) {
-    // Spellcasting rungs are real owned talents too, but they're shown in the
-    // Spells section (as "spellcasting +N") rather than cluttering Abilities.
-    var owned = Engine.ownedTalents(state).filter(function (t) { return t.ability !== "maneuver" && t.ability !== "spellcasting"; });
+    var owned = Engine.ownedTalents(state).filter(function (t) { return t.ability !== "maneuver"; });
     if (!owned.length) return null;
     var s = section("Abilities", owned.length + "");
     owned.sort(sortTalents).forEach(function (t) { s.appendChild(talentRow(t, state)); });
@@ -493,19 +503,30 @@
     var domainTag = t.fromSource ? t.sourceName : ((Engine.treeById(t.domain) || {}).name || t.domain);
     nameLine.appendChild(el("span", "talent-domain-tag", domainTag));
     if (t.ability === "maneuver" && t.uses) nameLine.appendChild(el("span", "talent-uses-tag", "⟳ " + t.uses + " / " + (t.usesPer || "session")));
-    if (t.description) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
+    if (t.description || t.flavour) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
     info.appendChild(nameLine);
     info.appendChild(el("span", "talent-meta", t.fromSource
       ? "granted by " + t.sourceName + " · " + tierName(t.tier)
       : status.granted
         ? "free at creation · " + tierName(t.tier)
         : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp · " + tierName(t.tier)));
+    if (t.ability === "maneuver" && t.castingTime != null) {
+      info.appendChild(el("span", "talent-meta", [
+        Engine.castingTimeLabel(t), Engine.rangeLabel(t), Engine.targetLabel(t),
+        Engine.durationLabel(t), Engine.aoeLabel(t),
+      ].filter(Boolean).join(" · ")));
+    }
     if (!status.met) {
       var why = status.reasons.filter(function (r) { return !Engine.reasonMet(r); })
         .map(function (r) { return r.label; }).join(", ");
       info.appendChild(el("span", "talent-invalid-note", "⚠ requirements no longer met: " + why));
     }
-    if (isOpen && t.description) info.appendChild(el("div", "talent-desc", t.description));
+    if (isOpen && (t.flavour || t.description)) {
+      var descBlock = el("div", "talent-desc");
+      if (t.flavour) descBlock.appendChild(el("div", "talent-flavour", t.flavour));
+      if (t.description) descBlock.appendChild(el("div", "talent-desc-text", t.description));
+      info.appendChild(descBlock);
+    }
     row.appendChild(info);
 
     if (!t.fromSource) {
@@ -564,7 +585,7 @@
           var info = el("div", "talent-info");
           var nameLine = el("span", "talent-name", sp.name);
           nameLine.appendChild(el("span", "spell-tier-tag", "T" + (sp.tier || 1)));
-          if (sp.description) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
+          if (sp.description || sp.flavour) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
           info.appendChild(nameLine);
           var manaCost = Engine.spellManaCost(sp);
           info.appendChild(el("span", "talent-meta", [
@@ -581,7 +602,12 @@
               .map(function (r) { return r.label; }).join(", ");
             info.appendChild(el("span", "talent-invalid-note", "⚠ requirements no longer met: " + why));
           }
-          if (isOpen && sp.description) info.appendChild(el("div", "talent-desc", sp.description));
+          if (isOpen && (sp.flavour || sp.description)) {
+            var spDescBlock = el("div", "talent-desc");
+            if (sp.flavour) spDescBlock.appendChild(el("div", "talent-flavour", sp.flavour));
+            if (sp.description) spDescBlock.appendChild(el("div", "talent-desc-text", sp.description));
+            info.appendChild(spDescBlock);
+          }
           row.appendChild(info);
           var del = el("button", "icon-btn", "✕"); del.type = "button"; del.title = "Unlearn";
           del.onclick = function (e) {

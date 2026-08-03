@@ -79,7 +79,11 @@ window.DOMAINS = [
         row: 0,
         col: 2,
         ability: "maneuver",
-        uses: 3
+        uses: 3,
+        castingTime: 1,
+        range: "self",
+        target: ["self"],
+        duration: "indefinite"
       }
     ]
   },
@@ -101,7 +105,11 @@ window.DOMAINS = [
         row: 0,
         col: 3,
         ability: "maneuver",
-        uses: 2
+        uses: 2,
+        castingTime: "action",
+        range: "touch",
+        target: ["enemy"],
+        duration: "instantaneous"
       },
       {
         id: "arms_ricochet",
@@ -176,7 +184,11 @@ window.DOMAINS = [
         row: 0,
         col: 1,
         ability: "maneuver",
-        uses: 2
+        uses: 2,
+        castingTime: "action",
+        range: 2,
+        target: ["enemy"],
+        duration: "indefinite"
       },
       {
         id: "guil_poke_holes",
@@ -219,6 +231,11 @@ window.DOMAINS = [
         col: 2,
         ability: "maneuver",
         uses: 2,
+        castingTime: "minor_action",
+        range: "self",
+        target: ["enemy"],
+        duration: { value: 1, unit: "rounds" },
+        aoe: { shape: "circle", origin: "self", size: 10 },
         requires: {
           skills: {
             Intimidation: 2
@@ -245,7 +262,12 @@ window.DOMAINS = [
         row: 0,
         col: 2,
         ability: "maneuver",
-        uses: 2
+        uses: 2,
+        castingTime: "action",
+        range: 10,
+        target: ["enemy"],
+        duration: "instantaneous",
+        aoe: { shape: "circle", origin: "point", size: 3 }
       }
     ]
   }

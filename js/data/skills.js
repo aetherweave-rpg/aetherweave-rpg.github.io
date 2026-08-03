@@ -62,4 +62,13 @@ window.PROFICIENCY_KINDS = [
       "Spear", "Quarterstaff", "Mace", "Warhammer", "Handaxe", "Greataxe",
       "Shortbow", "Longbow", "Light Crossbow", "Heavy Crossbow", "Sling"],
   },
+  {
+    // Named after a magical domain (e.g. "Elemental"); its tier drives that
+    // domain's spell-test pool and which spell tiers are castable — see
+    // Engine.spellcastingLevel / spellRequirementStatus. Suggestions are
+    // filled in at render time from the magical domains that exist, not
+    // hardcoded here (unlike the other kinds' static lists).
+    id: "spellcasting", label: "Spellcasting", costKey: "weapon", pool: "combat",
+    suggestions: [],
+  },
 ];

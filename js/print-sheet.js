@@ -243,9 +243,16 @@
       : status.granted ? "free at creation"
       : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp";
     var tags = [];
-    if (t.ability === "maneuver" && t.uses) tags.push("⟳ " + t.uses + " / " + (t.usesPer || "session"));
+    if (t.ability === "maneuver") {
+      if (t.uses) tags.push("⟳ " + t.uses + " / " + (t.usesPer || "session"));
+      if (t.castingTime != null) {
+        [Engine.castingTimeLabel(t), Engine.rangeLabel(t), Engine.targetLabel(t),
+         Engine.durationLabel(t), Engine.aoeLabel(t)].forEach(function (v) { if (v) tags.push(v); });
+      }
+    }
     return {
-      id: t.id, icon: t.icon || t.name.charAt(0), name: t.name, description: t.description || "",
+      id: t.id, icon: t.icon || t.name.charAt(0), name: t.name,
+      flavour: t.flavour || "", description: t.description || "",
       source: source, tags: tags, meta: cost + " · " + tierName(t.tier), warn: unmetNote(status),
     };
   }
@@ -253,7 +260,8 @@
   function spellEntry(sp, state) {
     var mana = Engine.spellManaCost(sp);
     return {
-      id: sp.id, icon: sp.icon || sp.name.charAt(0), name: sp.name, description: sp.description || "",
+      id: sp.id, icon: sp.icon || sp.name.charAt(0), name: sp.name,
+      flavour: sp.flavour || "", description: sp.description || "",
       source: "T" + (sp.tier || 1),
       tags: [mana ? mana + " mana" : "cantrip", Engine.castingTimeLabel(sp),
         Engine.rangeLabel(sp), Engine.targetLabel(sp), Engine.durationLabel(sp), Engine.aoeLabel(sp)].filter(Boolean),
@@ -268,7 +276,7 @@
     var owned = Engine.ownedTalents(state);
     var groups = [];
 
-    [["Abilities", function (t) { return t.ability !== "maneuver" && t.ability !== "spellcasting"; }],
+    [["Abilities", function (t) { return t.ability !== "maneuver"; }],
      ["Maneuvers", function (t) { return t.ability === "maneuver"; }]].forEach(function (g) {
       var list = owned.filter(g[1]).sort(sortTalents);
       if (list.length) {
@@ -357,6 +365,7 @@
         t.appendChild(el("div", "ps-entry-meta", e.source + " · " + e.meta));
         head.appendChild(t);
         card.appendChild(head);
+        if (e.flavour) card.appendChild(el("div", "ps-entry-flavour", e.flavour));
         if (e.description) card.appendChild(el("div", "ps-entry-desc", e.description));
         if (e.warn) card.appendChild(el("div", "ps-entry-warn", "⚠ " + e.warn));
         b.appendChild(card);

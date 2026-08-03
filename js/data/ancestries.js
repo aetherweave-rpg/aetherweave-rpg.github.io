@@ -9,7 +9,7 @@ window.ANCESTRIES = [
     icon: "🧑",
     accent: "#8a6d3b",
     cols: 3,
-    description: "The most populous people on Aera. They are not characterized by any specific speciality, but can be found in all corners of the world occupying any and all professions.",
+    flavour: "The most populous people on Aera. They are not characterized by any specific speciality, but can be found in all corners of the world occupying any and all professions.",
     talents: [
       {
         id: "anch_jack_of_all_trades",
@@ -53,7 +53,7 @@ window.ANCESTRIES = [
     icon: "🧝🏻‍♀️",
     accent: "#4a8f7b",
     cols: 3,
-    description: "The once immortal high elves had a thriving civilization, prizing culture and arts from the alabaster city of Kinara. Since the loss of the Alabaster stone, the high elves found themselves confronted with imminent mortality, and lost most of their population overnight. What remains is a proud people, desperately hanging on to what is left of their once great society.",
+    flavour: "The once immortal high elves had a thriving civilization, prizing culture and arts from the alabaster city of Kinara. Since the loss of the Alabaster stone, the high elves found themselves confronted with imminent mortality, and lost most of their population overnight. What remains is a proud people, desperately hanging on to what is left of their once great society.",
     talents: [],
     parent: "elf",
     hidden: true
@@ -65,7 +65,7 @@ window.ANCESTRIES = [
     icon: "🧝‍♂️",
     accent: "#aee8ee",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "elf",
     hidden: true
@@ -77,7 +77,7 @@ window.ANCESTRIES = [
     icon: "🧝",
     accent: "#33b920",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "elf",
     hidden: true
@@ -89,7 +89,7 @@ window.ANCESTRIES = [
     icon: "🧌",
     accent: "#ac2d46",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "orc",
     hidden: true
@@ -101,7 +101,7 @@ window.ANCESTRIES = [
     icon: "🛶",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "orc",
     hidden: true
@@ -113,7 +113,7 @@ window.ANCESTRIES = [
     icon: "👨🏻‍🦱",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     hidden: true
   },
@@ -124,7 +124,7 @@ window.ANCESTRIES = [
     icon: "🌳",
     accent: "#008040",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     hidden: true
   },
@@ -135,7 +135,7 @@ window.ANCESTRIES = [
     icon: "🛖",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [
       {
         id: "ancn_nomad_of_the_desert",
@@ -177,7 +177,7 @@ window.ANCESTRIES = [
     icon: "⛵",
     accent: "#ff8040",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "dwarf",
     hidden: true
@@ -189,7 +189,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     hidden: true
   },
@@ -200,7 +200,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     pickable: false,
     hidden: true
@@ -212,7 +212,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     pickable: false
   },
@@ -223,7 +223,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "dwarf",
     pickable: false,
@@ -236,7 +236,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "dwarf",
     hidden: true
@@ -248,7 +248,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     pickable: false,
     hidden: true
@@ -260,7 +260,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "gnome",
     hidden: true
@@ -272,7 +272,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "gnome",
     hidden: true
@@ -284,7 +284,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "elf",
     hidden: true
@@ -296,7 +296,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [
       {
         id: "ancm_imposing",
@@ -328,7 +328,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "",
+    flavour: "",
     talents: [],
     parent: "mokra_nor"
   },
@@ -339,7 +339,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#804000",
     cols: 3,
-    description: "A rugged people, the so-called half-giants of the Bor'gan mountain range live a relatively isolated pastoral existence. \nThe Mokra’nor are a tall people. Females are between 1,90 and 2,20 meters tall, males are between 2,10 and 2,40 meters tall. \nThe southern Mokra’nor have a light-brown skin, their horns not only cover their head like a crown, but bone protrudes from the spine and shoulders as well. ",
+    flavour: "A rugged people, the so-called half-giants of the Bor'gan mountain range live a relatively isolated pastoral existence. \nThe Mokra’nor are a tall people. Females are between 1,90 and 2,20 meters tall, males are between 2,10 and 2,40 meters tall. \nThe southern Mokra’nor have a light-brown skin, their horns not only cover their head like a crown, but bone protrudes from the spine and shoulders as well. ",
     talents: [],
     parent: "mokra_nor"
   },
@@ -350,7 +350,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    description: "A recent invention from the Pillars, Automatons are arcanomechanical constructs with distinct personalities. While there is still debate on whether Automatons can be considered alive, or have souls, it is clear that they can have agency beyond what their creators originally intended.",
+    flavour: "A recent invention from the Pillars, Automatons are arcanomechanical constructs with distinct personalities. While there is still debate on whether Automatons can be considered alive, or have souls, it is clear that they can have agency beyond what their creators originally intended.",
     talents: [
       {
         id: "anca_shock_prod",
@@ -362,7 +362,11 @@ window.ANCESTRIES = [
         row: 0,
         col: 0,
         ability: "maneuver",
-        uses: 2
+        uses: 2,
+        castingTime: "action",
+        range: "touch",
+        target: ["enemy"],
+        duration: "instantaneous"
       },
       {
         id: "anca_self_repair_systems",
@@ -374,7 +378,11 @@ window.ANCESTRIES = [
         row: 0,
         col: 1,
         ability: "maneuver",
-        uses: 1
+        uses: 1,
+        castingTime: "minor_action",
+        range: "self",
+        target: ["self"],
+        duration: "instantaneous"
       },
       {
         id: "anca_clockwork_physiology",

@@ -13,6 +13,12 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-03",
+    entries: [
+      "Spellcasting proficiency is now no longer part of the talent system, but listed as a combat proficiency.",
+    ],
+  },
+  {
     date: "2026-08-02",
     entries: [
       "Added spell \"Ethereal Ward\" (tier 1) to the Aether domain.",

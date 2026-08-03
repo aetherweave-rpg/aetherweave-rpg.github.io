@@ -145,15 +145,6 @@ a { color: var(--accent); }
 .tree-tag.locked { border-color: #f0b4ae; background: #fdecea; color: #8c2820; }
 .tree-tag.cost { border-color: #e0c48a; background: #fdf4e2; color: #8a6320; }
 
-/* ---------- Talents / Spells sub-tabs (magical domains) ------------------ */
-.subview-tabs { display: flex; gap: 6px; margin: 2px 0 0; flex: none; }
-.subview-tab {
-  font-size: 12.5px; font-weight: 700; padding: 5px 14px; border-radius: 999px; cursor: pointer;
-  border: 1px solid var(--line-strong); background: var(--panel-2); color: var(--ink-soft);
-}
-.subview-tab:hover { color: var(--ink); }
-.subview-tab.active { color: #fff; background: var(--accent); border-color: color-mix(in srgb, var(--accent) 70%, black 30%); }
-
 /* ---------- Domain tabs -------------------------------------------------- */
 .domain-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
 .domain-tab {
@@ -235,7 +226,6 @@ a { color: var(--accent); }
 }
 .node-cost.combat { background: var(--combat); }
 .node-cost.noncombat { background: var(--noncombat); }
-.node-cost.split { background: linear-gradient(90deg, var(--combat) 50%, var(--noncombat) 50%); }
 .node-badge {
   position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%;
   display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff;
@@ -317,8 +307,8 @@ a { color: var(--accent); }
 .tt-cost { font-size: 11px; font-weight: 700; color: #fff; padding: 2px 8px; border-radius: 999px; }
 .tt-cost.combat { background: var(--combat); }
 .tt-cost.noncombat { background: var(--noncombat); }
-.tt-cost.split { background: linear-gradient(90deg, var(--combat) 50%, var(--noncombat) 50%); }
 .tt-tier { font-size: 11px; font-weight: 700; color: var(--ink-soft); padding: 2px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); }
+.tt-flavour { font-size: 13px; font-style: italic; color: var(--ink-faint); margin-bottom: 6px; }
 .tt-desc { font-size: 13px; color: var(--ink-soft); margin-bottom: 10px; }
 .tt-reqs-head { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-faint); margin-bottom: 4px; }
 .tt-req { display: flex; align-items: baseline; gap: 7px; font-size: 12.5px; margin: 2px 0; }
@@ -421,8 +411,10 @@ a { color: var(--accent); }
 .skill-char { font-size: 10px; color: var(--ink-faint); letter-spacing: .5px; flex: none; }
 .skill-hint { font-size: 10.5px; color: var(--ink-faint); width: 52px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
 
-/* Proficiencies */
-.prof-wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+/* Proficiencies — two columns (non-combat left, combat right), each stacking
+   one .prof-col per proficiency kind of that pool. */
+.prof-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.prof-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .prof-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .prof-row { display: flex; align-items: center; gap: 8px; }
 .prof-name { flex: 1; min-width: 0; }
@@ -455,7 +447,9 @@ a { color: var(--accent); }
 .talent-name { font-weight: 700; }
 .talent-expand-icon { color: var(--ink-faint); font-size: 10px; margin-left: 4px; }
 .talent-meta { font-size: 12px; color: var(--ink-faint); }
-.talent-desc { font-size: 12px; color: var(--ink-soft); margin-top: 4px; white-space: pre-line; }
+.talent-desc { margin-top: 4px; display: flex; flex-direction: column; gap: 4px; }
+.talent-flavour { font-size: 12px; font-style: italic; color: var(--ink-faint); white-space: pre-line; }
+.talent-desc-text { font-size: 12px; color: var(--ink-soft); white-space: pre-line; }
 .talent-invalid-note { font-size: 12px; color: var(--unmet); font-weight: 600; margin-top: 2px; }
 
 /* Save data */
@@ -822,7 +816,6 @@ a { color: var(--accent); }
 /* Ability badge in the node tooltip */
 .tt-ability { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-soft); }
 .tt-ability.maneuver { background: #eef2fb; border-color: #b9c8e6; color: #34507e; }
-.tt-ability.spellcasting { background: #eae6fb; border-color: #cfc6ef; color: #5a4aa0; }
 
 /* Shared modal chrome (UI.modal — used by dialogs elsewhere) */
 .modal-overlay {
@@ -988,7 +981,7 @@ a { color: var(--accent); }
   /* -- skills & proficiencies -- */
   .ps-skills { display: grid; grid-template-columns: 1fr 2fr; gap: 4pt 16pt; align-items: start; }
   .ps-skill-list.ps-two-col { column-count: 2; column-gap: 16pt; }
-  .ps-profs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4pt 16pt; align-items: start; }
+  .ps-profs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4pt 16pt; align-items: start; }
 
   /* A row is name … dots, with a leader so the eye tracks across the gap. */
   .ps-row {
@@ -1026,6 +1019,7 @@ a { color: var(--accent); }
   .ps-entry-titles { flex: 1; min-width: 0; }
   .ps-entry-name { font-weight: 700; font-size: 8.6pt; display: flex; align-items: baseline; gap: 4pt; }
   .ps-entry-meta { font-size: 6.8pt; color: #555; text-transform: uppercase; letter-spacing: .6pt; }
+  .ps-entry-flavour { font-size: 8pt; font-style: italic; color: #444; margin: 1.5pt 0 0 18pt; white-space: pre-line; }
   .ps-entry-desc { font-size: 8pt; color: #111; margin: 1.5pt 0 0 18pt; white-space: pre-line; }
   .ps-entry-warn { font-size: 7.4pt; color: #b3261e; margin: 1.5pt 0 0 18pt; }
 

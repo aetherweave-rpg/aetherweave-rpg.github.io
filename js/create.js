@@ -579,7 +579,8 @@
   function freshProfName(kind, store) {
     var taken = store.map(function (p) { return (p.name || "").toLowerCase(); });
     var free = (kind.suggestions || []).filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; });
-    return free.length ? pick(free) : pick(kind.suggestions || ["Unnamed"]);
+    if (free.length) return pick(free);
+    return (kind.suggestions && kind.suggestions.length) ? pick(kind.suggestions) : "Unnamed";
   }
 
   // Spend exactly `budget` by repeatedly applying a random affordable advance.

@@ -40,11 +40,6 @@
   // Spell index state (declared here so the initial indexTalents() call — which
   // runs indexSpells() — isn't wiped by a later inline initializer).
   var spellsById = {}, spellsByDomain = {}, spellDomainById = {};
-  // Generated spellcasting-rung talents, per magical domain (see §"Spellcasting
-  // rungs" below) — merged into `byId` so they behave like any other talent for
-  // ownership/requirement/refund purposes, but kept OUT of `allTalents` so
-  // validateDB (which only checks authored content) never sees them.
-  var rungsByDomain = {};
 
   function indexTalents() {
     buildTrees();
@@ -58,7 +53,6 @@
       });
     });
     indexSpells();
-    indexSpellcastingRungs();
   }
   indexTalents();
 
@@ -118,13 +112,6 @@
     if (toTier <= fromTier) return 0;
     return sumSteps(costArray, toTier) - sumSteps(costArray, fromTier);
   }
-  // Splits a total cost evenly between the combat and non-combat pools (an odd
-  // total, should the data ever produce one, rounds the combat half up).
-  function splitCost(total) {
-    var combat = Math.ceil(total / 2);
-    return { combat: combat, noncombat: total - combat };
-  }
-
   var COMBAT_SKILL_NAMES = null;
   function isCombatSkill(name) {
     if (!COMBAT_SKILL_NAMES) {
@@ -153,9 +140,7 @@
     (state.talents || []).forEach(function (id) {
       if (isGrantedTalent(state, id)) return;
       var t = byId[id];
-      // Spellcasting rungs never open a tree or push the ladder — spellcasting
-      // is its own axis, priced separately (see the spellcasting section below).
-      if (!t || seen[t.domain] || t.generated === "spellcasting_rung") return;
+      if (!t || seen[t.domain]) return;
       var tree = treeById(t.domain);
       if (!tree || exempt.indexOf(tree.kind) >= 0) return;
       seen[t.domain] = true;
@@ -204,22 +189,16 @@
       var free = Math.min(grantedProfTier(state, p.name), tier);
       var cost = stepCost(CONFIG.SKILL_COSTS[kind.costKey], free, tier);
       spent[kind.pool] += cost;
-      spent.breakdown.proficiencies += cost;
+      // A spellcasting proficiency is tracked on its own breakdown line (it
+      // feeds maxMana below), separate from ordinary proficiencies.
+      if (kind.id === "spellcasting") spent.breakdown.spellcasting += cost;
+      else spent.breakdown.proficiencies += cost;
     });
 
     (state.talents || []).forEach(function (id) {
       if (isGrantedTalent(state, id)) return;
       var t = byId[id];
       if (!t) return;
-      // Spellcasting rungs are real talents but priced like a combat skill,
-      // split evenly between both pools (spells serve combat and non-combat
-      // purposes alike) — tracked on their own breakdown line, not "talents".
-      if (t.pool === "split") {
-        spent.combat += (t.costCombat || 0);
-        spent.noncombat += (t.costNoncombat || 0);
-        spent.breakdown.spellcasting += (t.cost || 0);
-        return;
-      }
       spent[t.pool === "combat" ? "combat" : "noncombat"] += (t.cost || 0);
       spent.breakdown.talents += (t.cost || 0);
     });
@@ -250,9 +229,7 @@
     (state.talents || []).forEach(function (id) {
       if (isGrantedTalent(state, id)) return;
       var t = byId[id];
-      // Spellcasting rungs are exempt — spellcasting is its own axis and never
-      // paces (or is paced by) a tree's ordinary talent tiers.
-      if (t && t.domain === treeId && t.generated !== "spellcasting_rung") total += (t.cost || 0);
+      if (t && t.domain === treeId) total += (t.cost || 0);
     });
     treeAccessCharges(state).forEach(function (c) {
       if (c.treeId === treeId) total += c.cost;
@@ -330,7 +307,7 @@
   function hasTalentInTree(state, treeId) {
     return (state.talents || []).some(function (id) {
       var t = byId[id];
-      return t && t.domain === treeId && t.generated !== "spellcasting_rung";
+      return t && t.domain === treeId;
     });
   }
 
@@ -414,10 +391,9 @@
     });
 
     // The in-tree exp gate does NOT apply to ancestral trees — heritage talents
-    // are gated by tier of play alone, not by investment in the tree — nor to
-    // spellcasting rungs, which pace themselves via their own prerequisite chain.
+    // are gated by tier of play alone, not by investment in the tree.
     var needTree = CONFIG.TALENT_TIER_TREE_EXP[tierNum - 1] || 0;
-    if (needTree > 0 && (!tree || tree.kind !== "ancestry") && talent.generated !== "spellcasting_rung") {
+    if (needTree > 0 && (!tree || tree.kind !== "ancestry")) {
       var haveTree = treeSpent(state, talent.domain);
       reasons.push({
         type: "treeSpent",
@@ -427,31 +403,33 @@
       });
     }
 
-    // Prerequisite talents (all required)
+    // Prerequisite talents or spells (all required). A prerequisite id may
+    // point at either — spells are learnable like talents, so a talent can
+    // require a spell the same way a spell can already require a talent.
     (reqs.talents || []).forEach(function (pid) {
-      var pre = byId[pid];
+      var pre = resolveReqTarget(pid);
+      var preDomain = pre ? (pre.domain || spellDomain(pid)) : null;
       reasons.push({
         type: "talent", mode: "all", talentId: pid,
         label: pre ? pre.name : pid,
-        crossDomain: pre ? pre.domain !== talent.domain : true,
-        crossTreeName: pre && pre.domain !== talent.domain ? (treeById(pre.domain) || {}).name : null,
-        met: (state.talents || []).indexOf(pid) >= 0,
+        crossDomain: pre ? preDomain !== talent.domain : true,
+        crossTreeName: pre && preDomain !== talent.domain ? ((treeById(preDomain) || {}).name || preDomain) : null,
+        met: isOwnedReqId(state, pid),
       });
     });
 
-    // Any-of prerequisite talents (at least one)
+    // Any-of prerequisite talents or spells (at least one)
     if (reqs.anyTalents && reqs.anyTalents.length) {
-      var anyMet = reqs.anyTalents.some(function (pid) {
-        return (state.talents || []).indexOf(pid) >= 0;
-      });
+      var anyMet = reqs.anyTalents.some(function (pid) { return isOwnedReqId(state, pid); });
       reqs.anyTalents.forEach(function (pid) {
-        var pre = byId[pid];
+        var pre = resolveReqTarget(pid);
+        var preDomain = pre ? (pre.domain || spellDomain(pid)) : null;
         reasons.push({
           type: "talent", mode: "any", talentId: pid, groupMet: anyMet,
           label: pre ? pre.name : pid,
-          crossDomain: pre ? pre.domain !== talent.domain : true,
-          crossTreeName: pre && pre.domain !== talent.domain ? (treeById(pre.domain) || {}).name : null,
-          met: (state.talents || []).indexOf(pid) >= 0,
+          crossDomain: pre ? preDomain !== talent.domain : true,
+          crossTreeName: pre && preDomain !== talent.domain ? ((treeById(preDomain) || {}).name || preDomain) : null,
+          met: isOwnedReqId(state, pid),
         });
       });
     }
@@ -503,8 +481,7 @@
     var tree = treeById(talent.domain);
     var surcharge = 0;
     var opensTree = false;
-    // Spellcasting rungs never open a tree or pay its surcharge.
-    if (talent.generated !== "spellcasting_rung" && tree && (conf.exemptKinds || []).indexOf(tree.kind) < 0) {
+    if (tree && (conf.exemptKinds || []).indexOf(tree.kind) < 0) {
       var already = treeAccessCharges(state).some(function (c) { return c.treeId === talent.domain; });
       if (!already) { opensTree = true; surcharge = nextTreeCost(state); }
     }
@@ -513,16 +490,17 @@
       surcharge: surcharge,
       opensTree: opensTree,
       total: (talent.cost || 0) + surcharge,
-      pool: talent.pool === "combat" ? "combat" : talent.pool === "split" ? "split" : "noncombat",
+      pool: talent.pool === "combat" ? "combat" : "noncombat",
     };
   }
 
   // Granted talents can never be refunded; otherwise refunding is blocked when
   // another owned TALENT would lose its requirements. Spells are deliberately
-  // NOT part of this simulation — dropping a spellcasting rung out from under
-  // a known spell is allowed (matching the sheet's permissive philosophy): the
-  // spell stays owned but stops being castable, flagged red, same as any other
-  // owned-but-unmet requirement.
+  // NOT part of this simulation, in either direction: lowering a Spellcasting
+  // proficiency out from under a known spell is allowed, and so is unlearning
+  // a spell that a talent (or another spell) requires — matching the sheet's
+  // permissive philosophy. Whatever depended on it stays owned but flags red,
+  // same as any other owned-but-unmet requirement.
   function canRefund(talentId, state) {
     if ((state.talents || []).indexOf(talentId) < 0) return { ok: false, reason: "not owned" };
     if (isGrantedTalent(state, talentId)) return { ok: false, reason: "granted", granted: true };
@@ -538,6 +516,52 @@
   }
 
   // ---- Database validation ------------------------------------------------
+  var validSpellTargets = { self: true, ally: true, enemy: true, object: true };
+  var validDurationUnits = { minutes: true, hours: true, days: true, weeks: true, rounds: true };
+
+  // Shared by spells and maneuver talents — both carry the same "castable"
+  // fields describing what they affect, for how long, and where. `label` is
+  // the message prefix already used by the caller's other problems for this
+  // object (e.g. `t.id` for a talent, `"spell '" + sp.id + "'"` for a spell).
+  function validateCastableFields(problems, label, obj) {
+    if (!(obj.castingTime === "action" || obj.castingTime === "minor_action" ||
+          (typeof obj.castingTime === "number" && obj.castingTime > 0)))
+      problems.push(label + ": castingTime must be 'action', 'minor_action', or a positive number of minutes (got " + JSON.stringify(obj.castingTime) + ")");
+    if (obj.range != null &&
+        !(obj.range === "self" || obj.range === "touch" || obj.range === "weapon" || (typeof obj.range === "number" && obj.range > 0)))
+      problems.push(label + ": range must be 'self', 'touch', 'weapon', or a positive number of yards (got " + JSON.stringify(obj.range) + ")");
+    if (obj.target != null && (!Array.isArray(obj.target) || obj.target.some(function (t) { return !validSpellTargets[t]; })))
+      problems.push(label + ": target must be a list from self/ally/enemy/object, or omitted entirely (got " + JSON.stringify(obj.target) + ")");
+    var dur = obj.duration;
+    var durOk = dur === "instantaneous" || dur === "indefinite" ||
+      (!!dur && typeof dur === "object" && typeof dur.value === "number" && dur.value > 0 && validDurationUnits[dur.unit]);
+    if (!durOk)
+      problems.push(label + ": duration must be 'instantaneous', 'indefinite', or { value, unit: minutes|hours|days|weeks|rounds } (got " + JSON.stringify(dur) + ")");
+    if (obj.aoe) {
+      var aoe = obj.aoe;
+      if (aoe.shape !== "cone" && aoe.shape !== "line" && aoe.shape !== "circle")
+        problems.push(label + ": aoe.shape must be 'cone', 'line', or 'circle' (got " + JSON.stringify(aoe.shape) + ")");
+      if (aoe.origin !== "self" && aoe.origin !== "point")
+        problems.push(label + ": aoe.origin must be 'self' or 'point' (got " + JSON.stringify(aoe.origin) + ")");
+      if (aoe.origin === "point" && typeof obj.range !== "number")
+        problems.push(label + ": aoe.origin can only be 'point' when range is a distance in yards");
+      if (typeof aoe.size !== "number" || aoe.size <= 0)
+        problems.push(label + ": aoe.size must be a positive number of yards");
+      if (aoe.shape === "line") {
+        if (typeof aoe.width !== "number" || aoe.width <= 0)
+          problems.push(label + ": a line aoe needs a positive 'width' in yards");
+      } else if (aoe.width != null) {
+        problems.push(label + ": only a line aoe may set 'width'");
+      }
+      if (aoe.shape === "cone") {
+        if (aoe.arc != null && aoe.arc !== 90 && aoe.arc !== 180)
+          problems.push(label + ": a cone aoe's 'arc' must be 90 or 180 (got " + JSON.stringify(aoe.arc) + ")");
+      } else if (aoe.arc != null) {
+        problems.push(label + ": only a cone aoe may set 'arc'");
+      }
+    }
+  }
+
   function validateDB() {
     var problems = [];
     var seen = {};
@@ -546,8 +570,6 @@
       (window.SKILLS[g] || []).forEach(function (s) { skillNames[s.name] = true; });
     });
     var charKeys = (CONFIG.CHARACTERISTICS || []).reduce(function (m, c) { m[c.key] = true; return m; }, {});
-    var validSpellTargets = { self: true, ally: true, enemy: true, object: true };
-    var validDurationUnits = { minutes: true, hours: true, days: true, weeks: true };
 
     allTalents.forEach(function (t) {
       if (seen[t.id]) problems.push("Duplicate talent id: " + t.id);
@@ -561,19 +583,22 @@
         problems.push(t.id + ": pool must be 'combat' or 'noncombat' (got '" + t.pool + "')");
       if (typeof t.tier !== "number" || t.tier < 1 || t.tier > CONFIG.TIERS.length)
         problems.push(t.id + ": tier " + t.tier + " out of range 1.." + CONFIG.TIERS.length);
+      if (t.ability === "maneuver") validateCastableFields(problems, t.id, t);
 
       var reqs = t.requires || {};
       var prereqs = (reqs.talents || []).concat(reqs.anyTalents || []);
       prereqs.forEach(function (pid) {
-        var pre = byId[pid];
-        if (!pre) { problems.push(t.id + ": unknown prerequisite talent '" + pid + "'"); return; }
+        // A prerequisite id may point at either a talent or a spell.
+        var pre = byId[pid] || spellsById[pid];
+        if (!pre) { problems.push(t.id + ": unknown prerequisite '" + pid + "'"); return; }
+        var preDomain = pre.domain || spellDomainById[pid];
 
         // Cross-tree requirements are legal ONLY inside a combination tree,
         // and only when they point at one of that tree's parents.
-        if (pre.domain !== t.domain) {
+        if (preDomain !== t.domain) {
           if (!tree || tree.kind !== "combination") {
             problems.push(t.id + ": cross-tree prerequisite '" + pid + "' is only allowed in combination trees");
-          } else if ((tree.parents || []).indexOf(pre.domain) < 0) {
+          } else if ((tree.parents || []).indexOf(preDomain) < 0) {
             problems.push(t.id + ": cross-tree prerequisite '" + pid + "' is not in a parent tree (" +
               (tree.parents || []).join(", ") + ")");
           }
@@ -684,6 +709,8 @@
         byTier[tier] = true;
         if (!st.name || !String(st.name).trim())
           problems.push("source '" + src.id + "': a tier-" + tier + " talent is missing a name");
+        if (st.ability === "maneuver")
+          validateCastableFields(problems, "source '" + src.id + "' tier-" + tier + " talent", st);
       });
     });
     (window.ANCESTRIES || []).forEach(function (a) {
@@ -713,39 +740,7 @@
           problems.push("spell '" + sp.id + "': pool must be 'combat' or 'noncombat' (got '" + sp.pool + "')");
         if (typeof sp.cost !== "number" || sp.cost < 0)
           problems.push("spell '" + sp.id + "': cost must be a non-negative number");
-        if (!(sp.castingTime === "action" || sp.castingTime === "minor_action" ||
-              (typeof sp.castingTime === "number" && sp.castingTime > 0)))
-          problems.push("spell '" + sp.id + "': castingTime must be 'action', 'minor_action', or a positive number of minutes (got " + JSON.stringify(sp.castingTime) + ")");
-        if (!(sp.range === "self" || sp.range === "touch" || (typeof sp.range === "number" && sp.range > 0)))
-          problems.push("spell '" + sp.id + "': range must be 'self', 'touch', or a positive number of meters (got " + JSON.stringify(sp.range) + ")");
-        if (!Array.isArray(sp.target) || !sp.target.length || sp.target.some(function (t) { return !validSpellTargets[t]; }))
-          problems.push("spell '" + sp.id + "': target must be a non-empty list from self/ally/enemy/object (got " + JSON.stringify(sp.target) + ")");
-        var dur = sp.duration;
-        var durOk = dur === "instantaneous" || dur === "indefinite" ||
-          (!!dur && typeof dur === "object" && typeof dur.value === "number" && dur.value > 0 && validDurationUnits[dur.unit]);
-        if (!durOk)
-          problems.push("spell '" + sp.id + "': duration must be 'instantaneous', 'indefinite', or { value, unit: minutes|hours|days|weeks } (got " + JSON.stringify(dur) + ")");
-        if (sp.aoe) {
-          var aoe = sp.aoe;
-          if (aoe.shape !== "cone" && aoe.shape !== "line" && aoe.shape !== "circle")
-            problems.push("spell '" + sp.id + "': aoe.shape must be 'cone', 'line', or 'circle' (got " + JSON.stringify(aoe.shape) + ")");
-          if (aoe.origin !== "self" && aoe.origin !== "point")
-            problems.push("spell '" + sp.id + "': aoe.origin must be 'self' or 'point' (got " + JSON.stringify(aoe.origin) + ")");
-          if (typeof aoe.size !== "number" || aoe.size <= 0)
-            problems.push("spell '" + sp.id + "': aoe.size must be a positive number of meters");
-          if (aoe.shape === "line") {
-            if (typeof aoe.width !== "number" || aoe.width <= 0)
-              problems.push("spell '" + sp.id + "': a line aoe needs a positive 'width' in meters");
-          } else if (aoe.width != null) {
-            problems.push("spell '" + sp.id + "': only a line aoe may set 'width'");
-          }
-          if (aoe.shape === "cone") {
-            if (aoe.arc != null && aoe.arc !== 90 && aoe.arc !== 180)
-              problems.push("spell '" + sp.id + "': a cone aoe's 'arc' must be 90 or 180 (got " + JSON.stringify(aoe.arc) + ")");
-          } else if (aoe.arc != null) {
-            problems.push("spell '" + sp.id + "': only a cone aoe may set 'arc'");
-          }
-        }
+        validateCastableFields(problems, "spell '" + sp.id + "'", sp);
 
         // Spells are placed in their own per-domain grid (the Spells tab),
         // separate from the talent grid, but use the same row/col scheme.
@@ -757,8 +752,9 @@
         }
 
         // Spells may carry the same optional requirement kinds a talent can
-        // (in addition to the automatic "owns the matching Spellcasting rung"
-        // gate, which the engine enforces itself and isn't authored data).
+        // (in addition to the automatic "holds the matching Spellcasting
+        // proficiency tier" gate, which the engine enforces itself and isn't
+        // authored data).
         var sreqs = sp.requires || {};
         (sreqs.talents || []).concat(sreqs.anyTalents || []).forEach(function (pid) {
           if (!byId[pid] && !spellsById[pid])
@@ -770,17 +766,6 @@
         Object.keys(sreqs.characteristics || {}).forEach(function (k) {
           if (!charKeys[k]) problems.push("spell '" + sp.id + "': unknown characteristic '" + k + "'");
         });
-      });
-    });
-
-    // Magical domains reserve the centre column for the auto-generated
-    // spellcasting rungs; authored talents must not sit there.
-    magicalDomains().forEach(function (tree) {
-      var c = casterCenterCol(tree);
-      talentsForDomain(tree.id).forEach(function (t) {
-        if (t.col === c)
-          problems.push(tree.id + ": talent '" + t.id + "' sits in the centre column (" + t.col +
-            ") reserved for the spellcasting ladder — move it to a side column");
       });
     });
 
@@ -834,8 +819,11 @@
       .map(function (t) {
         return {
           id: t.id || sourceTalentId(src.id, t.tier || 1),
-          tier: t.tier || 1, name: t.name, icon: t.icon || "", description: t.description || "",
+          tier: t.tier || 1, name: t.name, icon: t.icon || "",
+          description: t.description || "", flavour: t.flavour || "",
           ability: t.ability || "passive", uses: t.uses, usesPer: t.usesPer,
+          castingTime: t.castingTime, range: t.range, target: t.target,
+          duration: t.duration, aoe: t.aoe,
           sourceName: src.name,
           unlocked: cur >= (t.tier || 1),
         };
@@ -851,8 +839,10 @@
     var src = sourceTalents(state).filter(function (t) { return t.unlocked; })
       .map(function (t) {
         return {
-          id: t.id, name: t.name, icon: t.icon, description: t.description,
+          id: t.id, name: t.name, icon: t.icon, description: t.description, flavour: t.flavour,
           tier: t.tier, ability: t.ability, uses: t.uses, usesPer: t.usesPer,
+          castingTime: t.castingTime, range: t.range, target: t.target,
+          duration: t.duration, aoe: t.aoe,
           fromSource: true, sourceName: t.sourceName,
         };
       });
@@ -860,12 +850,12 @@
   }
 
   // ---- Spellcasting -------------------------------------------------------
-  // Magical domains (core trees flagged `magical`) grow an auto-generated
-  // ladder of "Spellcasting" talents (see indexSpellcastingRungs below) that
-  // adds +1 per rung to spell test rolls, plus a per-domain Spells tab (§4.6
-  // of DESIGN.md) where spells are placed and learned like talents. A spell's
-  // tier gates it on owning the matching rung — enforced by
-  // spellRequirementStatus, not stored as authored data.
+  // Magical domains (core trees flagged `magical`) grant access to a
+  // "Spellcasting" proficiency (kind "spellcasting", named after the domain)
+  // that adds +1 per tier to spell test rolls, plus a per-domain Spells tab
+  // (§4.6 of DESIGN.md) where spells are placed and learned like talents. A
+  // spell's tier gates it on holding a matching-or-higher proficiency tier —
+  // enforced by spellRequirementStatus, not stored as authored data.
   function isMagicalDomain(treeId) {
     var t = treeById(treeId);
     return !!(t && t.kind === "core" && t.magical);
@@ -873,24 +863,12 @@
   function magicalDomains() {
     return trees.filter(function (t) { return t.kind === "core" && t.magical; });
   }
-  // Highest spellcasting rung reachable at the current tier of play (rung
-  // tiers are [1,1,2,3,4] — see indexSpellcastingRungs).
-  function maxCasterTier(state) {
-    var conf = CONFIG.SPELL_TIER_UNLOCK || { offset: 1, max: CONFIG.MAX_SPELL_TIER || 5 };
-    var top = currentTierIndex(state) + 1;
-    return Math.min(conf.max, top + conf.offset);
-  }
-  // The ladder level is simply the highest-numbered rung talent owned.
-  // Ownership is always contiguous from rung 1: each rung requires the one
-  // below it, and canRefund blocks removing a rung a higher one still needs.
+  // The ladder level is the character's Spellcasting proficiency tier for this
+  // domain (a proficiency named after the domain, kind "spellcasting") — it
+  // naturally caps via the ordinary skillCap formula, same as any proficiency.
   function spellcastingLevel(state, domainId) {
-    var maxT = CONFIG.MAX_SPELL_TIER || 5;
-    var owned = state.talents || [];
-    var level = 0;
-    for (var r = 1; r <= maxT; r++) {
-      if (owned.indexOf(domainId + "__cast" + r) >= 0) level = r; else break;
-    }
-    return level;
+    var domain = treeById(domainId);
+    return domain ? profTier(state, domain.name) : 0;
   }
   // The characteristic a caster adds to spell rolls comes from the source of
   // power (may be unset until the designer assigns one).
@@ -918,24 +896,24 @@
   // Requirement evaluation for a spell — the same shape as requirementStatus
   // (a `reasons` list, each coloured red/black by reasonMet), so the Spells
   // tab can reuse the exact same tooltip/requirement rendering as talents.
-  // The first reason is always automatic: you must own the domain's
-  // Spellcasting rung matching the spell's tier. Everything after that is the
-  // spell's own optional `requires` block (talents/anyTalents/skills/
-  // characteristics/spent — identical schema to a talent's).
+  // The first reason is always automatic: you must hold the domain's
+  // Spellcasting proficiency at a tier ≥ the spell's own tier. Everything
+  // after that is the spell's own optional `requires` block (talents/
+  // anyTalents/skills/characteristics/spent — identical schema to a talent's).
   function spellRequirementStatus(spell, state) {
     var domainId = spellDomain(spell.id);
     var tierNum = spell.tier || 1;
-    var rungId = domainId + "__cast" + tierNum;
-    var rung = byId[rungId];
+    var domain = treeById(domainId);
+    var haveTier = domain ? profTier(state, domain.name) : 0;
     var reqs = spell.requires || {};
     var reasons = [];
     var spent;
 
     reasons.push({
-      type: "talent", mode: "all", talentId: rungId,
-      label: rung ? rung.name : ("Spellcasting +" + tierNum),
-      crossDomain: false,
-      met: (state.talents || []).indexOf(rungId) >= 0,
+      type: "proficiency",
+      label: (domain ? domain.name : domainId) + " Spellcasting " + tierNum,
+      detail: "have " + haveTier,
+      met: haveTier >= tierNum,
     });
 
     (reqs.talents || []).forEach(function (pid) {
@@ -985,9 +963,9 @@
       reasons: reasons,
     };
   }
-  // Is an (owned or offered) spell currently usable? Requirements (the rung
-  // gate plus any authored requires) must still be met — sheet edits can
-  // break this after the fact, same as a talent going owned-invalid.
+  // Is an (owned or offered) spell currently usable? Requirements (the
+  // proficiency gate plus any authored requires) must still be met — sheet
+  // edits can break this after the fact, same as a talent going owned-invalid.
   function spellCastable(state, spell) {
     if (!spell) return false;
     return spellRequirementStatus(spell, state).met;
@@ -1011,12 +989,14 @@
     if (typeof ct === "number") return ct + " min";
     return "action";
   }
-  // Human-readable range: "Self", "Touch", or "Nm".
+  // Human-readable range: "Self", "Melee (2y)", "Weapon Range", "Ny", or ""
+  // when not applicable.
   function rangeLabel(spell) {
     var r = spell && spell.range;
     if (r === "self") return "Self";
-    if (r === "touch") return "Touch";
-    if (typeof r === "number") return r + "m";
+    if (r === "touch") return "Melee (2y)";
+    if (r === "weapon") return "Weapon Range";
+    if (typeof r === "number") return r + "y";
     return "";
   }
   var TARGET_LABELS = { self: "Self", ally: "Ally", enemy: "Enemy", object: "Object" };
@@ -1038,9 +1018,9 @@
     var a = spell && spell.aoe;
     if (!a) return "";
     var originLabel = a.origin === "self" ? "self" : "point in range";
-    if (a.shape === "line") return a.size + "m x " + a.width + "m Line (" + originLabel + ")";
-    if (a.shape === "cone") return a.size + "m " + (a.arc === 180 ? "Arc" : "Cone") + " (" + originLabel + ")";
-    return a.size + "m Circle (" + originLabel + ")";
+    if (a.shape === "line") return a.size + "y x " + a.width + "y Line (" + originLabel + ")";
+    if (a.shape === "cone") return a.size + "y " + (a.arc === 180 ? "Arc" : "Cone") + " (" + originLabel + ")";
+    return a.size + "y Circle (" + originLabel + ")";
   }
 
   // ---- Max HP / Max Mana ---------------------------------------------------
@@ -1053,8 +1033,8 @@
     return 5 + body + Math.floor(spent.combat / 10) + body * tierIncreases;
   }
   // Max Mana: the caster characteristic (from source of power) + 1 per 10 exp
-  // spent on the Spellcasting ladder, and +that characteristic again each time
-  // the tier of play advances past tier 1.
+  // spent on Spellcasting proficiencies, and +that characteristic again each
+  // time the tier of play advances past tier 1.
   function maxMana(state) {
     var charKey = casterCharacteristic(state);
     var charVal = charKey ? ((state.characteristics || {})[charKey] || 0) : 0;
@@ -1062,52 +1042,6 @@
     var tierIncreases = currentTierIndex(state);
     return charVal + Math.floor(spent.breakdown.spellcasting / 10) + charVal * tierIncreases;
   }
-
-  // ---- Spellcasting rungs (auto-generated talents) -------------------------
-  // A magical domain grows MAX_SPELL_TIER "Spellcasting" talents down its
-  // centre column (each +1 to spell rolls, priced like a combat skill split
-  // evenly between both pools). They are generated, not authored — never
-  // written to TALENT_DB, never exported — but are otherwise REAL talents:
-  // merged into `byId` (below), learned/refunded through state.talents via
-  // the ordinary talent flow, and subject to the ordinary tier-of-play +
-  // prerequisite-chain gates (rung R requires rung R-1). What they're EXEMPT
-  // from is the tree-access surcharge and the in-tree exp gate — spellcasting
-  // is its own axis (see the skip conditions on treeAccessCharges, treeSpent,
-  // hasTalentInTree and requirementStatus above). Rung tiers [1,1,2,3,4] pace
-  // the ladder against the tier of play.
-  function casterCenterCol(tree) { return Math.floor((tree.cols || 5) / 2); }
-  function buildSpellcastingRungs(tree) {
-    var domainId = tree.id;
-    var c = casterCenterCol(tree);
-    var maxT = CONFIG.MAX_SPELL_TIER || 5;
-    var rungTier = [1, 1, 2, 3, 4];
-    var combat = CONFIG.SKILL_COSTS.combat || [];
-    var out = [];
-    for (var r = 1; r <= maxT; r++) {
-      var tierNum = rungTier[r - 1] || Math.max(1, r - 1);
-      var total = combat[r - 1] !== undefined ? combat[r - 1] : 0;
-      var half = splitCost(total);
-      out.push({
-        id: domainId + "__cast" + r, domain: domainId, generated: "spellcasting_rung", rung: r,
-        name: "Spellcasting +" + r, icon: "✨", tier: tierNum, row: r - 1, col: c,
-        pool: "split", cost: total, costCombat: half.combat, costNoncombat: half.noncombat,
-        ability: "spellcasting",
-        requires: r > 1 ? { talents: [domainId + "__cast" + (r - 1)] } : {},
-        description: "Raise your " + tree.name + " spellcasting to +" + r + ": +" + r +
-          " dice on its spell tests, and access to tier-" + r + " spells.",
-      });
-    }
-    return out;
-  }
-  function indexSpellcastingRungs() {
-    rungsByDomain = {};
-    magicalDomains().forEach(function (tree) {
-      var list = buildSpellcastingRungs(tree);
-      rungsByDomain[tree.id] = list;
-      list.forEach(function (r) { byId[r.id] = r; });
-    });
-  }
-  function spellcastingRungs(domainId) { return rungsByDomain[domainId] || []; }
 
   window.Engine = {
     reindex: indexTalents,
@@ -1141,7 +1075,7 @@
     // spells & spellcasting
     spellById: spellById, spellsForDomain: spellsForDomain, spellDomain: spellDomain, allSpells: allSpells,
     isMagicalDomain: isMagicalDomain, magicalDomains: magicalDomains,
-    maxCasterTier: maxCasterTier, spellcastingLevel: spellcastingLevel, spellcastingRungs: spellcastingRungs,
+    spellcastingLevel: spellcastingLevel,
     casterCharacteristic: casterCharacteristic,
     spellPool: spellPool, spellOwned: spellOwned, canLearnSpell: canLearnSpell, spellCastable: spellCastable,
     spellRequirementStatus: spellRequirementStatus,
