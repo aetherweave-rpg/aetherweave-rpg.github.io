@@ -230,22 +230,64 @@
   var MIN_NOTES_LINES = 5;
   var NOTES_PADDING_LINES = 2;
   var BLANK_WEAPON_ROWS = 3;
+  var MAX_DICE_POOL = CONFIG.MAX_CHARACTERISTIC + CONFIG.MAX_SKILL_TIER;
   var NBSP = " ";
   var DASH = "—";
-
-  function blankWeaponRow() {
-    var row = el("div", "ps-row ps-inv-blank-row");
-    row.appendChild(el("span", "ps-row-name", NBSP));
-    var tags = el("span", "ps-tags");
-    tags.appendChild(el("span", "ps-tag ps-tag-blank", "___ dice"));
-    tags.appendChild(el("span", "ps-tag ps-tag-blank", "___"));
-    row.appendChild(tags);
-    return row;
-  }
+  var MIDDOT = "·";
 
   function wieldingLabel(w, cat) {
     if (cat.hands === "2h") return "Two-Handed";
     return w.wielding === "dual" ? "Dual-Wielding" : w.wielding === "2h" ? "Two-Handed" : "One-Handed";
+  }
+
+  // "Reach 4y" for a melee weapon with an extended reach, plain "30y" for a
+  // true Ranged weapon — the wording main.tex itself uses (see Weapons).
+  function weaponRangeLabel(cat) {
+    if (cat.range === "melee") return "Melee";
+    return cat.ranged ? (cat.range + "y") : ("Reach " + cat.range + "y");
+  }
+
+  function weaponPropsLabel(cat) {
+    var bits = [charAbbr(cat.characteristic), weaponRangeLabel(cat)];
+    if (cat.ranged) bits.push("Ranged");
+    return bits.join(" · ");
+  }
+
+  function weaponHeadRow() {
+    var head = el("div", "ps-inv-whead");
+    ["Weapon Type", "Properties", "Name / Description", "Wielded", "Dice Pool", "Damage"].forEach(function (label) {
+      head.appendChild(el("span", "", label));
+    });
+    return head;
+  }
+
+  function weaponRow(state, w, cat) {
+    var row = el("div", "ps-inv-wrow");
+
+    row.appendChild(el("div", "ps-inv-wtype", cat.label));
+    row.appendChild(el("div", "ps-inv-wprops", weaponPropsLabel(cat)));
+    row.appendChild(el("div", "ps-inv-wname", w.name ? w.name : "—"));
+    row.appendChild(el("div", "ps-inv-wwield", wieldingLabel(w, cat)));
+
+    var diceCell = el("div", "ps-inv-wdice");
+    diceCell.appendChild(dots(Engine.weaponDicePool(state, cat.id), MAX_DICE_POOL));
+    row.appendChild(diceCell);
+
+    row.appendChild(el("div", "ps-inv-wdmg", Engine.weaponDamageNote(w.wielding)));
+    return row;
+  }
+
+  function blankWeaponRow() {
+    var row = el("div", "ps-inv-wrow ps-inv-blank-row");
+    row.appendChild(el("div", "ps-inv-wtype"));
+    row.appendChild(el("div", "ps-inv-wprops"));
+    row.appendChild(el("div", "ps-inv-wname"));
+    row.appendChild(el("div", "ps-inv-wwield"));
+    var diceCell = el("div", "ps-inv-wdice");
+    diceCell.appendChild(dots(0, MAX_DICE_POOL));
+    row.appendChild(diceCell);
+    row.appendChild(el("div", "ps-inv-wdmg"));
+    return row;
   }
 
   function inventory(state) {
@@ -259,29 +301,23 @@
     var lineCount = Math.max(MIN_NOTES_LINES, noteLines.length + NOTES_PADDING_LINES);
     var notesBox = el("div", "ps-inv-notes");
     for (var i = 0; i < lineCount; i++) {
-      notesBox.appendChild(el("div", "ps-inv-notes-line", noteLines[i] || NBSP));
+      notesBox.appendChild(el("div", "ps-inv-notes-line", noteLines[i] || " "));
     }
     b.appendChild(notesBox);
 
     b.appendChild(el("h3", "ps-h3", "Weapons Carried"));
-    var list = el("div", "ps-inv-weapons");
+    var table = el("div", "ps-inv-wtable");
+    table.appendChild(weaponHeadRow());
     weapons.forEach(function (w) {
       var cat = Engine.weaponCategoryById(w.category);
       if (!cat) return;
-      var row = el("div", "ps-row");
-      var name = el("span", "ps-row-name", w.name ? w.name + " " + DASH + " " + cat.label : cat.label);
-      name.appendChild(el("span", "ps-row-sub", wieldingLabel(w, cat)));
-      row.appendChild(name);
-      var tags = el("span", "ps-tags");
-      tags.appendChild(el("span", "ps-tag", Engine.weaponDicePool(state, cat.id) + " dice"));
-      tags.appendChild(el("span", "ps-tag", Engine.weaponDamageNote(w.wielding)));
-      row.appendChild(tags);
-      list.appendChild(row);
+      table.appendChild(weaponRow(state, w, cat));
     });
-    for (var j = 0; j < BLANK_WEAPON_ROWS; j++) list.appendChild(blankWeaponRow());
-    b.appendChild(list);
+    for (var j = 0; j < BLANK_WEAPON_ROWS; j++) table.appendChild(blankWeaponRow());
+    b.appendChild(table);
     return b;
   }
+
   // ---- the entries (abilities · maneuvers · spells) ------------------------
   // Collected once and rendered twice: as a scannable index on the play sheet,
   // and in full in the appendix. One collection means the two can never

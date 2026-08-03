@@ -483,12 +483,48 @@
     return opts;
   }
 
+  // "Reach 4y" for a melee weapon with an extended reach, plain "30y" for a
+  // true Ranged weapon — the wording main.tex itself uses (see Weapons).
+  function weaponRangeLabel(cat) {
+    if (cat.range === "melee") return "Melee";
+    return cat.ranged ? (cat.range + "y") : ("Reach " + cat.range + "y");
+  }
+
+  function weaponPropsLabel(cat) {
+    var bits = [charAbbr(cat.characteristic), weaponRangeLabel(cat)];
+    if (cat.ranged) bits.push("Ranged");
+    return bits.join(" · ");
+  }
+
+  // A read-only pip row (unlike the clickable `dots()` used for skills): the
+  // dice pool is computed from characteristic + trained tier, not set directly.
+  function pips(value, max) {
+    var row = el("span", "inv-dots");
+    for (var i = 0; i < max; i++) row.appendChild(el("span", "inv-dot" + (i < value ? " filled" : "")));
+    return row;
+  }
+
+  function weaponHeadRow() {
+    var row = el("div", "inv-weapon-head-row");
+    var head = el("div", "inv-weapon-head");
+    ["Weapon Type", "Properties", "Name / Description", "Wielded", "Dice Pool", "Damage"].forEach(function (label) {
+      head.appendChild(el("span", "", label));
+    });
+    row.appendChild(head);
+    // Matches the width of each row's remove button, so the grid's `1fr`
+    // column computes against the same available width in both.
+    row.appendChild(el("span", "inv-weapon-head-spacer"));
+    return row;
+  }
+
   function weaponRow(state, w, idx) {
     var categories = Engine.weaponCategories();
     var cat = Engine.weaponCategoryById(w.category) || categories[0];
+    var maxDicePool = CONFIG.MAX_CHARACTERISTIC + CONFIG.MAX_SKILL_TIER;
     var row = el("div", "inv-weapon-row");
+    var cells = el("div", "inv-weapon-cells");
 
-    row.appendChild(selectInput(
+    cells.appendChild(selectInput(
       categories.map(function (c) { return { value: c.id, label: c.label }; }),
       cat.id,
       function (v) {
@@ -502,22 +538,27 @@
       }
     ));
 
-    row.appendChild(textInput(w.name, function (v) {
+    cells.appendChild(el("span", "inv-wtype-props", weaponPropsLabel(cat)));
+
+    cells.appendChild(textInput(w.name, function (v) {
       State.update(function (s2) { s2.inventory.weapons[idx].name = v; }, true);
     }, { cls: "inv-name", placeholder: "name (optional)…" }));
 
     if (cat.hands === "2h") {
-      row.appendChild(el("span", "inv-wield-fixed", "Two-Handed"));
+      cells.appendChild(el("span", "inv-wield-fixed", "Two-Handed"));
     } else {
-      row.appendChild(selectInput(wieldingOptions(cat.hands), w.wielding, function (v) {
+      cells.appendChild(selectInput(wieldingOptions(cat.hands), w.wielding, function (v) {
         State.update(function (s2) { s2.inventory.weapons[idx].wielding = v; });
       }));
     }
 
-    var stats = el("div", "inv-weapon-stats");
-    stats.appendChild(el("span", "inv-stat", Engine.weaponDicePool(state, cat.id) + " dice"));
-    stats.appendChild(el("span", "inv-stat", Engine.weaponDamageNote(w.wielding)));
-    row.appendChild(stats);
+    var diceCell = el("div", "inv-wdice");
+    diceCell.appendChild(pips(Engine.weaponDicePool(state, cat.id), maxDicePool));
+    cells.appendChild(diceCell);
+
+    cells.appendChild(el("span", "inv-wdmg", Engine.weaponDamageNote(w.wielding)));
+
+    row.appendChild(cells);
 
     var del = el("button", "icon-btn", "✕");
     del.type = "button";
@@ -544,9 +585,10 @@
     s.appendChild(notesField);
 
     s.appendChild(withNote(el("h3", "prof-title", "Weapons Carried"),
-      "dice pool = characteristic + trained tier; damage = successes rolled"));
+      "dice pool = characteristic + trained tier; damage = # successes rolled"));
 
     var list = el("div", "inv-weapon-list");
+    if (state.inventory.weapons.length) list.appendChild(weaponHeadRow());
     state.inventory.weapons.forEach(function (w, idx) { list.appendChild(weaponRow(state, w, idx)); });
     s.appendChild(list);
 

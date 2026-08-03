@@ -431,7 +431,7 @@ a { color: var(--accent); }
 }
 .icon-btn:hover { background: #fdecea; color: var(--unmet); border-color: #f0b4ae; }
 
-/* Inventory — a ruled "box of lines" for general gear, plus a weapon list
+/* Inventory — a ruled "box of lines" for general gear, plus a weapon table
    where each row's dice pool/damage is computed, not typed in. */
 .inv-notes-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
 .inv-label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-faint); font-weight: 600; }
@@ -439,23 +439,50 @@ a { color: var(--accent); }
   font: inherit; color: var(--ink); resize: vertical; min-height: 96px;
   padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px;
   background-color: #fffdf7;
-  background-image: repeating-linear-gradient(to bottom, transparent, transparent 23px, var(--line) 24px);
-  line-height: 24px;
+  /* Measured against real glyph metrics (not just assumed from line-height):
+     a 16px line only left ~1px between the glyph box's bottom and the ruled
+     line, which is what let it graze descenders. 34px leaves a solid ~5px. */
+  background-image: repeating-linear-gradient(to bottom, transparent, transparent 33px, var(--line) 34px);
+  line-height: 34px;
 }
 .inv-notes:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(138, 109, 59, .15); }
 .inv-weapon-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
-.inv-weapon-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Weapon type · properties · name/description · wielded · dice pool · damage,
+   aligned by sharing one grid-template-columns across the header and every
+   row's cells. Properties gets its own column (rather than stacking under
+   the type select) so it has room to lay out instead of wrapping awkwardly. */
+.inv-weapon-head, .inv-weapon-cells {
+  display: grid; grid-template-columns: 158px 130px 1fr 130px 160px 110px; gap: 10px; align-items: center;
+}
+.inv-weapon-head {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-faint); font-weight: 600;
+  padding-bottom: 4px; margin-bottom: 2px; border-bottom: 1px solid var(--line);
+}
+.inv-weapon-row, .inv-weapon-head-row { display: flex; align-items: center; gap: 8px; }
+/* Both must stretch to fill their flex row, or the grid's `1fr` column sizes
+   to its content instead of the available width — which is what made the
+   header collapse to the left instead of lining up with each row's cells. */
+.inv-weapon-head, .inv-weapon-cells { flex: 1; min-width: 0; }
+/* Matches .icon-btn's width so the header's grid gets the same available
+   width as each row's (list width minus the remove button), keeping their
+   shared `1fr` column in step. */
+.inv-weapon-head-spacer { width: 26px; flex: none; }
 .inv-select, .inv-name {
   font: inherit; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px;
-  background: #fffdf7; color: var(--ink);
+  background: #fffdf7; color: var(--ink); width: 100%; box-sizing: border-box;
 }
-.inv-name { flex: 1; min-width: 120px; }
+.inv-wtype-props { font-size: 11px; color: var(--ink-faint); }
 .inv-wield-fixed { font-size: 12.5px; color: var(--ink-faint); padding: 0 4px; }
-.inv-weapon-stats { display: flex; gap: 10px; margin-left: auto; }
-.inv-stat {
-  font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap;
-  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+.inv-wdmg { font-size: 13px; white-space: nowrap; }
+/* Dice pool as pips, sized down to fit ten (the theoretical max: max
+   characteristic + max proficiency tier) in a compact column. */
+.inv-dots { display: flex; flex-wrap: wrap; gap: 3px; }
+.inv-dot {
+  width: 11px; height: 11px; border-radius: 50%; flex: none;
+  border: 1.5px solid var(--line-strong); background: #fffdf7;
 }
+.inv-dot.filled { background: var(--accent); border-color: color-mix(in srgb, var(--accent) 70%, black); }
 
 /* Talents summary */
 .talent-row {
@@ -1061,13 +1088,45 @@ a { color: var(--accent); }
   /* -- inventory -- */
   /* Ruled lines for a pencil, same idea as the HP/Mana "___" current value:
      the printed sheet is what a player actually writes on during a session. */
-  .ps-inv-notes { font-size: 8pt; margin-bottom: 3pt; }
+  .ps-inv-notes { font-size: 8pt; margin-bottom: 4pt; }
   .ps-inv-notes-line {
-    min-height: 10pt; line-height: 10pt; border-bottom: 0.4pt dotted #bbb;
+    /* Same ~2x ratio as the on-screen textarea: measured glyph metrics showed
+       a tighter ratio only clears descenders by ~1pt, which rendering/font
+       variance can eat into. */
+    line-height: 16pt; border-bottom: 0.4pt dotted #bbb;
   }
-  .ps-inv-weapons { margin-top: 2pt; }
-  .ps-inv-blank-row .ps-row-name { color: transparent; }
-  .ps-tag-blank { color: #999; border-style: dashed; }
+
+  /* Weapon type · properties · name/description · wielded · dice pool ·
+     damage, aligned by sharing one grid-template-columns across the header
+     and every row. Properties gets its own column (rather than stacking
+     under the type label) so it has room to lay out on its own. */
+  .ps-inv-whead, .ps-inv-wrow {
+    display: grid; grid-template-columns: 48pt 58pt 1fr 56pt 70pt 58pt;
+    column-gap: 6pt; align-items: center;
+  }
+  .ps-inv-whead {
+    font-size: 6.2pt; text-transform: uppercase; letter-spacing: .6pt; color: #555; font-weight: 700;
+    padding-bottom: 2pt; margin-bottom: 2pt; border-bottom: 0.6pt solid #999;
+  }
+  .ps-inv-wrow {
+    padding: 2pt 0; border-bottom: 0.4pt dotted #ddd;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .ps-inv-wtype { font-size: 7.6pt; font-weight: 700; }
+  .ps-inv-wprops { font-size: 6.2pt; color: #666; }
+  .ps-inv-wname { font-size: 7.6pt; }
+  .ps-inv-wwield { font-size: 7pt; color: #444; }
+  .ps-inv-wdmg { font-size: 7pt; }
+  /* Dice pool as pips (same language as characteristics/skills), sized down
+     to fit ten of them — the theoretical max characteristic + proficiency —
+     in one row of a compact column. */
+  .ps-inv-wdice .ps-dot { width: 4.6pt; height: 4.6pt; }
+  .ps-inv-wdice .ps-dots { gap: 1.3pt; }
+
+  .ps-inv-blank-row .ps-inv-wtype, .ps-inv-blank-row .ps-inv-wname,
+  .ps-inv-blank-row .ps-inv-wwield, .ps-inv-blank-row .ps-inv-wdmg {
+    min-height: 9pt; border-bottom: 0.4pt dotted #bbb;
+  }
 
   /* -- appendix -- */
   .ps-appendix { break-before: page; page-break-before: always; break-inside: auto; page-break-inside: auto; }

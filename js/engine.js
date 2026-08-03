@@ -142,9 +142,11 @@
     return charScore + profTier(state, cat.label);
   }
   // Damage note for a chosen wielding: two-handed or dual-wielding adds +1 to
-  // the number of successes rolled (main.tex "Attacking").
+  // the number of successes rolled (main.tex "Attacking"). Spelled out with a
+  // literal "#" rather than a filled-in number: the actual count depends on
+  // the roll, so this is a formula to read at the table, not a precomputed value.
   function weaponDamageNote(wielding) {
-    return (wielding === "2h" || wielding === "dual") ? "1 + successes" : "successes";
+    return (wielding === "2h" || wielding === "dual") ? "1 + # successes" : "# successes";
   }
 
   // ---- Tree-access surcharge ---------------------------------------------

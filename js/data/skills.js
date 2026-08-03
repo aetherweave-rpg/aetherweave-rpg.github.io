@@ -78,19 +78,22 @@ window.PROFICIENCY_KINDS = [
 // The 11 weapon categories (main.tex "Weapons"), with the mechanics fixed per
 // category: `characteristic` drives the attack roll and damage bonus,
 // `hands` is "1h" | "2h" | "either" (a per-weapon choice on the inventory
-// section for "either" categories). Label must match a PROFICIENCY_KINDS
-// "weapon" suggestion exactly, since that's how a carried weapon on the
-// inventory section looks up the character's trained tier.
+// section for "either" categories). `range` is "melee" or a number of yards;
+// `ranged` is whether it counts as Ranged for the melee-adjacency Risk rule
+// (a numeric `range` with `ranged: false` is Reach — still a melee weapon,
+// just from further away). Label must match a PROFICIENCY_KINDS "weapon"
+// suggestion exactly, since that's how a carried weapon on the inventory
+// section looks up the character's trained tier.
 window.WEAPON_CATEGORIES = [
-  { id: "light_blades",   label: "Light Blades",           characteristic: "cunning", hands: "1h" },
-  { id: "heavy_blades",   label: "Heavy Blades",           characteristic: "body",    hands: "either" },
-  { id: "axes",           label: "Axes",                   characteristic: "body",    hands: "either" },
-  { id: "maces",          label: "Maces",                  characteristic: "body",    hands: "either" },
-  { id: "polearms",       label: "Polearms",               characteristic: "body",    hands: "2h" },
-  { id: "whips",          label: "Whips",                  characteristic: "cunning", hands: "1h" },
-  { id: "staves",         label: "Staves",                 characteristic: "body",    hands: "2h" },
-  { id: "bows",           label: "Bows",                   characteristic: "cunning", hands: "2h" },
-  { id: "crossbows",      label: "Crossbows",              characteristic: "cunning", hands: "either" },
-  { id: "light_throwing", label: "Light Throwing Weapons", characteristic: "cunning", hands: "1h" },
-  { id: "heavy_throwing", label: "Heavy Throwing Weapons", characteristic: "body",    hands: "1h" },
+  { id: "light_blades",   label: "Light Blades",           characteristic: "cunning", hands: "1h",    range: "melee", ranged: false },
+  { id: "heavy_blades",   label: "Heavy Blades",           characteristic: "body",    hands: "either", range: "melee", ranged: false },
+  { id: "axes",           label: "Axes",                   characteristic: "body",    hands: "either", range: "melee", ranged: false },
+  { id: "maces",          label: "Maces",                  characteristic: "body",    hands: "either", range: "melee", ranged: false },
+  { id: "polearms",       label: "Polearms",               characteristic: "body",    hands: "2h",    range: 4,       ranged: false },
+  { id: "whips",          label: "Whips",                  characteristic: "cunning", hands: "1h",    range: 6,       ranged: false },
+  { id: "staves",         label: "Staves",                 characteristic: "body",    hands: "2h",    range: "melee", ranged: false },
+  { id: "bows",           label: "Bows",                   characteristic: "cunning", hands: "2h",    range: 30,      ranged: true },
+  { id: "crossbows",      label: "Crossbows",              characteristic: "cunning", hands: "either", range: 30,      ranged: true },
+  { id: "light_throwing", label: "Light Throwing Weapons", characteristic: "cunning", hands: "1h",    range: 20,      ranged: true },
+  { id: "heavy_throwing", label: "Heavy Throwing Weapons", characteristic: "body",    hands: "1h",    range: 20,      ranged: true },
 ];
