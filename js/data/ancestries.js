@@ -23,11 +23,18 @@ window.ANCESTRIES = [
         col: 1,
         grants: {
           mode: "pick",
-          count: 2,
           options: [
-            { anySkill: "noncombat" },
-            { anyProficiency: ["crafting", "instrument"] }
-          ]
+            {
+              anySkill: "noncombat"
+            },
+            {
+              anyProficiency: [
+                "crafting",
+                "instrument"
+              ]
+            }
+          ],
+          count: 2
         }
       },
       {

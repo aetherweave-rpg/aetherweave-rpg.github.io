@@ -19,6 +19,7 @@
       chars: {},              // characteristic key -> assigned value
       ancestry: null,
       ancestralTalents: [],   // picked talent ids
+      grantChoices: {},       // talent id -> [option key] for talents that grant a choice
       expandedAncestors: [],  // grouping-only ancestry ids manually expanded
       source: null,
       combatSkills: {},       // name -> tier
@@ -80,6 +81,15 @@
     host.appendChild(body);
 
     host.appendChild(footer());
+  }
+
+  // Re-gates the Next / Create button without rebuilding the step. A full
+  // render() would recurse: the grant chooser reports its state while it is
+  // being built, which happens inside render() itself.
+  function refreshFooter() {
+    var host = document.getElementById("wizard");
+    var old = host && host.querySelector(".wizard-footer");
+    if (old) host.replaceChild(footer(), old);
   }
 
   function intro() {
@@ -296,14 +306,73 @@
           if (i >= 0) draft.ancestralTalents.splice(i, 1);
           else if (draft.ancestralTalents.length < picks) draft.ancestralTalents.push(t.id);
           else { draft.ancestralTalents = [t.id]; }   // picks==1 → clicking swaps
+          pruneGrantChoices();
           render();
         };
         list.appendChild(card);
       });
       sub.appendChild(list);
       wrap.appendChild(sub);
+
+      // A picked talent that hands out a choice (Jack of all trades) resolves
+      // it here, inline, rather than in the learn-time modal the trees page
+      // uses: the wizard is a step flow, and this reads like every other pick
+      // grid in it. Same UI.grantChooser underneath, so the rules match.
+      draft.ancestralTalents.forEach(function (id) {
+        var t = Engine.talentById(id);
+        if (!t || !Engine.grantNeedsChoice(t)) return;
+        var gs = el("div", "sub-section");
+        gs.appendChild(el("h3", "sub-title", t.name + ": " + UI.grantLede(t).replace(/\.$/, "")));
+        // Seeded, not restored afterwards: the chooser reports its state once
+        // during setup, and an empty report would clobber choices the step
+        // randomizer had already rolled.
+        var chooser = UI.grantChooser(gs, t, draftState(), function (ok, keys) {
+          draft.grantChoices[id] = keys;
+          refreshFooter();              // the Next button follows the selection
+        }, draft.grantChoices[id] || []);
+        gs.appendChild(chooser.tally);
+        wrap.appendChild(gs);
+      });
     }
     return wrap;
+  }
+
+  // Drop choices belonging to talents that are no longer picked.
+  function pruneGrantChoices() {
+    Object.keys(draft.grantChoices).forEach(function (id) {
+      if (draft.ancestralTalents.indexOf(id) < 0) delete draft.grantChoices[id];
+    });
+  }
+
+  // A character-shaped object for the engine, from the draft so far. Skills and
+  // proficiencies are assigned in steps 4 and 5, *after* the step-2 grant
+  // choice, so they are usually empty here. They are included anyway so that
+  // coming back to step 2 later flags a pick the creation points already cover.
+  function draftState() {
+    var skills = {};
+    Object.keys(draft.combatSkills).forEach(function (n) { skills[n] = draft.combatSkills[n]; });
+    Object.keys(draft.ncSkills).forEach(function (n) { skills[n] = draft.ncSkills[n]; });
+    var profs = draft.combatProfs.concat(draft.ncProfs)
+      .filter(function (p) { return p.name && p.name.trim(); })
+      .map(function (p) { return { name: p.name.trim(), kind: p.kind, tier: p.tier || 0 }; });
+    return {
+      talents: draft.ancestralTalents.slice(),
+      spells: [],
+      skills: skills,
+      proficiencies: profs,
+      characteristics: draft.chars || {},
+      granted: { talents: [], spells: [], skills: {}, proficiencies: {} },
+      creation: { completed: false, ancestry: draft.ancestry, source: draft.source },
+    };
+  }
+
+  // True once every picked talent's grant has a legal selection.
+  function grantChoicesResolved() {
+    return draft.ancestralTalents.every(function (id) {
+      var t = Engine.talentById(id);
+      if (!t || !Engine.grantNeedsChoice(t)) return true;
+      return Engine.grantSelectionValid(t, draftState(), draft.grantChoices[id] || []).ok;
+    });
   }
 
   // ---- step 3: source of power -------------------------------------------
@@ -512,7 +581,17 @@
     var ancLines = [anc ? anc.name : "—"];
     draft.ancestralTalents.forEach(function (id) {
       var t = Engine.talentById(id);
-      if (t) ancLines.push("Talent: " + t.name);
+      if (!t) return;
+      ancLines.push("Talent: " + t.name);
+      // What that talent hands out is part of the character, so it belongs in
+      // the review rather than appearing unannounced on the sheet.
+      var picked = draft.grantChoices[id] || [];
+      if (!picked.length) return;
+      var byKey = {};
+      Engine.grantOptions(t, draftState()).forEach(function (o) { byKey[o.key] = o; });
+      picked.forEach(function (k) {
+        if (byKey[k]) ancLines.push("Granted: " + byKey[k].label);
+      });
     });
     wrap.appendChild(reviewBlock("Ancestry", ancLines));
 
@@ -572,6 +651,27 @@
     draft.ancestralTalents = shuffle(Engine.creationPicksForChain(a.id))
       .slice(0, picks)
       .map(function (t) { return t.id; });
+    randomizeGrantChoices();
+  }
+
+  // A rolled character has to be complete, so anything the rolled talents grant
+  // is rolled too. Blocked options are skipped: they would not validate.
+  function randomizeGrantChoices() {
+    draft.grantChoices = {};
+    draft.ancestralTalents.forEach(function (id) {
+      var t = Engine.talentById(id);
+      if (!t || !Engine.grantNeedsChoice(t)) return;
+      var g = Engine.grantsOf(t);
+      var open = shuffle(Engine.grantOptions(t, draftState()).filter(function (o) { return o.available; }));
+      var keys = [];
+      if (g.mode === "budget") {
+        var left = g.count;
+        open.forEach(function (o) { if (o.cost <= left) { keys.push(o.key); left -= o.cost; } });
+      } else {
+        keys = open.slice(0, g.count).map(function (o) { return o.key; });
+      }
+      draft.grantChoices[id] = keys;
+    });
   }
 
   function randomSource() {
@@ -697,6 +797,7 @@
       var picks = CREATION.ancestralTalentPicks;
       if (draft.ancestralTalents.length !== picks)
         return "Pick " + picks + " ancestral talent" + (picks === 1 ? "" : "s") + ".";
+      if (!grantChoicesResolved()) return "Finish the choices your ancestral talent grants.";
       return null;
     }
 
@@ -783,11 +884,22 @@
 
       s.proficiencies = profList.map(function (p) { return { name: p.name, kind: p.kind, tier: p.tier }; });
       s.talents = gTalents.slice();
+      s.spells = [];
       s.charAdvances = {};
+      s.grantChoices = {};
       s.granted = {
-        talents: gTalents.slice(), skills: gSkills, proficiencies: gProfs,
+        talents: gTalents.slice(), spells: [], skills: gSkills, proficiencies: gProfs,
         characteristics: baseChars,
       };
+
+      // Applied last, on the finished state: a picked talent that grants a
+      // choice (Jack of all trades) folds its picks into the same baseline the
+      // creation points built, and records them so refunding the talent later
+      // takes them back (§4.9).
+      gTalents.forEach(function (id) {
+        var t = Engine.talentById(id);
+        if (t && Engine.grantsOf(t)) Engine.applyGrants(s, id, draft.grantChoices[id] || []);
+      });
 
       s.creation = { completed: true, skipped: false, ancestry: draft.ancestry, source: draft.source };
       s.identity.ancestry = ancestry ? ancestry.name : "";

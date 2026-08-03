@@ -232,91 +232,118 @@
     return { close: close, body: body };
   }
 
-  // ---- Grant picker -------------------------------------------------------
-  // Opened when learning something that hands out a choice (DESIGN.md §4.9).
-  // The choice is part of the purchase: `onConfirm(keys)` runs only for a
-  // complete, legal selection, and dismissing cancels the purchase outright.
+  // ---- Grant chooser ------------------------------------------------------
+  // The option rows for a grant (DESIGN.md §4.9), rendered into `host`. Shared
+  // by the learn-time modal below and the creation wizard's inline section, so
+  // both offer and validate exactly the same thing.
+  //
   // An option the character already has stays selectable on purpose. That is
   // the refund path: picking it moves it into the granted baseline, so
   // computeSpent stops charging for what they paid.
-  function grantPicker(entry, state, onConfirm) {
+  //
+  // `onState(ok, keys)` fires on every change, INCLUDING once during setup.
+  // Pass `initialKeys` to seed the selection: a caller that re-renders (the
+  // wizard does, constantly) would otherwise see that setup call report an
+  // empty selection and overwrite the very keys it was about to restore.
+  function grantChooser(host, entry, state, onState, initialKeys) {
     var g = Engine.grantsOf(entry);
     var options = Engine.grantOptions(entry, state);
     var chosen = {};
+    (initialKeys || []).forEach(function (k) { chosen[k] = true; });
 
+    var list = el("div", "grant-list");
+    var tally = el("span", "grant-tally");
+
+    function selectedKeys() {
+      return options.filter(function (o) { return chosen[o.key]; }).map(function (o) { return o.key; });
+    }
+    function refresh() {
+      var keys = selectedKeys();
+      var used = options.filter(function (o) { return chosen[o.key]; })
+        .reduce(function (n, o) { return n + o.cost; }, 0);
+      tally.textContent = g.mode === "budget"
+        ? used + " of " + g.count + " exp"
+        : keys.length + " of " + g.count + " chosen";
+      var check = Engine.grantSelectionValid(entry, state, keys);
+      tally.className = "grant-tally" + (check.ok ? " ok" : "");
+      drawRows();
+      if (onState) onState(check.ok, keys);
+    }
+    function drawRows() {
+      list.innerHTML = "";
+      options.forEach(function (o) {
+        var picked = !!chosen[o.key];
+        var row = el("label", "grant-row" +
+          (picked ? " picked" : "") + (o.available ? "" : " blocked") + (o.owned ? " owned" : ""));
+        var cb = el("input");
+        cb.type = "checkbox";
+        cb.checked = picked;
+        cb.disabled = !o.available;
+        cb.onchange = function () {
+          if (cb.checked) chosen[o.key] = true; else delete chosen[o.key];
+          refresh();
+        };
+        row.appendChild(cb);
+
+        var info = el("div", "grant-info");
+        var line = el("span", "grant-name", o.label);
+        if (o.note) line.appendChild(el("span", "grant-note", o.note));
+        if (o.cost) line.appendChild(el("span", "grant-cost", o.cost + " exp"));
+        info.appendChild(line);
+        if (o.owned)
+          info.appendChild(el("span", "grant-warn", "Already known. Picking it refunds the exp you spent."));
+        else if (!o.available)
+          info.appendChild(el("span", "grant-blocked", o.blocked || "You do not qualify yet."));
+        row.appendChild(info);
+        list.appendChild(row);
+      });
+    }
+
+    host.appendChild(list);
+    refresh();
+    return {
+      tally: tally,
+      setKeys: function (keys) {
+        chosen = {};
+        (keys || []).forEach(function (k) { chosen[k] = true; });
+        refresh();
+      },
+    };
+  }
+
+  function grantLede(entry) {
+    var g = Engine.grantsOf(entry);
+    return g.mode === "budget"
+      ? "Spend up to " + g.count + " exp on the following. They cost you nothing."
+      : "Choose " + g.count + ". They cost you nothing.";
+  }
+
+  // Opened when learning something that hands out a choice. The choice is part
+  // of the purchase: `onConfirm(keys)` runs only for a complete, legal
+  // selection, and dismissing cancels the purchase outright.
+  function grantPicker(entry, state, onConfirm) {
     return modal(entry.name + " grants", function (body, close) {
-      body.appendChild(el("p", "modal-lede", g.mode === "budget"
-        ? "Spend up to " + g.count + " exp on the following. They cost you nothing."
-        : "Choose " + g.count + ". They cost you nothing."));
+      body.appendChild(el("p", "modal-lede", grantLede(entry)));
 
-      var list = el("div", "grant-list");
-      var footer = el("div", "modal-actions");
-      var tally = el("span", "grant-tally");
       var confirm = el("button", "btn btn-primary", "Confirm");
       confirm.type = "button";
       var cancel = el("button", "btn", "Cancel");
       cancel.type = "button";
       cancel.onclick = close;
 
-      function selectedKeys() {
-        return options.filter(function (o) { return chosen[o.key]; }).map(function (o) { return o.key; });
-      }
-      function refresh() {
-        var keys = selectedKeys();
-        var used = options.filter(function (o) { return chosen[o.key]; })
-          .reduce(function (n, o) { return n + o.cost; }, 0);
-        tally.textContent = g.mode === "budget"
-          ? used + " of " + g.count + " exp"
-          : keys.length + " of " + g.count + " chosen";
-        var check = Engine.grantSelectionValid(entry, state, keys);
-        confirm.disabled = !check.ok;
-        tally.className = "grant-tally" + (check.ok ? " ok" : "");
-        drawRows();
-      }
+      var picked = [];
+      var chooser = grantChooser(body, entry, state, function (ok, keys) {
+        confirm.disabled = !ok;
+        picked = keys;
+      });
 
-      function drawRows() {
-        list.innerHTML = "";
-        options.forEach(function (o) {
-          var picked = !!chosen[o.key];
-          var row = el("label", "grant-row" +
-            (picked ? " picked" : "") + (o.available ? "" : " blocked") + (o.owned ? " owned" : ""));
-          var cb = el("input");
-          cb.type = "checkbox";
-          cb.checked = picked;
-          cb.disabled = !o.available;
-          cb.onchange = function () {
-            if (cb.checked) chosen[o.key] = true; else delete chosen[o.key];
-            refresh();
-          };
-          row.appendChild(cb);
+      confirm.onclick = function () { close(); onConfirm(picked); };
 
-          var info = el("div", "grant-info");
-          var line = el("span", "grant-name", o.label);
-          if (o.note) line.appendChild(el("span", "grant-note", o.note));
-          if (o.cost) line.appendChild(el("span", "grant-cost", o.cost + " exp"));
-          info.appendChild(line);
-          if (o.owned)
-            info.appendChild(el("span", "grant-warn", "Already known. Picking it refunds the exp you spent."));
-          else if (!o.available)
-            info.appendChild(el("span", "grant-blocked", o.blocked || "You do not qualify yet."));
-          row.appendChild(info);
-          list.appendChild(row);
-        });
-      }
-
-      confirm.onclick = function () {
-        var keys = selectedKeys();
-        if (!Engine.grantSelectionValid(entry, state, keys).ok) return;
-        close();
-        onConfirm(keys);
-      };
-
-      body.appendChild(list);
-      footer.appendChild(tally);
+      var footer = el("div", "modal-actions");
+      footer.appendChild(chooser.tally);
       footer.appendChild(cancel);
       footer.appendChild(confirm);
       body.appendChild(footer);
-      refresh();
     });
   }
 
@@ -358,6 +385,6 @@
     renderStorageWarning: renderStorageWarning,
     renderCreationGate: renderCreationGate,
     toast: toast,
-    modal: modal, grantPicker: grantPicker,
+    modal: modal, grantPicker: grantPicker, grantChooser: grantChooser, grantLede: grantLede,
   };
 })();

@@ -13,7 +13,6 @@ window.COMBINATIONS = [
       "arms",
       "elemental"
     ],
-    description: "Ammunition charged with raw element, for those who fight at range.",
     talents: [
       {
         id: "arel_elemental_shot",
@@ -38,9 +37,15 @@ window.COMBINATIONS = [
           mode: "pick",
           count: 1,
           options: [
-            { talent: "arel_flaming_arrow" },
-            { talent: "arel_frost_arrow" },
-            { talent: "arel_lightning_arrow" }
+            {
+              talent: "arel_flaming_arrow"
+            },
+            {
+              talent: "arel_frost_arrow"
+            },
+            {
+              talent: "arel_lightning_arrow"
+            }
           ]
         }
       },
