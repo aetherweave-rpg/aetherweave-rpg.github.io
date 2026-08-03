@@ -232,6 +232,94 @@
     return { close: close, body: body };
   }
 
+  // ---- Grant picker -------------------------------------------------------
+  // Opened when learning something that hands out a choice (DESIGN.md §4.9).
+  // The choice is part of the purchase: `onConfirm(keys)` runs only for a
+  // complete, legal selection, and dismissing cancels the purchase outright.
+  // An option the character already has stays selectable on purpose. That is
+  // the refund path: picking it moves it into the granted baseline, so
+  // computeSpent stops charging for what they paid.
+  function grantPicker(entry, state, onConfirm) {
+    var g = Engine.grantsOf(entry);
+    var options = Engine.grantOptions(entry, state);
+    var chosen = {};
+
+    return modal(entry.name + " grants", function (body, close) {
+      body.appendChild(el("p", "modal-lede", g.mode === "budget"
+        ? "Spend up to " + g.count + " exp on the following. They cost you nothing."
+        : "Choose " + g.count + ". They cost you nothing."));
+
+      var list = el("div", "grant-list");
+      var footer = el("div", "modal-actions");
+      var tally = el("span", "grant-tally");
+      var confirm = el("button", "btn btn-primary", "Confirm");
+      confirm.type = "button";
+      var cancel = el("button", "btn", "Cancel");
+      cancel.type = "button";
+      cancel.onclick = close;
+
+      function selectedKeys() {
+        return options.filter(function (o) { return chosen[o.key]; }).map(function (o) { return o.key; });
+      }
+      function refresh() {
+        var keys = selectedKeys();
+        var used = options.filter(function (o) { return chosen[o.key]; })
+          .reduce(function (n, o) { return n + o.cost; }, 0);
+        tally.textContent = g.mode === "budget"
+          ? used + " of " + g.count + " exp"
+          : keys.length + " of " + g.count + " chosen";
+        var check = Engine.grantSelectionValid(entry, state, keys);
+        confirm.disabled = !check.ok;
+        tally.className = "grant-tally" + (check.ok ? " ok" : "");
+        drawRows();
+      }
+
+      function drawRows() {
+        list.innerHTML = "";
+        options.forEach(function (o) {
+          var picked = !!chosen[o.key];
+          var row = el("label", "grant-row" +
+            (picked ? " picked" : "") + (o.available ? "" : " blocked") + (o.owned ? " owned" : ""));
+          var cb = el("input");
+          cb.type = "checkbox";
+          cb.checked = picked;
+          cb.disabled = !o.available;
+          cb.onchange = function () {
+            if (cb.checked) chosen[o.key] = true; else delete chosen[o.key];
+            refresh();
+          };
+          row.appendChild(cb);
+
+          var info = el("div", "grant-info");
+          var line = el("span", "grant-name", o.label);
+          if (o.note) line.appendChild(el("span", "grant-note", o.note));
+          if (o.cost) line.appendChild(el("span", "grant-cost", o.cost + " exp"));
+          info.appendChild(line);
+          if (o.owned)
+            info.appendChild(el("span", "grant-warn", "Already known. Picking it refunds the exp you spent."));
+          else if (!o.available)
+            info.appendChild(el("span", "grant-blocked", o.blocked || "You do not qualify yet."));
+          row.appendChild(info);
+          list.appendChild(row);
+        });
+      }
+
+      confirm.onclick = function () {
+        var keys = selectedKeys();
+        if (!Engine.grantSelectionValid(entry, state, keys).ok) return;
+        close();
+        onConfirm(keys);
+      };
+
+      body.appendChild(list);
+      footer.appendChild(tally);
+      footer.appendChild(cancel);
+      footer.appendChild(confirm);
+      body.appendChild(footer);
+      refresh();
+    });
+  }
+
   // Wire an #export-pdf button to the browser's print → "Save as PDF". The page
   // does not print itself: js/print-sheet.js builds a separate paper document
   // that the print stylesheet swaps in (css/style.css). `getTitle` sets the
@@ -270,6 +358,6 @@
     renderStorageWarning: renderStorageWarning,
     renderCreationGate: renderCreationGate,
     toast: toast,
-    modal: modal,
+    modal: modal, grantPicker: grantPicker,
   };
 })();

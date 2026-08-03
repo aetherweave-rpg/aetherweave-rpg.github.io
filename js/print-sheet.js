@@ -236,7 +236,8 @@
       .map(function (r) { return r.label; }).join(", ");
   }
 
-  function talentEntry(t, state) {
+  function talentEntry(raw, state) {
+    var t = Engine.effective(raw, state);
     var status = t.fromSource ? { met: true, granted: true, reasons: [] } : Engine.requirementStatus(t, state);
     var source = t.fromSource ? t.sourceName : ((Engine.treeById(t.domain) || {}).name || t.domain);
     var cost = t.fromSource ? "granted by " + t.sourceName
@@ -260,7 +261,8 @@
     };
   }
 
-  function spellEntry(sp, state) {
+  function spellEntry(rawSpell, state) {
+    var sp = Engine.effective(rawSpell, state);
     var mana = Engine.spellManaCost(sp);
     return {
       id: sp.id, icon: sp.icon || sp.name.charAt(0), name: sp.name,
@@ -280,7 +282,9 @@
     var owned = Engine.ownedTalents(state);
     var groups = [];
 
-    [["Abilities", function (t) { return t.ability !== "maneuver"; }],
+    // Modifiers are absent by design: the paper sheet shows the modified entry,
+    // not the modification (§4.8), same as the screen.
+    [["Abilities", function (t) { return t.ability !== "maneuver" && !Engine.isModifier(t); }],
      ["Maneuvers", function (t) { return t.ability === "maneuver"; }]].forEach(function (g) {
       var list = owned.filter(g[1]).sort(sortTalents);
       if (list.length) {

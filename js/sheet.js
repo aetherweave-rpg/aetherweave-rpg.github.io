@@ -474,8 +474,13 @@
       String(a.domain || a.sourceName || "").localeCompare(String(b.domain || b.sourceName || ""));
   }
 
+  // Modifiers never get a row of their own: their effect is already inside the
+  // entry they modify, so listing both would ask the player to merge the two
+  // by hand. They stay refundable from the tree page (§4.8).
   function abilitiesSection(state) {
-    var owned = Engine.ownedTalents(state).filter(function (t) { return t.ability !== "maneuver"; });
+    var owned = Engine.ownedTalents(state).filter(function (t) {
+      return t.ability !== "maneuver" && !Engine.isModifier(t);
+    });
     if (!owned.length) return null;
     var s = section("Abilities", owned.length + "");
     owned.sort(sortTalents).forEach(function (t) { s.appendChild(talentRow(t, state)); });
@@ -538,7 +543,10 @@
         e.stopPropagation();
         var chk = Engine.canRefund(t.id, State.get());
         if (!chk.ok) { UI.toast("Can't refund " + t.name + ": needed by " + (chk.blockedBy || []).join(", "), "error"); return; }
-        State.update(function (s2) { s2.talents = s2.talents.filter(function (id) { return id !== t.id; }); });
+        State.update(function (s2) {
+          Engine.revokeGrants(s2, t.id);
+          s2.talents = s2.talents.filter(function (id) { return id !== t.id; });
+        });
       };
       row.appendChild(del);
     }
@@ -577,7 +585,8 @@
       if (!owned.length) {
         block.appendChild(el("div", "sheet-hint", "Able to cast, but no spells learned yet."));
       } else {
-        owned.forEach(function (sp) {
+        owned.forEach(function (raw) {
+          var sp = Engine.effective(raw, state);   // a modifier may reshape a spell too
           var status = Engine.spellRequirementStatus(sp, state);
           var isOpen = !!expanded[sp.id];
           var row = el("div", "talent-row spell-sheet-row expandable" + (status.met ? "" : " invalid") + (isOpen ? " expanded" : ""));
@@ -612,7 +621,10 @@
           var del = el("button", "icon-btn", "✕"); del.type = "button"; del.title = "Unlearn";
           del.onclick = function (e) {
             e.stopPropagation();
-            State.update(function (s2) { s2.spells = (s2.spells || []).filter(function (id) { return id !== sp.id; }); });
+            State.update(function (s2) {
+              Engine.revokeGrants(s2, sp.id);
+              s2.spells = (s2.spells || []).filter(function (id) { return id !== sp.id; });
+            });
           };
           row.appendChild(del);
           row.onclick = function () { toggleExpand(sp.id); };

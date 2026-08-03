@@ -82,7 +82,9 @@ window.DOMAINS = [
         uses: 3,
         castingTime: 1,
         range: "self",
-        target: ["self"],
+        target: [
+          "self"
+        ],
         duration: "indefinite"
       }
     ]
@@ -108,22 +110,30 @@ window.DOMAINS = [
         uses: 2,
         castingTime: "action",
         range: "touch",
-        target: ["enemy"],
+        target: [
+          "enemy"
+        ],
         duration: "instantaneous"
       },
       {
         id: "arms_ricochet",
         name: "Ricochet",
-        description: "You can hit multiple enemies with a single throw of your weapon. \nMake an attack with your throwing weapon against an enemy in weapon range. If successful, you can make another attack against an enemy in range. {arms_advanced_ricochet:\"If this additional attack is successful, make another attack against a third enemy in range.\">arms_ricochet:\"\"}\n\nRisk: If a Risk is rolled, no further attacks are made.\nReward: If least 1 Reward is rolled the next risk effect is cancelled.",
+        flavour: "You can hit multiple enemies with a single throw of your weapon.",
+        description: "Make an attack with your throwing weapon against an enemy in weapon range. If successful, you can make another attack against an enemy in range. {arms_advanced_ricochet:\"If this additional attack is successful, make another attack against a third enemy in range.\">arms_ricochet:\"\"}\n\nRisk: If a Risk is rolled, no further attacks are made.\nReward: If least 1 Reward is rolled the next risk effect is cancelled.",
         pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
         col: 1,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "weapon",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
         requires: {
-          characteristics: {
-            cunning: 2
-          },
           proficiencies: {
             "Throwing Weapons": 2
           }
@@ -138,6 +148,10 @@ window.DOMAINS = [
         tier: 1,
         row: 1,
         col: 1,
+        ability: "modifier",
+        modifies: {
+          arms_ricochet: {}
+        },
         requires: {
           talents: [
             "arms_ricochet"
@@ -187,7 +201,9 @@ window.DOMAINS = [
         uses: 2,
         castingTime: "action",
         range: 2,
-        target: ["enemy"],
+        target: [
+          "enemy"
+        ],
         duration: "indefinite"
       },
       {
@@ -233,9 +249,18 @@ window.DOMAINS = [
         uses: 2,
         castingTime: "minor_action",
         range: "self",
-        target: ["enemy"],
-        duration: { value: 1, unit: "rounds" },
-        aoe: { shape: "circle", origin: "self", size: 10 },
+        target: [
+          "enemy"
+        ],
+        duration: {
+          value: 1,
+          unit: "rounds"
+        },
+        aoe: {
+          shape: "circle",
+          origin: "self",
+          size: 10
+        },
         requires: {
           skills: {
             Intimidation: 2
@@ -265,9 +290,15 @@ window.DOMAINS = [
         uses: 2,
         castingTime: "action",
         range: 10,
-        target: ["enemy"],
+        target: [
+          "enemy"
+        ],
         duration: "instantaneous",
-        aoe: { shape: "circle", origin: "point", size: 3 }
+        aoe: {
+          shape: "circle",
+          origin: "point",
+          size: 3
+        }
       }
     ]
   }

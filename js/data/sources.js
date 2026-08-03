@@ -105,7 +105,10 @@ window.SOURCES = [
         uses: 4,
         castingTime: "minor_action",
         range: 10,
-        target: ["ally", "enemy"],
+        target: [
+          "ally",
+          "enemy"
+        ],
         duration: "instantaneous"
       }
     ]
@@ -128,7 +131,9 @@ window.SOURCES = [
         uses: 2,
         castingTime: "minor_action",
         range: "self",
-        target: ["self"],
+        target: [
+          "self"
+        ],
         duration: "instantaneous"
       }
     ]
@@ -152,7 +157,11 @@ window.SOURCES = [
         usesPer: "scene",
         castingTime: "action",
         range: 10,
-        target: ["self", "ally", "enemy"],
+        target: [
+          "self",
+          "ally",
+          "enemy"
+        ],
         duration: "instantaneous"
       }
     ]

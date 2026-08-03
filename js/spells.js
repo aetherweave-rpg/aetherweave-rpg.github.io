@@ -195,7 +195,8 @@
   // requirements — the automatic proficiency gate plus any authored requires
   // — are met) or click an owned one to unlearn (nothing depends on a spell,
   // so there's no refund-blocking simulation to run).
-  function spellNode(sp, state) {
+  function spellNode(raw, state) {
+    var sp = Engine.effective(raw, state);   // name/icon may be modified
     var status = Engine.spellRequirementStatus(sp, state);
     var owned = status.owned, met = status.met;
     var cls = "node ";
@@ -217,10 +218,12 @@
       (sp.cost || 0) + (sp.pool === "combat" ? "C" : "NC"));
     node.appendChild(cost);
 
-    node.addEventListener("mouseenter", function () { showSpellTooltip(sp, status, node); });
+    // The authored spell, not `sp`: Engine.effective is not idempotent, and
+    // learn/unlearn must act on the database entry.
+    node.addEventListener("mouseenter", function () { showSpellTooltip(raw, status, node); });
     node.addEventListener("mousemove", positionTooltip);
     node.addEventListener("mouseleave", hideTooltip);
-    node.addEventListener("click", function () { onSpellClick(sp); });
+    node.addEventListener("click", function () { onSpellClick(raw); });
     return node;
   }
 
@@ -229,16 +232,30 @@
     var state = State.get();
     var status = Engine.spellRequirementStatus(sp, state);
     if (status.owned) {
-      State.update(function (s) { s.spells = (s.spells || []).filter(function (id) { return id !== sp.id; }); });
+      State.update(function (s) {
+        Engine.revokeGrants(s, sp.id);           // takes back what it handed out
+        s.spells = (s.spells || []).filter(function (id) { return id !== sp.id; });
+      });
       UI.toast("Unlearned " + sp.name);
     } else {
       if (!status.met) { UI.toast("Requirements not met for " + sp.name, "error"); return; }
-      State.update(function (s) { s.spells = s.spells || []; s.spells.push(sp.id); });
-      UI.toast("Learned " + sp.name + " (+" + (sp.cost || 0) + (sp.pool === "combat" ? "C" : "NC") + " exp)", "success");
+      var learned = function (keys) {
+        State.update(function (s) {
+          s.spells = s.spells || [];
+          s.spells.push(sp.id);
+          if (Engine.grantsOf(sp)) Engine.applyGrants(s, sp.id, keys || []);
+        });
+        UI.toast("Learned " + sp.name + " (+" + (sp.cost || 0) + (sp.pool === "combat" ? "C" : "NC") + " exp)", "success");
+      };
+      if (Engine.grantNeedsChoice(sp)) UI.grantPicker(sp, state, learned);
+      else learned([]);
     }
   }
 
-  function showSpellTooltip(sp, status, node) {
+  function showSpellTooltip(rawSpell, status, node) {
+    // Folds in any owned modifier's field changes (§4.8); cost and tier are
+    // not modifiable, so the price and the castable-tier gate are unaffected.
+    var sp = Engine.effective(rawSpell, State.get());
     var tip = tooltipEl(); tip.innerHTML = "";
     tip.appendChild(el("div", "tt-name", sp.name));
 

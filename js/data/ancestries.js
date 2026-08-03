@@ -20,7 +20,15 @@ window.ANCESTRIES = [
         cost: 2,
         tier: 1,
         row: 0,
-        col: 1
+        col: 1,
+        grants: {
+          mode: "pick",
+          count: 2,
+          options: [
+            { anySkill: "noncombat" },
+            { anyProficiency: ["crafting", "instrument"] }
+          ]
+        }
       },
       {
         id: "anch_courageous",
@@ -365,7 +373,9 @@ window.ANCESTRIES = [
         uses: 2,
         castingTime: "action",
         range: "touch",
-        target: ["enemy"],
+        target: [
+          "enemy"
+        ],
         duration: "instantaneous"
       },
       {
@@ -381,7 +391,9 @@ window.ANCESTRIES = [
         uses: 1,
         castingTime: "minor_action",
         range: "self",
-        target: ["self"],
+        target: [
+          "self"
+        ],
         duration: "instantaneous"
       },
       {

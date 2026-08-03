@@ -86,6 +86,9 @@
   function grantedOf(state) {
     return state.granted || { talents: [], skills: {}, proficiencies: {} };
   }
+  function isGrantedSpell(state, id) {
+    return (grantedOf(state).spells || []).indexOf(id) >= 0;
+  }
   function isGrantedTalent(state, id) {
     return grantedOf(state).talents.indexOf(id) >= 0;
   }
@@ -209,9 +212,11 @@
     });
 
     // Learned spells: each carries its own exp cost drawn from its own pool.
+    // A spell handed out by a grant (§4.9) sits in the granted baseline and is
+    // free, the same way a granted talent is.
     (state.spells || []).forEach(function (id) {
       var sp = spellsById[id];
-      if (!sp) return;
+      if (!sp || isGrantedSpell(state, id)) return;
       var cost = sp.cost || 0;
       spent[sp.pool === "combat" ? "combat" : "noncombat"] += cost;
       spent.breakdown.spells += cost;
@@ -311,11 +316,24 @@
     });
   }
 
-  // A combination tree unlocks once the character has at least one talent
-  // (granted talents count) in BOTH of its parent trees.
+  function hasSpellInDomain(state, domainId) {
+    return (state.spells || []).some(function (id) { return spellDomainById[id] === domainId; });
+  }
+
+  // Investment in one of a combination tree's parents: a talent in that tree,
+  // or — for a magical domain — a spell learned from it. Granted ones count.
+  function hasInvestmentInTree(state, treeId) {
+    return hasTalentInTree(state, treeId) || hasSpellInDomain(state, treeId);
+  }
+
+  // A combination tree unlocks once the character has at least one talent OR
+  // spell in BOTH of its parent trees. Spells count because a magical domain's
+  // content lives largely on the Spells page: requiring a *talent* would make a
+  // combination tree unreachable for a caster who had invested heavily in the
+  // domain but bought no talent in it.
   function combinationUnlocked(tree, state) {
     if (!tree || tree.kind !== "combination") return true;
-    return (tree.parents || []).every(function (pid) { return hasTalentInTree(state, pid); });
+    return (tree.parents || []).every(function (pid) { return hasInvestmentInTree(state, pid); });
   }
 
   // Ancestries form a hierarchy (ancestry → sub → sub-sub) via `parent`. A
@@ -374,7 +392,7 @@
       });
       reasons.push({
         type: "combination",
-        label: "Talents in " + parentNames.join(" and "),
+        label: "Talents or spells in " + parentNames.join(" and "),
         detail: "combination tree",
         met: combinationUnlocked(tree, state),
       });
@@ -506,6 +524,10 @@
     if (isGrantedTalent(state, talentId)) return { ok: false, reason: "granted", granted: true };
 
     var sim = JSON.parse(JSON.stringify(state));
+    // Refunding also takes back whatever this talent granted (§4.9), so the
+    // simulation has to run on the post-revocation state — otherwise a talent
+    // standing only on a granted prerequisite would look safe to refund.
+    revokeGrants(sim, talentId);
     sim.talents = sim.talents.filter(function (id) { return id !== talentId; });
     var broken = [];
     sim.talents.forEach(function (id) {
@@ -609,6 +631,139 @@
       });
       Object.keys(reqs.characteristics || {}).forEach(function (k) {
         if (!charKeys[k]) problems.push(t.id + ": unknown characteristic '" + k + "'");
+      });
+    });
+
+    // Grants (§4.9). Anything that hands out content must hand out something
+    // that exists, and a choice the player can never complete is a dead talent.
+    function checkGrants(label, entry) {
+      var g = grantsOf(entry);
+      if (!g) return;
+      if (["all", "pick", "budget"].indexOf(g.mode) < 0) {
+        problems.push(label + ": unknown grants mode '" + g.mode + "' (all, pick or budget)");
+        return;
+      }
+      if (!g.options.length) { problems.push(label + ": grants nothing (empty options)"); return; }
+      if (g.mode !== "all" && (typeof g.count !== "number" || g.count < 1))
+        problems.push(label + ": grants mode '" + g.mode + "' needs a count of at least 1");
+
+      var concrete = 0;
+      g.options.forEach(function (o) {
+        if (o.anySkill) {
+          if (!(window.SKILLS || {})[o.anySkill])
+            problems.push(label + ": grants anySkill '" + o.anySkill + "' (expected combat or noncombat)");
+          else concrete += (window.SKILLS[o.anySkill] || []).length;
+          if (g.mode === "all")
+            problems.push(label + ": grants mode 'all' cannot use a category option (nothing picks one)");
+          return;
+        }
+        if (o.anyProficiency) {
+          var kinds = Array.isArray(o.anyProficiency) ? o.anyProficiency : [o.anyProficiency];
+          kinds.forEach(function (k) {
+            if (!findKind(k)) problems.push(label + ": grants anyProficiency of unknown kind '" + k + "'");
+            else concrete += ((findKind(k) || {}).suggestions || []).length;
+          });
+          if (g.mode === "all")
+            problems.push(label + ": grants mode 'all' cannot use a category option (nothing picks one)");
+          return;
+        }
+        concrete++;
+        if (o.talent) {
+          if (!byId[o.talent]) problems.push(label + ": grants unknown talent '" + o.talent + "'");
+          else if (o.talent === entry.id) problems.push(label + ": grants itself");
+        } else if (o.spell) {
+          if (!spellsById[o.spell]) problems.push(label + ": grants unknown spell '" + o.spell + "'");
+        } else if (o.skill) {
+          if (!skillNames[o.skill]) problems.push(label + ": grants unknown skill '" + o.skill + "'");
+        } else if (o.proficiency) {
+          if (!findKind(o.kind))
+            problems.push(label + ": grants proficiency '" + o.proficiency + "' of unknown kind '" + o.kind + "'");
+        } else {
+          problems.push(label + ": a grant option names nothing (talent, spell, skill, " +
+            "proficiency, anySkill or anyProficiency)");
+        }
+      });
+      if (g.mode === "pick" && g.count > concrete)
+        problems.push(label + ": grants asks for " + g.count + " picks but offers only " + concrete);
+    }
+    allTalents.forEach(function (t) { checkGrants("talent '" + t.id + "'", t); });
+    Object.keys(window.SPELLS || {}).forEach(function (domainId) {
+      (window.SPELLS[domainId] || []).forEach(function (sp) { checkGrants("spell '" + sp.id + "'", sp); });
+    });
+
+    // A typo'd `ability` would otherwise fall through to passive-like
+    // behaviour everywhere and never be noticed.
+    allTalents.forEach(function (t) {
+      if (t.ability !== undefined && ["passive", "maneuver", "modifier"].indexOf(t.ability) < 0)
+        problems.push(t.id + ": unknown ability '" + t.ability + "' (passive, maneuver or modifier)");
+    });
+
+    // Modifiers (§4.8). The `modifies` block is both the field-change spec and
+    // the declared target link, so it carries most of the rules.
+    allTalents.forEach(function (t) {
+      var tree = treeById(t.domain);
+      if (t.modifies && !isModifier(t)) {
+        problems.push(t.id + ": has a `modifies` block but is not ability: \"modifier\"");
+        return;
+      }
+      if (!isModifier(t)) return;
+
+      ["uses", "usesPer", "castingTime", "range", "target", "duration", "aoe"].forEach(function (f) {
+        if (t[f] !== undefined)
+          problems.push(t.id + ": a modifier grants nothing itself, so it must not carry '" + f + "'");
+      });
+
+      var targets = Object.keys(t.modifies || {});
+      if (!targets.length) {
+        problems.push(t.id + ": a modifier must name at least one target in `modifies`");
+        return;
+      }
+      targets.forEach(function (targetId) {
+        var target = byId[targetId] || spellsById[targetId];
+        if (!target) {
+          problems.push(t.id + ": modifies unknown talent/spell '" + targetId + "'");
+          return;
+        }
+        if (targetId === t.id) { problems.push(t.id + ": modifies itself"); return; }
+        if (isModifier(target)) {
+          problems.push(t.id + ": modifies '" + targetId + "', which is itself a modifier " +
+            "(modifiers apply to passives, maneuvers and spells only)");
+          return;
+        }
+        // Same cross-tree rule prerequisites follow: only a combination tree
+        // may reach outside itself, and only into its own two parents.
+        var targetDomain = target.domain || spellDomainById[targetId];
+        if (targetDomain !== t.domain) {
+          if (!tree || tree.kind !== "combination")
+            problems.push(t.id + ": modifies '" + targetId + "' in another tree, which is only allowed in combination trees");
+          else if ((tree.parents || []).indexOf(targetDomain) < 0)
+            problems.push(t.id + ": modifies '" + targetId + "', not in a parent tree (" +
+              (tree.parents || []).join(", ") + ")");
+        }
+
+        var spec = t.modifies[targetId] || {};
+        Object.keys(spec).forEach(function (field) {
+          if (!MODIFIABLE_FIELDS[field]) {
+            problems.push(t.id + ": field '" + field + "' is not modifiable (allowed: " +
+              Object.keys(MODIFIABLE_FIELDS).join(", ") + ")");
+            return;
+          }
+          var ops = spec[field];
+          if (!ops || typeof ops !== "object" || Array.isArray(ops)) {
+            problems.push(t.id + ": '" + field + "' must be an op object, e.g. { add: 1 }");
+            return;
+          }
+          var opNames = Object.keys(ops);
+          if (!opNames.length)
+            problems.push(t.id + ": '" + field + "' names no operation (" + Object.keys(MODIFIER_OPS).join(", ") + ")");
+          opNames.forEach(function (op) {
+            if (!MODIFIER_OPS[op]) {
+              problems.push(t.id + ": unknown operation '" + op + "' on '" + field + "'");
+            } else if (op !== "set" && typeof ops[op] !== "number") {
+              problems.push(t.id + ": '" + op + "' on '" + field + "' needs a number");
+            }
+          });
+        });
       });
     });
 
@@ -860,8 +1015,13 @@
   // of-power talents unlocked by tier of play. Normalized to one shape so the
   // sheet can group both by `ability` (Abilities vs Maneuvers) without caring
   // which kind a given entry is.
+  // Modifiers are included here — this is "everything the character owns", not
+  // "everything the sheet shows". The sheet drops them (Engine.isModifier),
+  // because a modifier's effect is already visible inside the entry it
+  // modifies; showing both would make the player merge the two by hand.
   function ownedTalents(state) {
-    var tree = (state.talents || []).map(talentById).filter(Boolean);
+    var tree = (state.talents || []).map(talentById).filter(Boolean)
+      .map(function (t) { return effective(t, state); });
     var src = sourceTalents(state).filter(function (t) { return t.unlocked; })
       .map(function (t) {
         return {
@@ -1064,6 +1224,318 @@
     return tidyResolved(out + text.slice(at));
   }
 
+  // ---- Grants -------------------------------------------------------------
+  // Any talent or spell may hand out other content: `grants` (§4.9).
+  //
+  //   { mode: "all" }                       everything in `options`, outright
+  //   { mode: "pick",   count: 2, options } N of the options
+  //   { mode: "budget", count: 5, options } up to N exp spent among the options
+  //
+  // An option is either a concrete thing — { talent }, { spell },
+  // { skill, tier }, { proficiency, kind, tier } — or a CATEGORY that expands
+  // into concrete choices at pick time: { anySkill: "noncombat" },
+  // { anyProficiency: ["crafting", "instrument"] }. The category form is what
+  // lets "any 2 non-combat skill, instrument, or crafting proficiencies" stay
+  // correct when a new skill is added to the database.
+  //
+  // Everything handed out lands in the granted baseline (§4.5), so it costs
+  // nothing — and picking something already paid for refunds it, because the
+  // baseline subtraction in computeSpent stops charging for it. That is the
+  // whole of the "warn, then refund" rule; there is no separate bookkeeping.
+  function grantsOf(entry) {
+    var g = entry && entry.grants;
+    if (!g || typeof g !== "object") return null;
+    var mode = g.mode || "all";
+    return {
+      mode: mode,
+      count: typeof g.count === "number" ? g.count : (mode === "all" ? 0 : 1),
+      options: (g.options || []).slice(),
+    };
+  }
+  // Does taking this entry require the player to choose something?
+  function grantNeedsChoice(entry) {
+    var g = grantsOf(entry);
+    return !!g && (g.mode === "pick" || g.mode === "budget") && g.options.length > 0;
+  }
+
+  function grantOptionKey(o) {
+    if (o.talent) return "talent:" + o.talent;
+    if (o.spell) return "spell:" + o.spell;
+    if (o.skill) return "skill:" + o.skill;
+    if (o.proficiency) return "proficiency:" + (o.kind || "") + ":" + o.proficiency;
+    return "";
+  }
+
+  // One authored option → a display record, or null if it points at nothing.
+  // `owned` drives the duplicate warning; `available` reflects "for which you
+  // must qualify" — a granted talent still has to meet its own requirements.
+  function describeGrantOption(o, state) {
+    var tier = o.tier || 1;
+    var rec = { key: grantOptionKey(o), option: o, tier: tier, owned: false, cost: 0,
+                label: "", note: "", available: true, blocked: null };
+    if (o.talent) {
+      var t = byId[o.talent];
+      if (!t) return null;
+      var st = requirementStatus(t, state);
+      rec.kind = "talent"; rec.label = t.name; rec.cost = t.cost || 0;
+      rec.note = (treeById(t.domain) || {}).name || t.domain;
+      rec.owned = (state.talents || []).indexOf(t.id) >= 0;
+      rec.available = st.met;
+      if (!st.met) rec.blocked = unmetLabels(st);
+    } else if (o.spell) {
+      var sp = spellsById[o.spell];
+      if (!sp) return null;
+      var sst = spellRequirementStatus(sp, state);
+      rec.kind = "spell"; rec.label = sp.name; rec.cost = sp.cost || 0;
+      rec.note = (treeById(spellDomain(sp.id)) || {}).name || "";
+      rec.owned = spellOwned(state, sp.id);
+      rec.available = sst.met;
+      if (!sst.met) rec.blocked = unmetLabels(sst);
+    } else if (o.skill) {
+      var cur = (state.skills || {})[o.skill] || 0;
+      rec.kind = "skill"; rec.label = o.skill; rec.note = "skill";
+      rec.owned = cur >= tier;
+      rec.cost = stepCost(CONFIG.SKILL_COSTS[isCombatSkill(o.skill) ? "combat" : "noncombat"],
+                          Math.min(cur, tier - 1), tier);
+    } else if (o.proficiency) {
+      var kind = findKind(o.kind);
+      if (!kind) return null;
+      var pcur = profTier(state, o.proficiency);
+      rec.kind = "proficiency"; rec.label = o.proficiency; rec.note = kind.label;
+      rec.owned = pcur >= tier;
+      rec.cost = stepCost(CONFIG.SKILL_COSTS[kind.costKey], Math.min(pcur, tier - 1), tier);
+    } else return null;
+    return rec;
+  }
+
+  function unmetLabels(status) {
+    return (status.reasons || []).filter(function (r) { return !reasonMet(r); })
+      .map(function (r) { return r.label; }).join(", ") || null;
+  }
+
+  // Every concrete choice this entry offers, categories expanded, de-duped.
+  function grantOptions(entry, state) {
+    var g = grantsOf(entry);
+    if (!g) return [];
+    var out = [], seen = {};
+    function push(o) {
+      var key = grantOptionKey(o);
+      if (!key || seen[key]) return;
+      var rec = describeGrantOption(o, state);
+      if (!rec) return;
+      seen[key] = true;
+      out.push(rec);
+    }
+    g.options.forEach(function (o) {
+      if (o.anySkill) {
+        ((window.SKILLS || {})[o.anySkill] || []).forEach(function (s) {
+          push({ skill: s.name, tier: o.tier });
+        });
+      } else if (o.anyProficiency) {
+        var kinds = Array.isArray(o.anyProficiency) ? o.anyProficiency : [o.anyProficiency];
+        kinds.forEach(function (kindId) {
+          var kind = findKind(kindId);
+          if (!kind) return;
+          // The kind's suggestions, plus anything of that kind the character
+          // already named on the sheet (so a grant can advance it).
+          var names = (kind.suggestions || []).slice();
+          (state.proficiencies || []).forEach(function (p) {
+            if (p.kind === kindId && names.indexOf(p.name) < 0) names.push(p.name);
+          });
+          names.forEach(function (n) { push({ proficiency: n, kind: kindId, tier: o.tier }); });
+        });
+      } else push(o);
+    });
+    return out;
+  }
+
+  // Is this set of picks a legal answer to the grant?
+  function grantSelectionValid(entry, state, keys) {
+    var g = grantsOf(entry);
+    if (!g) return { ok: false, reason: "nothing is granted" };
+    var opts = grantOptions(entry, state);
+    var byKey = {};
+    opts.forEach(function (o) { byKey[o.key] = o; });
+    var chosen = [];
+    for (var i = 0; i < keys.length; i++) {
+      var o = byKey[keys[i]];
+      if (!o) return { ok: false, reason: "unknown choice" };
+      if (!o.available) return { ok: false, reason: o.label + " does not qualify yet" };
+      chosen.push(o);
+    }
+    if (g.mode === "pick") {
+      if (chosen.length !== g.count)
+        return { ok: false, reason: "choose " + g.count, remaining: g.count - chosen.length };
+    } else if (g.mode === "budget") {
+      var used = chosen.reduce(function (n, o) { return n + o.cost; }, 0);
+      if (used > g.count) return { ok: false, reason: "over budget", used: used, budget: g.count };
+    }
+    return { ok: true };
+  }
+
+  function applyOneGrant(state, opt) {
+    var g = state.granted = state.granted || {};
+    var rec = { key: opt.key, kind: opt.kind };
+    if (opt.kind === "talent" || opt.kind === "spell") {
+      var isSpell = opt.kind === "spell";
+      var listKey = isSpell ? "spells" : "talents";
+      var id = isSpell ? opt.option.spell : opt.option.talent;
+      g[listKey] = g[listKey] || [];
+      state[listKey] = state[listKey] || [];
+      rec.id = id;
+      rec.wasOwned = state[listKey].indexOf(id) >= 0;
+      rec.wasGranted = g[listKey].indexOf(id) >= 0;
+      if (!rec.wasOwned) state[listKey].push(id);
+      if (!rec.wasGranted) g[listKey].push(id);
+    } else if (opt.kind === "skill") {
+      var name = opt.option.skill;
+      g.skills = g.skills || {};
+      state.skills = state.skills || {};
+      rec.name = name;
+      rec.prevGranted = g.skills[name] || 0;
+      rec.prevTier = state.skills[name] || 0;
+      g.skills[name] = Math.max(rec.prevGranted, opt.tier);
+      state.skills[name] = Math.max(rec.prevTier, opt.tier);
+      rec.setTier = state.skills[name];
+    } else if (opt.kind === "proficiency") {
+      var pname = opt.option.proficiency;
+      g.proficiencies = g.proficiencies || {};
+      state.proficiencies = state.proficiencies || [];
+      var row = state.proficiencies.filter(function (p) { return p.name === pname; })[0];
+      rec.name = pname; rec.profKind = opt.option.kind;
+      rec.prevGranted = g.proficiencies[pname] || 0;
+      rec.prevTier = row ? (row.tier || 0) : 0;
+      rec.created = !row;
+      g.proficiencies[pname] = Math.max(rec.prevGranted, opt.tier);
+      if (!row) { row = { name: pname, kind: opt.option.kind, tier: 0 }; state.proficiencies.push(row); }
+      row.tier = Math.max(rec.prevTier, opt.tier);
+      rec.setTier = row.tier;
+    }
+    return rec;
+  }
+
+  // Records what was handed out so refunding the granting entry can undo it.
+  function applyGrants(state, grantingId, keys) {
+    var entry = byId[grantingId] || spellsById[grantingId];
+    if (!entry) return;
+    var g = grantsOf(entry);
+    if (!g) return;
+    var opts = grantOptions(entry, state);
+    var chosen = g.mode === "all"
+      ? opts
+      : keys.map(function (k) { return opts.filter(function (o) { return o.key === k; })[0]; }).filter(Boolean);
+    var records = chosen.map(function (o) { return applyOneGrant(state, o); });
+    state.grantChoices = state.grantChoices || {};
+    state.grantChoices[grantingId] = records;
+  }
+
+  // The inverse. Talents/spells the grant introduced are removed; ones the
+  // character already had stay owned (and go back to being paid for). A free
+  // skill/proficiency step is only dropped when nothing was built on top of it.
+  function revokeGrants(state, grantingId) {
+    var recs = (state.grantChoices || {})[grantingId] || [];
+    var g = state.granted || {};
+    recs.slice().reverse().forEach(function (rec) {
+      if (rec.kind === "talent" || rec.kind === "spell") {
+        var listKey = rec.kind === "spell" ? "spells" : "talents";
+        if (!rec.wasGranted && g[listKey])
+          g[listKey] = g[listKey].filter(function (id) { return id !== rec.id; });
+        if (!rec.wasOwned && state[listKey])
+          state[listKey] = state[listKey].filter(function (id) { return id !== rec.id; });
+      } else if (rec.kind === "skill") {
+        if (rec.prevGranted) (g.skills || {})[rec.name] = rec.prevGranted;
+        else if (g.skills) delete g.skills[rec.name];
+        if (state.skills && state.skills[rec.name] === rec.setTier)
+          state.skills[rec.name] = rec.prevTier;
+      } else if (rec.kind === "proficiency") {
+        if (rec.prevGranted) (g.proficiencies || {})[rec.name] = rec.prevGranted;
+        else if (g.proficiencies) delete g.proficiencies[rec.name];
+        var row = (state.proficiencies || []).filter(function (p) { return p.name === rec.name; })[0];
+        if (row && row.tier === rec.setTier) {
+          if (rec.created) state.proficiencies = state.proficiencies.filter(function (p) { return p !== row; });
+          else row.tier = rec.prevTier;
+        }
+      }
+    });
+    if (state.grantChoices) delete state.grantChoices[grantingId];
+  }
+
+  // ---- Modifiers ----------------------------------------------------------
+  // A talent with `ability: "modifier"` changes another talent or spell rather
+  // than granting anything itself. Text changes go through hooks in the
+  // target (§4.7); numeric and categorical changes are declared here, on the
+  // modifier, as `modifies: { <targetId>: { <field>: { <op>: value } } }`.
+  // That block doubles as the explicit target link the validator and editor
+  // need — a modifier that only rewrites text still declares `{ target: {} }`.
+  var MODIFIABLE_FIELDS = {
+    name: 1, icon: 1, flavour: 1, description: 1,
+    uses: 1, usesPer: 1, castingTime: 1, range: 1, target: 1, duration: 1, aoe: 1,
+  };
+  // Deliberately NOT modifiable, and each for a specific reason:
+  //   id/row/col   — identity and layout; a moving node breaks the drawn lines
+  //   cost/pool    — computeSpent reads the RAW talent, so a modified cost
+  //                  would display one price and charge another
+  //   tier         — it gates both the tier-of-play and in-tree exp checks
+  //   requires     — a modifier that re-gated its target would make the tree
+  //                  unreadable (and could invalidate an owned talent)
+  //   ability      — reclassifying a maneuver as a passive moves it between
+  //                  sheet sections mid-render
+  var MODIFIER_OPS = { set: 1, add: 1, mul: 1, min: 1, max: 1 };
+
+  function isModifier(t) { return !!t && t.ability === "modifier"; }
+
+  function numOr0(v) { return typeof v === "number" ? v : 0; }
+
+  // Applied in a fixed order so that one modifier's ops are order-independent:
+  // replace, then scale, then offset, then clamp.
+  function applyFieldOps(value, ops) {
+    var v = value;
+    if (ops.set !== undefined) v = ops.set;
+    if (ops.mul !== undefined) v = numOr0(v) * ops.mul;
+    if (ops.add !== undefined) v = numOr0(v) + ops.add;
+    if (ops.min !== undefined && numOr0(v) < ops.min) v = ops.min;
+    if (ops.max !== undefined && numOr0(v) > ops.max) v = ops.max;
+    return v;
+  }
+
+  // Owned modifiers pointing at `targetId`, in database order — deterministic
+  // and author-controlled, so two modifiers touching one field stack the same
+  // way every render (last `set` wins; `add`s accumulate).
+  function modifiersFor(state, targetId) {
+    var owned = (state && state.talents) || [];
+    if (!owned.length) return [];
+    return allTalents.filter(function (t) {
+      return isModifier(t) && t.modifies && t.modifies[targetId] && owned.indexOf(t.id) >= 0;
+    });
+  }
+
+  // The talent or spell as the character actually has it. Returns the entry
+  // untouched when nothing modifies it, so the common case allocates nothing.
+  // Text hooks are NOT resolved here — they resolve at render time against the
+  // same state, which lets a modifier `set` a description that itself carries
+  // hooks.
+  //
+  // Pass the AUTHORED entry. This is not idempotent: feeding its own output
+  // back in applies every `add`/`mul` a second time. Callers that need both
+  // (a node and its tooltip, say) keep the authored entry around and derive
+  // from it twice rather than chaining.
+  function effective(entry, state) {
+    if (!entry || !entry.id) return entry;
+    var mods = modifiersFor(state, entry.id);
+    if (!mods.length) return entry;
+    var out = {};
+    Object.keys(entry).forEach(function (k) { out[k] = entry[k]; });
+    mods.forEach(function (m) {
+      var spec = m.modifies[entry.id] || {};
+      Object.keys(spec).forEach(function (field) {
+        if (!MODIFIABLE_FIELDS[field]) return;      // validator reports these
+        out[field] = applyFieldOps(out[field], spec[field]);
+      });
+    });
+    out.modifiedBy = mods.map(function (m) { return m.id; });
+    return out;
+  }
+
   // Requirement evaluation for a spell — the same shape as requirementStatus
   // (a `reasons` list, each coloured red/black by reasonMet), so the Spells
   // tab can reuse the exact same tooltip/requirement rendering as talents.
@@ -1220,6 +1692,7 @@
     allTrees: allTrees, treeById: treeById, treesOfKind: treesOfKind,
     visibleTrees: visibleTrees, treeVisible: treeVisible,
     combinationUnlocked: combinationUnlocked, hasTalentInTree: hasTalentInTree,
+    hasSpellInDomain: hasSpellInDomain, hasInvestmentInTree: hasInvestmentInTree,
     // ancestry hierarchy
     ancestryChain: ancestryChain, ancestryDepth: ancestryDepth,
     accessibleAncestryTreeIds: accessibleAncestryTreeIds,
@@ -1250,8 +1723,14 @@
     casterCharacteristic: casterCharacteristic,
     spellPool: spellPool, spellOwned: spellOwned, canLearnSpell: canLearnSpell, spellCastable: spellCastable,
     spellRequirementStatus: spellRequirementStatus,
-    // text hooks
+    // text hooks & modifiers
     resolveText: resolveText, scanHooks: scanHooks,
+    effective: effective, isModifier: isModifier, modifiersFor: modifiersFor,
+    MODIFIABLE_FIELDS: MODIFIABLE_FIELDS, MODIFIER_OPS: MODIFIER_OPS,
+    // grants
+    grantsOf: grantsOf, grantNeedsChoice: grantNeedsChoice, grantOptions: grantOptions,
+    grantSelectionValid: grantSelectionValid, applyGrants: applyGrants, revokeGrants: revokeGrants,
+    isGrantedSpell: isGrantedSpell,
     spellManaCost: spellManaCost, castingTimeLabel: castingTimeLabel,
     rangeLabel: rangeLabel, targetLabel: targetLabel, durationLabel: durationLabel, aoeLabel: aoeLabel,
     maxHP: maxHP, maxMana: maxMana,

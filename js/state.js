@@ -95,7 +95,12 @@
       proficiencies: [],       // [{ name, kind, tier }]  (granted included)
       talents: [],             // Owned talent ids (granted included)
 
-      spells: [],              // learned spell ids (magical domains; bought after creation, never granted)
+      spells: [],              // learned spell ids (magical domains; bought, or handed out by a grant)
+
+      // What each granting talent/spell handed out, so refunding it can undo
+      // exactly that and nothing else (see DESIGN.md §4.9).
+      //   { "cmb_elemental_shot": [ { key, kind, ... } ] }
+      grantChoices: {},
 
       // What the character-creation wizard chose.
       creation: {
@@ -110,6 +115,7 @@
       // granted talents are excluded from cost and from the tree surcharge.
       granted: {
         talents: [],           // free talent ids
+        spells: [],            // free spell ids (only ever from a grant)
         skills: {},            // skill name  -> free tier
         proficiencies: {},     // prof name   -> free tier
         characteristics: null, // set at creation; the fixed starting array
@@ -176,8 +182,10 @@
     merged.creation        = Object.assign({}, def.creation, s.creation);
     merged.granted         = Object.assign({}, def.granted, s.granted);
     merged.granted.talents       = Array.isArray(merged.granted.talents) ? merged.granted.talents : [];
+    merged.granted.spells        = Array.isArray(merged.granted.spells) ? merged.granted.spells : [];
     merged.granted.skills        = merged.granted.skills || {};
     merged.granted.proficiencies = merged.granted.proficiencies || {};
+    merged.grantChoices          = (s.grantChoices && typeof s.grantChoices === "object") ? s.grantChoices : {};
     merged.charAdvances          = s.charAdvances || {};
     syncCharacteristics(merged);
     return merged;

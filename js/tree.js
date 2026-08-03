@@ -312,7 +312,7 @@
       });
       var unlocked = Engine.combinationUnlocked(tree, state);
       tags.appendChild(el("span", "tree-tag " + (unlocked ? "ok" : "locked"),
-        (unlocked ? "✓ " : "🔒 ") + "Needs talents in " + parents.join(" + ")));
+        (unlocked ? "✓ " : "🔒 ") + "Needs talents or spells in " + parents.join(" + ")));
       tags.appendChild(el("span", "tree-tag ok", "Combination (free)"));
     }
 
@@ -373,7 +373,8 @@
     return d;
   }
 
-  function makeNode(t, state) {
+  function makeNode(raw, state) {
+    var t = Engine.effective(raw, state);   // name/icon may be modified
     var status = Engine.requirementStatus(t, state);
     var owned = status.owned, met = status.met, granted = status.granted;
 
@@ -400,10 +401,13 @@
     else cost.textContent = t.cost + (t.pool === "combat" ? "C" : "NC");
     node.appendChild(cost);
 
-    node.addEventListener("mouseenter", function () { showTooltip(t, status, node); });
+    // Both take the AUTHORED talent, not `t`: Engine.effective is not
+    // idempotent (a second pass would add the same bonus twice), and
+    // learn/refund must act on what the database says this node costs.
+    node.addEventListener("mouseenter", function () { showTooltip(raw, status, node); });
     node.addEventListener("mousemove", positionTooltip);
     node.addEventListener("mouseleave", hideTooltip);
-    node.addEventListener("click", function () { onNodeClick(t); });
+    node.addEventListener("click", function () { onNodeClick(raw); });
     return node;
   }
 
@@ -419,15 +423,27 @@
         UI.toast("Can't refund " + t.name + ": needed by " + (chk.blockedBy || []).join(", "), "error");
         return;
       }
-      State.update(function (s) { s.talents = s.talents.filter(function (id) { return id !== t.id; }); });
+      State.update(function (s) {
+        Engine.revokeGrants(s, t.id);              // takes back what it handed out
+        s.talents = s.talents.filter(function (id) { return id !== t.id; });
+      });
       UI.toast("Refunded " + t.name);
     } else {
       if (!status.met) { UI.toast("Requirements not met for " + t.name, "error"); return; }
       var lc = Engine.learnCost(t, state);
-      State.update(function (s) { s.talents.push(t.id); });
-      UI.toast(lc.opensTree && lc.surcharge
-        ? "Learned " + t.name + " (+" + lc.surcharge + " exp to open this tree)"
-        : "Learned " + t.name, "success");
+      var learned = function (keys) {
+        State.update(function (s) {
+          s.talents.push(t.id);
+          if (Engine.grantsOf(t)) Engine.applyGrants(s, t.id, keys || []);
+        });
+        UI.toast(lc.opensTree && lc.surcharge
+          ? "Learned " + t.name + " (+" + lc.surcharge + " exp to open this tree)"
+          : "Learned " + t.name, "success");
+      };
+      // A grant with a choice is part of the purchase: dismissing the picker
+      // cancels the whole thing rather than leaving an unresolved choice.
+      if (Engine.grantNeedsChoice(t)) UI.grantPicker(t, state, learned);
+      else learned([]);
     }
   }
 
@@ -511,8 +527,12 @@
     return _tooltip;
   }
 
-  function showTooltip(t, status, node) {
+  function showTooltip(raw, status, node) {
     var state = State.get();
+    // What the character would actually have: any owned modifier's field
+    // changes already folded in (§4.8). Cost/pool/tier aren't modifiable, so
+    // the price and gates below still read the authored values.
+    var t = Engine.effective(raw, state);
     var tip = tooltipEl();
     tip.innerHTML = "";
     tip.appendChild(el("div", "tt-name", t.name));
@@ -530,6 +550,8 @@
     meta.appendChild(el("span", "tt-tier", (CONFIG.TIERS[t.tier - 1] || {}).name || ("Tier " + t.tier)));
     if (t.ability === "maneuver")
       meta.appendChild(el("span", "tt-ability maneuver", "Maneuver" + (t.uses ? " · " + t.uses + "/" + (t.usesPer || "session") : "")));
+    else if (Engine.isModifier(t))
+      meta.appendChild(el("span", "tt-ability modifier", "Modifier"));
     else
       meta.appendChild(el("span", "tt-ability passive", "Passive"));
     if (t.ability === "maneuver" && t.castingTime != null) {
@@ -547,6 +569,16 @@
     var tipState = State.get();
     if (t.flavour) tip.appendChild(el("div", "tt-flavour", Engine.resolveText(t.flavour, tipState)));
     if (t.description) tip.appendChild(el("div", "tt-desc", Engine.resolveText(t.description, tipState)));
+
+    // A modifier never gets its own row on the sheet, so the tree is the only
+    // place naming what it changes.
+    if (Engine.isModifier(t) && t.modifies) {
+      var targets = Object.keys(t.modifies).map(function (id) {
+        var target = Engine.talentById(id) || Engine.spellById(id);
+        return target ? target.name : id;
+      });
+      tip.appendChild(el("div", "tt-modifies", "Modifies: " + targets.join(", ")));
+    }
 
     if (status.reasons.length) {
       var reqs = el("div", "tt-reqs");
