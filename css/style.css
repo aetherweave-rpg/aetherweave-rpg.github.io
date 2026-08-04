@@ -409,6 +409,9 @@ a { color: var(--accent); }
 .skill-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1; overflow: hidden; }
 .skill-name-text { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .skill-char { font-size: 10px; color: var(--ink-faint); letter-spacing: .5px; flex: none; }
+.skill-pool-tag { font-size: 10px; font-weight: 700; letter-spacing: .5px; flex: none; }
+.skill-pool-tag.combat { color: var(--combat); }
+.skill-pool-tag.noncombat { color: var(--noncombat); }
 .skill-hint { font-size: 10.5px; color: var(--ink-faint); width: 52px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
 
 /* Proficiencies — two columns (non-combat left, combat right), each stacking

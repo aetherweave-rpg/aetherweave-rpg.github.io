@@ -372,12 +372,43 @@
   }
 
   // ---- Skills -------------------------------------------------------------
+  // Two views over the same skill data: the default Combat/Non-Combat pool
+  // split (matches how exp is actually spent), or grouped by characteristic
+  // (matches how a player picks skills to boost a specific dice pool). Both
+  // render the same skillRow, just grouped and annotated differently.
+  var SKILLS_BY_CHAR_KEY = "aetherweave.sheet.skillsByCharacteristic";
+  var skillsGroupByChar = window.SafeStorage.read(SKILLS_BY_CHAR_KEY) === "1";
+
   function skillsSection(state) {
     var s = section("Skills");
-    s.appendChild(skillGroup("Combat Skills", window.SKILLS.combat, state, "combat"));
-    s.appendChild(skillGroup("Non-Combat Skills", window.SKILLS.noncombat, state, "noncombat"));
+    s.appendChild(skillModeToggle());
+    if (skillsGroupByChar) {
+      CONFIG.CHARACTERISTICS.forEach(function (c) {
+        var g = skillGroupByChar(c, state);
+        if (g) s.appendChild(g);
+      });
+    } else {
+      s.appendChild(skillGroup("Combat Skills", window.SKILLS.combat, state, "combat"));
+      s.appendChild(skillGroup("Non-Combat Skills", window.SKILLS.noncombat, state, "noncombat"));
+    }
     return s;
   }
+
+  function skillModeToggle() {
+    var wrap = el("label", "combo-toggle");
+    var cb = el("input");
+    cb.type = "checkbox";
+    cb.checked = skillsGroupByChar;
+    cb.onchange = function () {
+      skillsGroupByChar = cb.checked;
+      window.SafeStorage.write(SKILLS_BY_CHAR_KEY, skillsGroupByChar ? "1" : "0");
+      render();
+    };
+    wrap.appendChild(cb);
+    wrap.appendChild(el("span", null, "Group skills by characteristic"));
+    return wrap;
+  }
+
   function skillGroup(title, list, state, costKey) {
     var costs = CONFIG.SKILL_COSTS[costKey];
     var g = el("div", "skill-group");
@@ -385,22 +416,45 @@
       "(" + costs.join(", ") + " exp · max " + Engine.skillCap(state) + " at this tier)"));
     var grid = el("div", "skill-grid");
     var cap = Engine.skillCap(state);
-    list.forEach(function (sk) {
-      var tier = state.skills[sk.name] || 0;
-      var free = Engine.grantedSkillTier(state, sk.name);
-      var row = el("div", "skill-row");
-      var name = el("div", "skill-name");
-      name.appendChild(el("span", "skill-name-text", sk.name));
-      name.appendChild(el("span", "skill-char", charAbbr(sk.char)));
-      row.appendChild(name);
-      row.appendChild(dots(tier, CONFIG.MAX_SKILL_TIER, function (v) {
-        State.update(function (s2) { s2.skills[sk.name] = v; });
-      }, free, cap));
-      grid.appendChild(row);
-    });
+    list.forEach(function (sk) { grid.appendChild(skillRow(sk, state, cap)); });
     g.appendChild(grid);
     return g;
   }
+
+  // Combat and non-combat skills cost from different curves, so a merged
+  // characteristic group can't carry one cost note the way a pool group can;
+  // each row is tagged with its own pool instead.
+  function skillGroupByChar(c, state) {
+    var list = window.SKILLS.combat.map(function (sk) { return { sk: sk, pool: "combat" }; })
+      .concat(window.SKILLS.noncombat.map(function (sk) { return { sk: sk, pool: "noncombat" }; }))
+      .filter(function (entry) { return entry.sk.char === c.key; });
+    if (!list.length) return null;
+    var g = el("div", "skill-group");
+    var h = el("h3", "skill-group-title", c.label);
+    h.appendChild(el("span", "char-abbr", c.abbr));
+    g.appendChild(h);
+    var grid = el("div", "skill-grid");
+    var cap = Engine.skillCap(state);
+    list.forEach(function (entry) { grid.appendChild(skillRow(entry.sk, state, cap, entry.pool)); });
+    g.appendChild(grid);
+    return g;
+  }
+
+  function skillRow(sk, state, cap, showPool) {
+    var tier = state.skills[sk.name] || 0;
+    var free = Engine.grantedSkillTier(state, sk.name);
+    var row = el("div", "skill-row");
+    var name = el("div", "skill-name");
+    name.appendChild(el("span", "skill-name-text", sk.name));
+    if (showPool) name.appendChild(el("span", "skill-pool-tag " + showPool, showPool === "combat" ? "combat" : "non-combat"));
+    else name.appendChild(el("span", "skill-char", charAbbr(sk.char)));
+    row.appendChild(name);
+    row.appendChild(dots(tier, CONFIG.MAX_SKILL_TIER, function (v) {
+      State.update(function (s2) { s2.skills[sk.name] = v; });
+    }, free, cap));
+    return row;
+  }
+
   function withNote(h, note) { h.appendChild(el("span", "group-note", note)); return h; }
 
   // ---- Proficiencies ------------------------------------------------------
