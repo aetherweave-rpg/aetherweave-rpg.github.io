@@ -170,13 +170,21 @@
 
   // ---- skills & proficiencies ----------------------------------------------
 
-  function skills(state) {
+  // Two layouts over the same skill data, mirroring the toggle on screen: the
+  // Combat/Non-Combat pool split (default), or one group per characteristic
+  // with each row tagged by its pool instead of by its characteristic (the
+  // group heading already says that).
+  function skills(state, opts) {
     var b = block("Skills", "filled to current level · max " + Engine.skillCap(state) + " at this tier");
+    b.appendChild(opts && opts.skillsGroupByChar ? skillsByCharWrap(state) : skillsByPoolWrap(state));
+    return b;
+  }
+
+  function skillsByPoolWrap(state) {
     var wrap = el("div", "ps-skills");
     wrap.appendChild(skillGroup("Combat", window.SKILLS.combat, state, "ps-one-col"));
     wrap.appendChild(skillGroup("Non-Combat", window.SKILLS.noncombat, state, "ps-two-col"));
-    b.appendChild(wrap);
-    return b;
+    return wrap;
   }
 
   function skillGroup(title, list, state, cls) {
@@ -193,6 +201,34 @@
     });
     g.appendChild(body);
     return g;
+  }
+
+  function charSkillEntries(key) {
+    return window.SKILLS.combat.map(function (sk) { return { sk: sk, pool: "combat" }; })
+      .concat(window.SKILLS.noncombat.map(function (sk) { return { sk: sk, pool: "noncombat" }; }))
+      .filter(function (entry) { return entry.sk.char === key; });
+  }
+
+  function skillsByCharWrap(state) {
+    var wrap = el("div", "ps-skills ps-skills-bychar");
+    CONFIG.CHARACTERISTICS.forEach(function (c) {
+      var entries = charSkillEntries(c.key);
+      if (!entries.length) return;
+      var g = el("div", "ps-skill-group");
+      g.appendChild(el("h3", "ps-h3", c.label));
+      var body = el("div", "ps-skill-list");
+      entries.forEach(function (entry) {
+        var row = el("div", "ps-row");
+        var name = el("span", "ps-row-name", entry.sk.name);
+        name.appendChild(el("span", "ps-row-sub", entry.pool === "combat" ? "combat" : "non-combat"));
+        row.appendChild(name);
+        row.appendChild(dots(state.skills[entry.sk.name] || 0, CONFIG.MAX_SKILL_TIER));
+        body.appendChild(row);
+      });
+      g.appendChild(body);
+      wrap.appendChild(g);
+    });
+    return wrap;
   }
 
   function proficiencies(state) {
@@ -338,8 +374,9 @@
     var t = Engine.effective(raw, state);
     var status = t.fromSource ? { met: true, granted: true, reasons: [] } : Engine.requirementStatus(t, state);
     var source = t.fromSource ? t.sourceName : ((Engine.treeById(t.domain) || {}).name || t.domain);
+    var grantSrc = !t.fromSource && status.granted ? Engine.grantSource(state, "talent", t.id) : null;
     var cost = t.fromSource ? "granted by " + t.sourceName
-      : status.granted ? "free at creation"
+      : status.granted ? (grantSrc ? "granted by " + grantSrc.name : "free at creation")
       : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp";
     var tags = [];
     if (t.ability === "maneuver") {
@@ -482,14 +519,14 @@
 
   // ---- assembly ------------------------------------------------------------
 
-  function build(state) {
+  function build(state, opts) {
     var doc = el("div", "ps-doc");
     doc.appendChild(masthead(state));
 
     var sheet = el("div", "ps-play");
     sheet.appendChild(vitals(state));
     sheet.appendChild(experience(state));
-    sheet.appendChild(skills(state));
+    sheet.appendChild(skills(state, opts));
     sheet.appendChild(proficiencies(state));
     sheet.appendChild(inventory(state));
 
@@ -505,11 +542,13 @@
 
   // Rebuilds into `#print-sheet` (or a given host). Cheap enough to run on every
   // state change, which is what keeps the paper copy from ever going stale.
-  function render(state, host) {
-    host = host || document.getElementById("print-sheet");
+  // `opts.skillsGroupByChar` mirrors the on-screen toggle of the same name.
+  function render(state, opts) {
+    opts = opts || {};
+    var host = opts.host || document.getElementById("print-sheet");
     if (!host) return null;
     host.innerHTML = "";
-    host.appendChild(build(state));
+    host.appendChild(build(state, opts));
     return host;
   }
 

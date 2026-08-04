@@ -13,6 +13,32 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-04",
+    entries: [
+      "Changed talent \"Arsenal\" (tier 1) in the Invention domain: description: \"You can add up to {inve_arsenal:\"2\"} of the following additi...\" -> \"You throw an improvised contraption at a point in range. It...\"; uses: (none) -> 2.",
+      "Added talent \"Material Hoarder\" (tier 1) to the Invention domain.",
+      "Added talent \"Well-prepared\" (tier 1) to the Invention domain.",
+      "Added talent \"Material Knowledge: Sticky\" (tier 1) to the Invention domain.",
+      "Added talent \"Material Knowledge: Bouncy\" (tier 1) to the Invention domain.",
+      "Added talent \"Complicated Contraption\" (tier 2) to the Invention domain.",
+      "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / creation points).",
+      "Changed site/public/js/data/creation.js -- describe the effect on players (costs / caps / thresholds / creation points).",
+    ],
+  },
+  {
+    date: "2026-08-04",
+    entries: [
+      "Changed talent \"Arsenal\" (tier 1) in the Invention domain: description: \"You can add up to {inve_arsenal:\"2\"} of the following additi...\" -> \"You throw an improvised contraption at a point in range. It...\"; uses: (none) -> 2.",
+      "Added talent \"Material Hoarder\" (tier 1) to the Invention domain.",
+      "Added talent \"Well-prepared\" (tier 1) to the Invention domain.",
+      "Added talent \"Material Knowledge: Sticky\" (tier 1) to the Invention domain.",
+      "Added talent \"Material Knowledge: Bouncy\" (tier 1) to the Invention domain.",
+      "Added talent \"Complicated Contraption\" (tier 2) to the Invention domain.",
+      "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / creation points).",
+      "Changed site/public/js/data/creation.js -- describe the effect on players (costs / caps / thresholds / creation points).",
+    ],
+  },
+  {
     date: "2026-08-03",
     entries: [
       "Added talent \"Arsenal\" (tier 1) to the Invention domain.",

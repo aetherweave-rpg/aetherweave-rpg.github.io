@@ -21,8 +21,9 @@
   }
 
   // The paper copy is a whole second document (js/print-sheet.js), rebuilt
-  // alongside this one so it is never out of date with what is on screen.
-  function renderPrint() { window.PrintSheet.render(State.get()); }
+  // alongside this one so it is never out of date with what is on screen,
+  // display toggles (skillsGroupByChar) included.
+  function renderPrint() { window.PrintSheet.render(State.get(), { skillsGroupByChar: skillsGroupByChar }); }
 
   function render() {
     var root = document.getElementById("sheet");
@@ -54,8 +55,10 @@
 
   // A reusable "dots" control (skills, characteristics). Click a dot to set the
   // value; click the current highest dot to step back down. Dots below `min`
-  // were granted at character creation: they are free and cannot be lowered.
-  function dots(value, max, onSet, min, cap) {
+  // were granted (at creation, or by a talent's grant): they are free and
+  // cannot be lowered. `grantedTitle` names the source; omitted, it reads as
+  // the plain creation-baseline case.
+  function dots(value, max, onSet, min, cap, grantedTitle) {
     min = min || 0;
     cap = cap == null ? max : cap;
     var row = el("div", "dots");
@@ -67,7 +70,7 @@
           (isGranted ? " granted" : "") + (beyondCap ? " capped" : ""));
         dot.type = "button";
         dot.setAttribute("aria-label", "set to " + (i + 1));
-        if (isGranted) dot.title = "Granted at creation, free";
+        if (isGranted) dot.title = grantedTitle || "Granted at creation, free";
         else if (beyondCap) dot.title = "Locked until a higher tier of play";
         dot.disabled = beyondCap && i + 1 > value;
         dot.onclick = function () {
@@ -381,7 +384,7 @@
 
   function skillsSection(state) {
     var s = section("Skills");
-    s.appendChild(skillModeToggle());
+    s.querySelector(".sheet-h2").appendChild(skillModeToggle());
     if (skillsGroupByChar) {
       CONFIG.CHARACTERISTICS.forEach(function (c) {
         var g = skillGroupByChar(c, state);
@@ -451,8 +454,16 @@
     row.appendChild(name);
     row.appendChild(dots(tier, CONFIG.MAX_SKILL_TIER, function (v) {
       State.update(function (s2) { s2.skills[sk.name] = v; });
-    }, free, cap));
+    }, free, cap, free ? grantedBy(state, "skill", sk.name) + ", free" : null));
     return row;
+  }
+
+  // "Granted by X" once X (the talent/spell whose grant handed this out) is
+  // known, else the plain creation-baseline phrasing. `kind`/`id` match
+  // Engine.grantSource's.
+  function grantedBy(state, kind, id) {
+    var src = Engine.grantSource(state, kind, id);
+    return src ? "Granted by " + src.name : "Granted at creation";
   }
 
   function withNote(h, note) { h.appendChild(el("span", "group-note", note)); return h; }
@@ -487,13 +498,13 @@
           var nameInput = textInput(p.name, function (v) {
             State.update(function (s2) { s2.proficiencies[idx].name = v; }, true);
           }, { cls: "prof-name", placeholder: "name…", list: "prof-suggest-" + kind.id });
-          if (free) { nameInput.readOnly = true; nameInput.title = "Granted at character creation"; }
+          if (free) { nameInput.readOnly = true; nameInput.title = grantedBy(state, "proficiency", p.name); }
           row.appendChild(nameInput);
           row.appendChild(dots(p.tier || 0, CONFIG.MAX_SKILL_TIER, function (v) {
             State.update(function (s2) { s2.proficiencies[idx].tier = v; });
-          }, free, Engine.skillCap(state)));
+          }, free, Engine.skillCap(state), free ? grantedBy(state, "proficiency", p.name) + ", free" : null));
           var del = el("button", "icon-btn", "✕");
-          del.title = free ? "Granted at creation, can't be removed" : "Remove";
+          del.title = free ? grantedBy(state, "proficiency", p.name) + ", can't be removed" : "Remove";
           del.type = "button";
           del.disabled = !!free;
           del.onclick = function () { State.update(function (s2) { s2.proficiencies.splice(idx, 1); }); };
@@ -711,10 +722,11 @@
     if (t.ability === "maneuver" && t.uses) nameLine.appendChild(el("span", "talent-uses-tag", "⟳ " + t.uses + " / " + (t.usesPer || "session")));
     if (t.description || t.flavour) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
     info.appendChild(nameLine);
+    var grantSrc = !t.fromSource && status.granted ? Engine.grantSource(state, "talent", t.id) : null;
     info.appendChild(el("span", "talent-meta", t.fromSource
       ? "granted by " + t.sourceName + " · " + tierName(t.tier)
       : status.granted
-        ? "free at creation · " + tierName(t.tier)
+        ? (grantSrc ? "granted by " + grantSrc.name : "free at creation") + " · " + tierName(t.tier)
         : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp · " + tierName(t.tier)));
     if (t.ability === "maneuver" && t.castingTime != null) {
       info.appendChild(el("span", "talent-meta", [
@@ -739,7 +751,9 @@
       var del = el("button", "icon-btn", "✕");
       del.type = "button";
       del.disabled = !!status.granted;
-      del.title = status.granted ? "Granted at creation, can't be refunded" : "Refund";
+      del.title = status.granted
+        ? (grantSrc ? "Granted by " + grantSrc.name : "Granted at creation") + ", can't be refunded"
+        : "Refund";
       del.onclick = function (e) {
         e.stopPropagation();
         var chk = Engine.canRefund(t.id, State.get());

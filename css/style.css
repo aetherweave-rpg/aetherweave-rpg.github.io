@@ -123,6 +123,11 @@ a { color: var(--accent); }
 }
 .combo-toggle input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
 
+/* A toggle nested in a section's own header row, rather than below the tab
+   bar (the tree page's usage) — pushed to the header's far end, which reads
+   as the top-right corner of the section frame. */
+.sheet-h2 .combo-toggle { margin-left: auto; font-size: 12px; }
+
 /* ---------- Tree header -------------------------------------------------- */
 .tree-head {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
@@ -1064,6 +1069,11 @@ a { color: var(--accent); }
   /* -- skills & proficiencies -- */
   .ps-skills { display: grid; grid-template-columns: 1fr 2fr; gap: 4pt 16pt; align-items: start; }
   .ps-skill-list.ps-two-col { column-count: 2; column-gap: 16pt; }
+  /* Five characteristic groups instead of two pool columns: let them flow
+     into a balanced two-column masonry rather than a fixed grid, since group
+     sizes vary with how many skills key off each characteristic. */
+  .ps-skills.ps-skills-bychar { display: block; column-count: 2; column-gap: 16pt; }
+  .ps-skills-bychar .ps-skill-group { break-inside: avoid; page-break-inside: avoid; }
   .ps-profs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4pt 16pt; align-items: start; }
 
   /* A row is name … dots, with a leader so the eye tracks across the gap. */

@@ -569,8 +569,8 @@
   // object (e.g. `t.id` for a talent, `"spell '" + sp.id + "'"` for a spell).
   function validateCastableFields(problems, label, obj) {
     if (!(obj.castingTime === "action" || obj.castingTime === "minor_action" || obj.castingTime === "reaction" ||
-          (typeof obj.castingTime === "number" && obj.castingTime > 0)))
-      problems.push(label + ": castingTime must be 'action', 'minor_action', 'reaction', or a positive number of minutes (got " + JSON.stringify(obj.castingTime) + ")");
+          obj.castingTime === "free" || (typeof obj.castingTime === "number" && obj.castingTime > 0)))
+      problems.push(label + ": castingTime must be 'action', 'minor_action', 'reaction', 'free', or a positive number of minutes (got " + JSON.stringify(obj.castingTime) + ")");
     if (obj.range != null &&
         !(obj.range === "self" || obj.range === "touch" || obj.range === "weapon" || (typeof obj.range === "number" && obj.range > 0)))
       problems.push(label + ": range must be 'self', 'touch', 'weapon', or a positive number of yards (got " + JSON.stringify(obj.range) + ")");
@@ -1026,21 +1026,29 @@
     // Text hooks (§4.7). A hook that doesn't parse, or that names an id no
     // talent/spell has, renders as dead text a player would never see resolve
     // — both are typos, not content gaps, so they're reported structurally.
+    function checkHookGroups(label, fieldName, groups) {
+      groups.forEach(function (group) {
+        group.forEach(function (clause) {
+          clause.ids.forEach(function (id) {
+            if (!byId[id] && !spellsById[id])
+              problems.push(label + ": text hook in " + fieldName +
+                " names unknown talent/spell '" + id + "'");
+          });
+          clause.segments.forEach(function (seg) {
+            if (seg.type === "hook") checkHookGroups(label, fieldName, seg.node.groups);
+          });
+        });
+      });
+    }
     function checkHooks(label, obj) {
       ["description", "flavour"].forEach(function (fieldName) {
         scanHooks(obj[fieldName]).forEach(function (h) {
           if (!h.groups) {
             problems.push(label + ": malformed text hook {" + h.body + "} in " + fieldName +
-              " (expected {id:\"text\"}, optionally joined with | or >)");
+              " (expected {id:\"text\"}, ids optionally combined with &, groups joined with | or >)");
             return;
           }
-          h.groups.forEach(function (group) {
-            group.forEach(function (clause) {
-              if (!byId[clause.id] && !spellsById[clause.id])
-                problems.push(label + ": text hook in " + fieldName +
-                  " names unknown talent/spell '" + clause.id + "'");
-            });
-          });
+          checkHookGroups(label, fieldName, h.groups);
         });
       });
     }
@@ -1182,77 +1190,84 @@
   // A description (or flavour) may carry inline hooks that resolve against
   // what the character actually owns, so a *modifier* talent can rewrite the
   // text of the ability it modifies rather than adding a second entry the
-  // player has to mentally merge (see DESIGN.md §4.7). One grammar, three
+  // player has to mentally merge (see DESIGN.md §4.7). One grammar, four
   // shapes it covers:
   //
   //   {id:"text"}                       insertion — appears once `id` is owned
   //   {new:"replacement">old:"text"}    supersession — the first owned GROUP wins
   //   {a:"fire"|b:"ice"|c:"lightning"}  alternatives — every owned clause, listed
+  //   {a&b:"text"}                      conjunction — needs BOTH a and b owned
   //
-  // `|` joins clauses within a group, `>` starts the next fallback group. A
-  // group wins as soon as any clause in it is owned, so the two compose
-  // (`{a:"x"|b:"y">c:"z"}`). Nothing owned anywhere → the hook renders empty.
+  // `|` joins clauses within a group, `>` starts the next fallback group, `&`
+  // joins ids within one clause (all of them required). A group wins as soon
+  // as any clause in it is owned, so all three compose (`{a:"x"|b&c:"y">d:"z"}`).
+  // A clause's own text may nest further hooks — e.g.
+  // `{a:"...{b:"c"}..."}` — which resolve the same way, recursively, against
+  // the same owned set; a brace that doesn't parse as a hook there just falls
+  // back to being literal text, same as at the top level. Nothing owned
+  // anywhere → the hook renders empty.
   //
   // Ownership is talents + spells (isOwnedReqId). Source-of-power talents are
   // deliberately not hook-referenceable: resolving their tier gate needs
   // computeSpent, which would put an exp recount inside every text render.
   var HOOK_ID_RE = /^[A-Za-z0-9_]+$/;
+  var HOOK_IDLIST_CHAR_RE = /[A-Za-z0-9_&]/;
   // A brace that opened like a hook. Used to tell "the author meant a hook and
   // fumbled it" (report it) from "this is prose containing a brace" (leave it).
-  var HOOK_START_RE = /^\{\s*[A-Za-z0-9_]+\s*:\s*"/;
+  var HOOK_START_RE = /^\{\s*[A-Za-z0-9_]+(\s*&\s*[A-Za-z0-9_]+)*\s*:\s*"/;
 
-  // The `}` that closes the hook opened at `open`, skipping any brace sitting
-  // inside a clause's quoted text. Returns -1 when this brace doesn't open a
-  // hook at all, which is what lets prose keep a literal `{`.
-  function hookEnd(text, open) {
-    var inStr = false;
-    for (var i = open + 1; i < text.length; i++) {
-      var ch = text.charAt(i);
-      if (inStr) {
-        if (ch === "\\") i++;
-        else if (ch === '"') inStr = false;
-      } else if (ch === '"') inStr = true;
-      else if (ch === "}") return i;
-      else if (ch === "{") return -1;      // nested brace — not a hook
-    }
-    return -1;
-  }
-
-  // Parses a hook body into groups of {id, text} clauses. Returns null for
-  // anything that isn't well-formed, so an unparseable brace span falls back
-  // to rendering verbatim instead of eating the rest of the description.
-  function parseHookBody(body) {
-    var groups = [[]], i = 0;
-    function skipWs() { while (i < body.length && /\s/.test(body.charAt(i))) i++; }
-    while (i < body.length) {
+  // Parses one hook starting at text[at] (which must be '{'). Returns
+  // {node: {groups}, end} — `end` is the index just past the hook's closing
+  // '}' — or null if this brace doesn't open a well-formed hook, in which
+  // case the caller falls back to treating '{' as a literal character. Each
+  // clause's `ids` is the `&`-split list a single owner-check must all pass;
+  // its `segments` alternate literal text and nested hook nodes, so resolving
+  // a clause means walking its segments rather than reading a plain string.
+  function parseHookAt(text, at) {
+    var i = at + 1, len = text.length;
+    function skipWs() { while (i < len && /\s/.test(text.charAt(i))) i++; }
+    var groups = [[]];
+    while (true) {
       skipWs();
-      if (i >= body.length) break;
       var idStart = i;
-      while (i < body.length && body.charAt(i) !== ":") i++;
-      if (i >= body.length) return null;
-      var id = body.slice(idStart, i).trim();
-      if (!HOOK_ID_RE.test(id)) return null;
-      i++;                                  // past ':'
+      while (i < len && HOOK_IDLIST_CHAR_RE.test(text.charAt(i))) i++;
+      if (i === idStart) return null;
+      var ids = text.slice(idStart, i).split("&");
+      if (ids.some(function (id) { return !HOOK_ID_RE.test(id); })) return null;
       skipWs();
-      if (body.charAt(i) !== '"') return null;
+      if (text.charAt(i) !== ":") return null;
       i++;
-      var text = "";
-      while (i < body.length && body.charAt(i) !== '"') {
-        if (body.charAt(i) === "\\" && i + 1 < body.length) { text += body.charAt(i + 1); i += 2; }
-        else { text += body.charAt(i); i++; }
-      }
-      if (i >= body.length) return null;    // unterminated clause text
-      i++;                                  // past the closing '"'
-      groups[groups.length - 1].push({ id: id, text: text });
       skipWs();
-      if (i >= body.length) break;
-      var sep = body.charAt(i);
-      if (sep === "|") i++;
-      else if (sep === ">") { groups.push([]); i++; }
-      else return null;
+      if (text.charAt(i) !== '"') return null;
+      i++;
+      var segments = [], lit = "", closed = false;
+      while (i < len) {
+        var ch = text.charAt(i);
+        if (ch === "\\" && i + 1 < len) { lit += text.charAt(i + 1); i += 2; continue; }
+        if (ch === '"') { i++; closed = true; break; }
+        if (ch === "{") {
+          var nested = parseHookAt(text, i);
+          if (nested) {
+            if (lit) { segments.push({ type: "lit", value: lit }); lit = ""; }
+            segments.push({ type: "hook", node: nested.node });
+            i = nested.end;
+            continue;
+          }
+          // Doesn't parse as a hook here either — keep it as literal prose,
+          // same rule as the top level.
+        }
+        lit += ch; i++;
+      }
+      if (!closed) return null;              // unterminated clause text
+      if (lit) segments.push({ type: "lit", value: lit });
+      groups[groups.length - 1].push({ ids: ids, segments: segments });
+      skipWs();
+      var sep = text.charAt(i);
+      if (sep === "|") { i++; continue; }
+      if (sep === ">") { groups.push([]); i++; continue; }
+      if (sep === "}") { i++; return { node: { groups: groups }, end: i }; }
+      return null;
     }
-    if (!groups[groups.length - 1].length) groups.pop();
-    return groups.length ? groups : null;
   }
 
   // "fire" · "fire or ice" · "fire, ice, or lightning"
@@ -1262,11 +1277,21 @@
     return parts.slice(0, -1).join(", ") + ", or " + parts[parts.length - 1];
   }
 
-  function resolveHookGroups(groups, state) {
+  function resolveSegments(segments, state) {
+    return segments.map(function (seg) {
+      return seg.type === "lit" ? seg.value : resolveHookNode(seg.node, state);
+    }).join("");
+  }
+
+  function resolveHookNode(node, state) {
+    var groups = node.groups;
     for (var g = 0; g < groups.length; g++) {
       var hits = [];
       for (var c = 0; c < groups[g].length; c++) {
-        if (isOwnedReqId(state, groups[g][c].id)) hits.push(groups[g][c].text);
+        var clause = groups[g][c];
+        // Conjunction: every id in the clause has to be owned, not just one.
+        if (clause.ids.every(function (id) { return isOwnedReqId(state, id); }))
+          hits.push(resolveSegments(clause.segments, state));
       }
       // A group wins on ownership, not on having produced text — a clause
       // resolving to "" is how the un-modified base case is authored.
@@ -1283,30 +1308,27 @@
             .replace(/[ \t]+$/gm, "");
   }
 
-  // Every hook span in `text`, as {open, close, groups}. `groups` is null for
-  // a span that looked like a hook (it contains `:"`) but didn't parse — the
-  // validator reports those; rendering leaves them verbatim.
+  // Every top-level hook span in `text`, as {open, close, groups}. `groups`
+  // is null for a span that opened like a hook but didn't parse — the
+  // validator reports those; rendering leaves them verbatim. A hook nested
+  // inside another hook's clause text is not reported separately here — it
+  // lives inside the outer hook's `groups` tree, and both the validator and
+  // the resolver walk into it from there.
   function scanHooks(text) {
     var out = [], i = 0;
     if (typeof text !== "string") return out;
     while (i < text.length) {
       var open = text.indexOf("{", i);
       if (open < 0) break;
-      var close = hookEnd(text, open);
-      if (close < 0) {
-        // Never closed — almost always an unterminated clause quote, which
-        // would otherwise be invisible to the validator because there is no
-        // span to parse. Report it only if it opened like a hook.
+      var parsed = parseHookAt(text, open);
+      if (parsed) {
+        out.push({ open: open, close: parsed.end - 1, groups: parsed.node.groups });
+        i = parsed.end;
+      } else {
         if (HOOK_START_RE.test(text.slice(open)))
           out.push({ open: open, close: -1, body: text.slice(open + 1).split("\n")[0], groups: null });
         i = open + 1;
-        continue;
       }
-      var body = text.slice(open + 1, close);
-      var groups = parseHookBody(body);
-      if (groups || body.indexOf(':"') >= 0 || body.indexOf(": \"") >= 0)
-        out.push({ open: open, close: close, body: body, groups: groups });
-      i = (groups ? close : open) + 1;
     }
     return out;
   }
@@ -1317,7 +1339,7 @@
     if (!hooks.length) return text;
     var out = "", at = 0;
     hooks.forEach(function (h) {
-      out += text.slice(at, h.open) + resolveHookGroups(h.groups, state || {});
+      out += text.slice(at, h.open) + resolveHookNode({ groups: h.groups }, state || {});
       at = h.close + 1;
     });
     return tidyResolved(out + text.slice(at));
@@ -1441,11 +1463,23 @@
   function grantOptions(entry, state) {
     var g = grantsOf(entry);
     if (!g) return [];
+    // Options are qualified as though the granting entry is already owned.
+    // The picker runs on a pre-purchase snapshot (learning pushes the talent
+    // to state.talents only after the grant choice is confirmed), so without
+    // this exception an option that requires the very talent granting it —
+    // e.g. Arsenal's own Material Knowledge choices — could never be checked.
+    var qualifyState = state;
+    if (entry.id && !isOwnedReqId(state, entry.id)) {
+      qualifyState = {};
+      for (var sk in state) qualifyState[sk] = state[sk];
+      if (byId[entry.id]) qualifyState.talents = (state.talents || []).concat(entry.id);
+      else if (spellsById[entry.id]) qualifyState.spells = (state.spells || []).concat(entry.id);
+    }
     var out = [], seen = {};
     function push(o) {
       var key = grantOptionKey(o);
       if (!key || seen[key]) return;
-      var rec = describeGrantOption(o, state);
+      var rec = describeGrantOption(o, qualifyState);
       if (!rec) return;
       seen[key] = true;
       out.push(rec);
@@ -1596,6 +1630,28 @@
       }
     });
     if (state.grantChoices) delete state.grantChoices[grantingId];
+  }
+
+  // Which talent or spell's grant handed this item out, if any — as opposed
+  // to the creation-wizard baseline directly (the ancestry pick, the free
+  // skill/proficiency allocation), which never goes through applyGrants and
+  // so leaves no grantChoices record. `kind` matches an applyOneGrant
+  // record's `kind` ("talent" | "spell" | "skill" | "proficiency"); `id` is
+  // the talent/spell id for those two kinds, the skill/proficiency name for
+  // the other two. Null means "granted at creation directly", not "not
+  // granted" — callers already know the item is granted before asking this.
+  function grantSource(state, kind, id) {
+    var gc = state.grantChoices || {};
+    for (var grantingId in gc) {
+      var recs = gc[grantingId] || [];
+      for (var i = 0; i < recs.length; i++) {
+        var rec = recs[i];
+        if (rec.kind !== kind) continue;
+        if ((kind === "talent" || kind === "spell") ? rec.id === id : rec.name === id)
+          return byId[grantingId] || spellsById[grantingId] || null;
+      }
+    }
+    return null;
   }
 
   // ---- Modifiers ----------------------------------------------------------
@@ -1762,13 +1818,14 @@
     if (!spell) return 0;
     return Math.max(0, (spell.tier || 1) - 1);
   }
-  // Human-readable casting time: "action", "minor action", "reaction", or
-  // "N min" for a longer ritual cast (castingTime holds a number of minutes
-  // in that case).
+  // Human-readable casting time: "action", "minor action", "reaction", "free",
+  // or "N min" for a longer ritual cast (castingTime holds a number of
+  // minutes in that case).
   function castingTimeLabel(spell) {
     var ct = spell && spell.castingTime;
     if (ct === "minor_action") return "minor action";
     if (ct === "reaction") return "reaction";
+    if (ct === "free") return "free";
     if (typeof ct === "number") return ct + " min";
     return "action";
   }
@@ -1871,7 +1928,7 @@
     grantsOf: grantsOf, grantNeedsChoice: grantNeedsChoice, grantOptions: grantOptions,
     grantOptionKey: grantOptionKey, optionTierRange: optionTierRange,
     grantSelectionValid: grantSelectionValid, applyGrants: applyGrants, revokeGrants: revokeGrants,
-    isGrantedSpell: isGrantedSpell,
+    grantSource: grantSource, isGrantedSpell: isGrantedSpell,
     spellManaCost: spellManaCost, castingTimeLabel: castingTimeLabel,
     rangeLabel: rangeLabel, targetLabel: targetLabel, durationLabel: durationLabel, aoeLabel: aoeLabel,
     maxHP: maxHP, maxMana: maxMana,

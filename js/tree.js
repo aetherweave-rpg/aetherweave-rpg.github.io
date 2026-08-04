@@ -418,7 +418,12 @@
 
     if (status.owned) {
       var chk = Engine.canRefund(t.id, state);
-      if (chk.granted) { UI.toast(t.name + " was granted at creation, can't be refunded.", "error"); return; }
+      if (chk.granted) {
+        var src = Engine.grantSource(state, "talent", t.id);
+        UI.toast(t.name + " was " + (src ? "granted by " + src.name : "granted at creation") +
+          ", can't be refunded.", "error");
+        return;
+      }
       if (!chk.ok) {
         UI.toast("Can't refund " + t.name + ": needed by " + (chk.blockedBy || []).join(", "), "error");
         return;
@@ -539,8 +544,9 @@
 
     var meta = el("div", "tt-meta");
     var lc = Engine.learnCost(t, state);
+    var grantedBy = status.granted ? Engine.grantSource(state, "talent", t.id) : null;
     if (status.granted) {
-      meta.appendChild(el("span", "tt-cost granted", "granted at creation"));
+      meta.appendChild(el("span", "tt-cost granted", grantedBy ? "granted by " + grantedBy.name : "granted at creation"));
     } else {
       meta.appendChild(el("span", "tt-cost " + (t.pool === "combat" ? "combat" : "noncombat"),
         t.cost + " " + (t.pool === "combat" ? "combat" : "non-combat") + " exp"));
@@ -589,7 +595,8 @@
 
     var hint = el("div", "tt-hint");
     if (status.granted) {
-      hint.textContent = "Granted at creation, free, can't be refunded";
+      hint.textContent = (grantedBy ? "Granted by " + grantedBy.name : "Granted at creation") +
+        ", free, can't be refunded";
       hint.classList.add("ok");
     } else if (status.owned) {
       var chk = Engine.canRefund(t.id, state);

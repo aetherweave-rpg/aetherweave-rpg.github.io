@@ -30,8 +30,8 @@ window.CONFIG = {
   // A Spellcasting proficiency (see PROFICIENCY_KINDS in data/skills.js) reuses
   // the weapon curve below, so raising it costs exactly what a weapon step does.
   SKILL_COSTS: {
-    combat:     [2, 2, 4, 6, 8],  // combat skills
-    noncombat:  [1, 2, 3, 4, 5],  // general non-combat skills
+    combat:     [1, 1, 2, 3, 4],  // combat skills
+    noncombat:  [1, 1, 2, 3, 4],  // general non-combat skills
     crafting:   [1, 1, 2, 2, 3],  // crafting proficiencies
     instrument: [1, 1, 2, 2, 3],  // instrument proficiencies
     weapon:     [2, 2, 4, 6, 8],  // weapon proficiencies

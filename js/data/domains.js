@@ -91,20 +91,134 @@ window.DOMAINS = [
         id: "inve_arsenal",
         name: "Arsenal",
         flavour: "You are an expert at crafting improvised technological weaponry to deal with the dangers at hand. You can combine different materials at hand in order to come up with lethal contraptions.\n\nWhen you select this talent, pick two Material Knowledge talents for which you qualify.",
-        description: "You can add up to {inve_arsenal:\"2\"} of the following additional effects based on your Material Knowledge to this maneuver:",
+        description: "You throw an improvised contraption at a point in range. It there deploys itself, affecting a {inve_arsenal:\"4y\"} circle around it. Roll Intelligence + a chosen crafting proficiency to determine the effectiveness.\n\nYou can add up to {inve_arsenal:\"2\">inve_complicated_contraption:\"3\"} of the following additional effects based on your Material Knowledge to this maneuver:\n\n{inve_material_knowledge_bouncy:\"Bouncy: When added to a contraption: the target point no longer needs to be in line of sight as long it can be reached from where it is {inve_arsenal:\n\"thrown\"}.\"}\n\n{inve_material_knowledge_sticky:\"Sticky: When added, this material ensures the contraption moves around with whatever it is stuck on.\"}",
         pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
         col: 5,
         ability: "maneuver",
+        uses: 2,
         castingTime: "action",
         range: 10,
+        target: [
+          "point"
+        ],
         duration: "instantaneous",
         aoe: {
           shape: "circle",
           origin: "point",
           size: 4
+        },
+        grants: {
+          mode: "pick",
+          options: [
+            {
+              talent: "inve_material_knowledge_sticky"
+            },
+            {
+              talent: "inve_material_knowledge_bouncy"
+            }
+          ],
+          count: 2
+        }
+      },
+      {
+        id: "inve_well_prepared",
+        name: "Well-prepared",
+        flavour: "You are always on top of your game, and have prepared even for the most absurd of situations.",
+        description: "Regardless of mode of play you can perform a Minor Flashback to have acquired an item, or grant you an extra use of Arsenal.",
+        pool: "noncombat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 1,
+        ability: "maneuver",
+        uses: 1,
+        castingTime: "free",
+        duration: "instantaneous"
+      },
+      {
+        id: "inve_material_knowledge_sticky",
+        name: "Material Knowledge: Sticky",
+        flavour: "Your inventions can leverage sticky materials to ensure they stick to whatever you throw them at.",
+        description: "When added, this material ensures the contraption moves around with whatever it is stuck on.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 6,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_material_knowledge_bouncy",
+        name: "Material Knowledge: Bouncy",
+        flavour: "You have acquired knowledge of rubbery and elastic substances.",
+        description: "When added to a contraption: the target point no longer needs to be in line of sight as long it can be reached from where it is {inve_arsenal:\n\"thrown\"}.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 7,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_material_hoarder",
+        name: "Material Hoarder",
+        description: "You have a larger collection of materials, allowing for an extra use per session of your Arsenal ability.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 2,
+        col: 5,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {
+            uses: {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_complicated_contraption",
+        name: "Complicated Contraption",
+        flavour: "You are adept at making even more complicated contraptions, combining more materials for wild effects.",
+        description: "You can add an additional material to your Arsenal contraptions.",
+        pool: "combat",
+        cost: 1,
+        tier: 2,
+        row: 3,
+        col: 4,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
         }
       }
     ]

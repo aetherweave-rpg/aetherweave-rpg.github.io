@@ -27,5 +27,5 @@ window.CREATION = {
   },
 
   // Step 6 — free exp left over after creation, spent on anything.
-  freeExp: { combat: 5, noncombat: 5 },
+  freeExp: { combat: 8, noncombat: 4 },
 };

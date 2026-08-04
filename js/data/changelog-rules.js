@@ -9,6 +9,20 @@
 
 window.CHANGELOG_RULES = [
   {
+    date: "2026-08-04",
+    entries: [
+      "Changed: Character Creation, Step by Step",
+      "Changed: Experience Points",
+      "Changed: Skills",
+    ],
+  },
+  {
+    date: "2026-08-04",
+    entries: [
+      "Changed: Changed default skill costs and starting exp
+    ],
+  },
+  {
     date: "2026-08-03",
     entries: [
       "Changed: Mana",
