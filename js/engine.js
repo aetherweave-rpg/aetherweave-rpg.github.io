@@ -560,7 +560,7 @@
   }
 
   // ---- Database validation ------------------------------------------------
-  var validSpellTargets = { self: true, ally: true, enemy: true, object: true };
+  var validSpellTargets = { self: true, ally: true, enemy: true, object: true, point: true };
   var validDurationUnits = { minutes: true, hours: true, days: true, weeks: true, rounds: true };
 
   // Shared by spells and maneuver talents — both carry the same "castable"
@@ -575,7 +575,7 @@
         !(obj.range === "self" || obj.range === "touch" || obj.range === "weapon" || (typeof obj.range === "number" && obj.range > 0)))
       problems.push(label + ": range must be 'self', 'touch', 'weapon', or a positive number of yards (got " + JSON.stringify(obj.range) + ")");
     if (obj.target != null && (!Array.isArray(obj.target) || obj.target.some(function (t) { return !validSpellTargets[t]; })))
-      problems.push(label + ": target must be a list from self/ally/enemy/object, or omitted entirely (got " + JSON.stringify(obj.target) + ")");
+      problems.push(label + ": target must be a list from self/ally/enemy/object/point, or omitted entirely (got " + JSON.stringify(obj.target) + ")");
     var dur = obj.duration;
     var durOk = dur === "instantaneous" || dur === "indefinite" ||
       (!!dur && typeof dur === "object" && typeof dur.value === "number" && dur.value > 0 && validDurationUnits[dur.unit]);
@@ -658,6 +658,13 @@
 
     // Grants (§4.9). Anything that hands out content must hand out something
     // that exists, and a choice the player can never complete is a dead talent.
+    //
+    // "Offers enough options" is not the same as "can be fulfilled" — an
+    // unknown/self-referencing/duplicated option still counted toward the raw
+    // total, which let a grant look complete while nothing a character could
+    // actually receive backed it (e.g. a `pick 2` with only one real option).
+    // `fulfillable` below only counts options that are real, distinct things;
+    // `cheapestCost` catches a `budget` nobody could ever afford to spend.
     function checkGrants(label, entry) {
       var g = grantsOf(entry);
       if (!g) return;
@@ -669,44 +676,114 @@
       if (g.mode !== "all" && (typeof g.count !== "number" || g.count < 1))
         problems.push(label + ": grants mode '" + g.mode + "' needs a count of at least 1");
 
-      var concrete = 0;
+      var seenKeys = {};
+      var fulfillable = 0;
+      var cheapestCost = null;
+      function addFulfillable(cost) {
+        fulfillable++;
+        if (cheapestCost === null || cost < cheapestCost) cheapestCost = cost;
+      }
+
+      // A rank filter (`tier`, or `tierMin`/`tierMax` for "up to") must land
+      // inside 1..MAX_SKILL_TIER and the right way round. Returns the
+      // (possibly auto-swapped) [lo, hi] range so the caller can still expand
+      // it — an authoring mistake here shouldn't also hide the option.
+      function checkTierRange(o) {
+        if (typeof o.tierMin === "number" && typeof o.tierMax === "number" && o.tierMin > o.tierMax)
+          problems.push(label + ": tierMin " + o.tierMin + " is above tierMax " + o.tierMax);
+        var range = optionTierRange(o);
+        [range[0], range[1]].forEach(function (t) {
+          if (t < 1 || t > CONFIG.MAX_SKILL_TIER || Math.floor(t) !== t)
+            problems.push(label + ": rank " + t + " is out of range 1.." + CONFIG.MAX_SKILL_TIER);
+        });
+        return range;
+      }
+
       g.options.forEach(function (o) {
         if (o.anySkill) {
-          if (!(window.SKILLS || {})[o.anySkill])
+          if (!(window.SKILLS || {})[o.anySkill]) {
             problems.push(label + ": grants anySkill '" + o.anySkill + "' (expected combat or noncombat)");
-          else concrete += (window.SKILLS[o.anySkill] || []).length;
+          } else {
+            var skillRange = checkTierRange(o);
+            (window.SKILLS[o.anySkill] || []).forEach(function () {
+              for (var st = skillRange[0]; st <= skillRange[1]; st++)
+                addFulfillable(stepCost(CONFIG.SKILL_COSTS[o.anySkill], 0, st));
+            });
+          }
           if (g.mode === "all")
             problems.push(label + ": grants mode 'all' cannot use a category option (nothing picks one)");
           return;
         }
         if (o.anyProficiency) {
           var kinds = Array.isArray(o.anyProficiency) ? o.anyProficiency : [o.anyProficiency];
+          var profRange = checkTierRange(o);
           kinds.forEach(function (k) {
-            if (!findKind(k)) problems.push(label + ": grants anyProficiency of unknown kind '" + k + "'");
-            else concrete += ((findKind(k) || {}).suggestions || []).length;
+            var kind = findKind(k);
+            if (!kind) { problems.push(label + ": grants anyProficiency of unknown kind '" + k + "'"); return; }
+            (kind.suggestions || []).forEach(function () {
+              for (var pt = profRange[0]; pt <= profRange[1]; pt++)
+                addFulfillable(stepCost(CONFIG.SKILL_COSTS[kind.costKey], 0, pt));
+            });
           });
           if (g.mode === "all")
             problems.push(label + ": grants mode 'all' cannot use a category option (nothing picks one)");
           return;
         }
-        concrete++;
+
+        // A concrete option: real, distinct things only count toward what the
+        // grant can actually deliver. Unknown/self/duplicate entries still get
+        // their own diagnostic, but must not inflate the fulfillable count.
         if (o.talent) {
-          if (!byId[o.talent]) problems.push(label + ": grants unknown talent '" + o.talent + "'");
-          else if (o.talent === entry.id) problems.push(label + ": grants itself");
+          var t = byId[o.talent];
+          if (!t) { problems.push(label + ": grants unknown talent '" + o.talent + "'"); return; }
+          if (o.talent === entry.id) { problems.push(label + ": grants itself"); return; }
+          if (seenKeys[grantOptionKey(o)]) { problems.push(label + ": grants the same option twice ('" + o.talent + "')"); return; }
+          seenKeys[grantOptionKey(o)] = true;
+          addFulfillable(t.cost || 0);
         } else if (o.spell) {
-          if (!spellsById[o.spell]) problems.push(label + ": grants unknown spell '" + o.spell + "'");
+          var sp = spellsById[o.spell];
+          if (!sp) { problems.push(label + ": grants unknown spell '" + o.spell + "'"); return; }
+          if (o.spell === entry.id) { problems.push(label + ": grants itself"); return; }
+          if (seenKeys[grantOptionKey(o)]) { problems.push(label + ": grants the same option twice ('" + o.spell + "')"); return; }
+          seenKeys[grantOptionKey(o)] = true;
+          addFulfillable(sp.cost || 0);
         } else if (o.skill) {
-          if (!skillNames[o.skill]) problems.push(label + ": grants unknown skill '" + o.skill + "'");
+          if (!skillNames[o.skill]) { problems.push(label + ": grants unknown skill '" + o.skill + "'"); return; }
+          var skillRange2 = checkTierRange(o);
+          for (var st2 = skillRange2[0]; st2 <= skillRange2[1]; st2++) {
+            var skillKey = grantOptionKey({ skill: o.skill, tier: st2 });
+            if (seenKeys[skillKey]) { problems.push(label + ": grants the same option twice ('" + o.skill + "', rank " + st2 + ")"); continue; }
+            seenKeys[skillKey] = true;
+            addFulfillable(stepCost(CONFIG.SKILL_COSTS[isCombatSkill(o.skill) ? "combat" : "noncombat"], 0, st2));
+          }
         } else if (o.proficiency) {
-          if (!findKind(o.kind))
+          var pKind = findKind(o.kind);
+          if (!pKind) {
             problems.push(label + ": grants proficiency '" + o.proficiency + "' of unknown kind '" + o.kind + "'");
+            return;
+          }
+          var profRange2 = checkTierRange(o);
+          for (var pt2 = profRange2[0]; pt2 <= profRange2[1]; pt2++) {
+            var profKey = grantOptionKey({ proficiency: o.proficiency, kind: o.kind, tier: pt2 });
+            if (seenKeys[profKey]) { problems.push(label + ": grants the same option twice ('" + o.proficiency + "', rank " + pt2 + ")"); continue; }
+            seenKeys[profKey] = true;
+            addFulfillable(stepCost(CONFIG.SKILL_COSTS[pKind.costKey], 0, pt2));
+          }
         } else {
           problems.push(label + ": a grant option names nothing (talent, spell, skill, " +
             "proficiency, anySkill or anyProficiency)");
         }
       });
-      if (g.mode === "pick" && g.count > concrete)
-        problems.push(label + ": grants asks for " + g.count + " picks but offers only " + concrete);
+
+      if (g.mode === "pick" && g.count > fulfillable)
+        problems.push(label + ": grants asks for " + g.count + " picks but offers only " + fulfillable);
+      if (g.mode === "budget") {
+        if (fulfillable === 0)
+          problems.push(label + ": grants a budget but has no option a character could ever actually receive");
+        else if (cheapestCost !== null && cheapestCost > g.count)
+          problems.push(label + ": grants a budget of " + g.count + " exp but the cheapest option that could " +
+            "ever be picked costs " + cheapestCost + " exp — nothing could ever be picked");
+      }
     }
     allTalents.forEach(function (t) { checkGrants("talent '" + t.id + "'", t); });
     Object.keys(window.SPELLS || {}).forEach(function (domainId) {
@@ -1283,9 +1360,29 @@
   function grantOptionKey(o) {
     if (o.talent) return "talent:" + o.talent;
     if (o.spell) return "spell:" + o.spell;
-    if (o.skill) return "skill:" + o.skill;
-    if (o.proficiency) return "proficiency:" + (o.kind || "") + ":" + o.proficiency;
+    var tier = o.tier || 1;
+    // The rank only joins the key once it stops being the default — an
+    // ordinary rank-1 grant keeps the key it always had, so old save data and
+    // in-flight grantChoices records never see a format change.
+    if (o.skill) return "skill:" + o.skill + (tier === 1 ? "" : ":" + tier);
+    if (o.proficiency) return "proficiency:" + (o.kind || "") + ":" + o.proficiency + (tier === 1 ? "" : ":" + tier);
     return "";
+  }
+
+  // A skill/proficiency option's rank filter: an exact `tier` (default 1), or
+  // a `tierMin`..`tierMax` range — "up to rank N" is authored as tierMin: 1,
+  // tierMax: N — which `grantOptions` expands into one choice per rank, so a
+  // `budget` grant can weigh a shallow, cheap pick against a deeper, pricier
+  // one for the same skill, and a `pick` grant lets the player choose depth.
+  function optionTierRange(o) {
+    if (typeof o.tierMin === "number" || typeof o.tierMax === "number") {
+      var lo = typeof o.tierMin === "number" ? o.tierMin : o.tierMax;
+      var hi = typeof o.tierMax === "number" ? o.tierMax : o.tierMin;
+      if (hi < lo) { var t = lo; lo = hi; hi = t; }
+      return [lo, hi];
+    }
+    var exact = typeof o.tier === "number" ? o.tier : 1;
+    return [exact, exact];
   }
 
   // One authored option → a display record, or null if it points at nothing.
@@ -1315,7 +1412,8 @@
       if (!sst.met) rec.blocked = unmetLabels(sst);
     } else if (o.skill) {
       var cur = (state.skills || {})[o.skill] || 0;
-      rec.kind = "skill"; rec.label = o.skill; rec.note = "skill";
+      rec.kind = "skill"; rec.label = o.skill;
+      rec.note = "skill" + (tier > 1 ? " · rank " + tier : "");
       rec.owned = cur >= tier;
       rec.cost = stepCost(CONFIG.SKILL_COSTS[isCombatSkill(o.skill) ? "combat" : "noncombat"],
                           Math.min(cur, tier - 1), tier);
@@ -1323,7 +1421,8 @@
       var kind = findKind(o.kind);
       if (!kind) return null;
       var pcur = profTier(state, o.proficiency);
-      rec.kind = "proficiency"; rec.label = o.proficiency; rec.note = kind.label;
+      rec.kind = "proficiency"; rec.label = o.proficiency;
+      rec.note = kind.label + (tier > 1 ? " · rank " + tier : "");
       rec.owned = pcur >= tier;
       rec.cost = stepCost(CONFIG.SKILL_COSTS[kind.costKey], Math.min(pcur, tier - 1), tier);
     } else return null;
@@ -1335,7 +1434,10 @@
       .map(function (r) { return r.label; }).join(", ") || null;
   }
 
-  // Every concrete choice this entry offers, categories expanded, de-duped.
+  // Every concrete choice this entry offers, categories AND rank ranges
+  // expanded, de-duped. "Up to rank N" is one authored option but several
+  // real choices — a rank-1 and a rank-2 version of the same skill are
+  // different keys, different costs, and compete separately for a budget.
   function grantOptions(entry, state) {
     var g = grantsOf(entry);
     if (!g) return [];
@@ -1348,10 +1450,18 @@
       seen[key] = true;
       out.push(rec);
     }
+    // `base` names a skill or a proficiency (with its kind) plus whatever
+    // rank filter the authored option carried; pushes one option per rank.
+    function pushRanked(base) {
+      var range = optionTierRange(base);
+      for (var t = range[0]; t <= range[1]; t++) {
+        push({ skill: base.skill, proficiency: base.proficiency, kind: base.kind, tier: t });
+      }
+    }
     g.options.forEach(function (o) {
       if (o.anySkill) {
         ((window.SKILLS || {})[o.anySkill] || []).forEach(function (s) {
-          push({ skill: s.name, tier: o.tier });
+          pushRanked({ skill: s.name, tier: o.tier, tierMin: o.tierMin, tierMax: o.tierMax });
         });
       } else if (o.anyProficiency) {
         var kinds = Array.isArray(o.anyProficiency) ? o.anyProficiency : [o.anyProficiency];
@@ -1364,8 +1474,14 @@
           (state.proficiencies || []).forEach(function (p) {
             if (p.kind === kindId && names.indexOf(p.name) < 0) names.push(p.name);
           });
-          names.forEach(function (n) { push({ proficiency: n, kind: kindId, tier: o.tier }); });
+          names.forEach(function (n) {
+            pushRanked({ proficiency: n, kind: kindId, tier: o.tier, tierMin: o.tierMin, tierMax: o.tierMax });
+          });
         });
+      } else if (o.skill) {
+        pushRanked({ skill: o.skill, tier: o.tier, tierMin: o.tierMin, tierMax: o.tierMax });
+      } else if (o.proficiency) {
+        pushRanked({ proficiency: o.proficiency, kind: o.kind, tier: o.tier, tierMin: o.tierMin, tierMax: o.tierMax });
       } else push(o);
     });
     return out;
@@ -1666,7 +1782,7 @@
     if (typeof r === "number") return r + "y";
     return "";
   }
-  var TARGET_LABELS = { self: "Self", ally: "Ally", enemy: "Enemy", object: "Object" };
+  var TARGET_LABELS = { self: "Self", ally: "Ally", enemy: "Enemy", object: "Object", point: "Point" };
   // Human-readable target list, e.g. "Enemy" or "Self, Ally".
   function targetLabel(spell) {
     return ((spell && spell.target) || []).map(function (t) { return TARGET_LABELS[t] || t; }).join(", ");
@@ -1753,6 +1869,7 @@
     MODIFIABLE_FIELDS: MODIFIABLE_FIELDS, MODIFIER_OPS: MODIFIER_OPS,
     // grants
     grantsOf: grantsOf, grantNeedsChoice: grantNeedsChoice, grantOptions: grantOptions,
+    grantOptionKey: grantOptionKey, optionTierRange: optionTierRange,
     grantSelectionValid: grantSelectionValid, applyGrants: applyGrants, revokeGrants: revokeGrants,
     isGrantedSpell: isGrantedSpell,
     spellManaCost: spellManaCost, castingTimeLabel: castingTimeLabel,
