@@ -875,13 +875,14 @@
         problems.push(t.domain + " row " + t.row + " mixes tier " + rowTier[key] + " and tier " + t.tier);
     });
 
-    // Same-tree prerequisites must sit on a lower row (trees grow upward).
+    // Same-tree prerequisites must sit on the same row or a lower one (trees
+    // grow upward) — never in a higher row, which would put them in a later tier.
     allTalents.forEach(function (t) {
       var reqs = t.requires || {};
       (reqs.talents || []).concat(reqs.anyTalents || []).forEach(function (pid) {
         var pre = byId[pid];
-        if (pre && pre.domain === t.domain && pre.row >= t.row)
-          problems.push(t.id + ": prerequisite '" + pid + "' is not below it (row " + pre.row + " ≥ " + t.row + ")");
+        if (pre && pre.domain === t.domain && pre.row > t.row)
+          problems.push(t.id + ": prerequisite '" + pid + "' is above it (row " + pre.row + " > " + t.row + ")");
       });
     });
 
@@ -1055,6 +1056,74 @@
     allTalents.forEach(function (t) { checkHooks("talent '" + t.id + "'", t); });
     Object.keys(window.SPELLS || {}).forEach(function (domainId) {
       (window.SPELLS[domainId] || []).forEach(function (sp) { checkHooks("spell '" + sp.id + "'", sp); });
+    });
+
+    // Crossing prerequisite lines are a layout mistake, not a content gap —
+    // the tree/spell grid renderer draws a straight-ish line between a
+    // prerequisite and what it unlocks, so two links that cross read as
+    // tangled on-screen and are almost always fixed by swapping columns.
+    // Approximated with straight segments between each link's (col, row)
+    // endpoints, same as the renderer's own anchor points.
+    function segmentsCross(p1, p2, p3, p4) {
+      function orient(a, b, c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }
+      function onSeg(a, b, c) {
+        return Math.min(a.x, b.x) <= c.x && c.x <= Math.max(a.x, b.x) &&
+               Math.min(a.y, b.y) <= c.y && c.y <= Math.max(a.y, b.y);
+      }
+      var o1 = orient(p1, p2, p3), o2 = orient(p1, p2, p4);
+      var o3 = orient(p3, p4, p1), o4 = orient(p3, p4, p2);
+      if (o1 === 0 && onSeg(p1, p2, p3)) return true;
+      if (o2 === 0 && onSeg(p1, p2, p4)) return true;
+      if (o3 === 0 && onSeg(p3, p4, p1)) return true;
+      if (o4 === 0 && onSeg(p3, p4, p2)) return true;
+      return (o1 > 0) !== (o2 > 0) && (o3 > 0) !== (o4 > 0);
+    }
+    function checkCrossings(label, links) {
+      for (var i = 0; i < links.length; i++) {
+        for (var j = i + 1; j < links.length; j++) {
+          var a = links[i], b = links[j];
+          // Two links sharing an endpoint meet there, which is normal — not a crossing.
+          if (a.fromId === b.fromId || a.fromId === b.toId ||
+              a.toId === b.fromId || a.toId === b.toId) continue;
+          if (segmentsCross(a.from, a.to, b.from, b.to))
+            problems.push(label + ": prerequisite line '" + a.fromId + "' → '" + a.toId +
+              "' crosses '" + b.fromId + "' → '" + b.toId + "' — rearrange columns to avoid the overlap");
+        }
+      }
+    }
+
+    var talentDomainLinks = {};
+    allTalents.forEach(function (t) {
+      var reqs = t.requires || {};
+      (reqs.talents || []).concat(reqs.anyTalents || []).forEach(function (pid) {
+        var pre = byId[pid];
+        if (!pre || pre.domain !== t.domain) return;   // only same-tree links are ever drawn
+        (talentDomainLinks[t.domain] = talentDomainLinks[t.domain] || []).push({
+          fromId: pre.id, toId: t.id,
+          from: { x: pre.col, y: pre.row }, to: { x: t.col, y: t.row }
+        });
+      });
+    });
+    Object.keys(talentDomainLinks).forEach(function (domainId) {
+      checkCrossings("tree '" + domainId + "'", talentDomainLinks[domainId]);
+    });
+
+    var spellDomainLinks = {};
+    Object.keys(window.SPELLS || {}).forEach(function (domainId) {
+      (window.SPELLS[domainId] || []).forEach(function (sp) {
+        var reqs = sp.requires || {};
+        (reqs.talents || []).concat(reqs.anyTalents || []).forEach(function (pid) {
+          var pre = spellsById[pid];
+          if (!pre || spellDomainById[pid] !== domainId) return;   // only same-domain spell links are drawn
+          (spellDomainLinks[domainId] = spellDomainLinks[domainId] || []).push({
+            fromId: pre.id, toId: sp.id,
+            from: { x: pre.col, y: pre.row }, to: { x: sp.col, y: sp.row }
+          });
+        });
+      });
+    });
+    Object.keys(spellDomainLinks).forEach(function (domainId) {
+      checkCrossings("spells '" + domainId + "'", spellDomainLinks[domainId]);
     });
 
     return problems;

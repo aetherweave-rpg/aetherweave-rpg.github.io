@@ -324,6 +324,8 @@
   // Only same-domain spell prerequisites are drawn — anything else (a talent,
   // or a spell in another domain) can't have a node in this view, so it
   // renders as text in the tooltip instead.
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
   function drawLines() {
     var host = document.getElementById("spell-grid");
     if (!host || !_svg) return;
@@ -335,11 +337,24 @@
 
     var hostRect = host.getBoundingClientRect();
     var state = State.get();
+    var view = _view;
 
     var viewById = {};
-    (_view ? _view.spells : []).forEach(function (sp) { viewById[sp.id] = sp; });
+    (view ? view.spells : []).forEach(function (sp) { viewById[sp.id] = sp; });
 
-    (_view ? _view.spells : []).forEach(function (sp) {
+    // Every rendered box, so a link can detour around whatever sits between
+    // its two endpoints instead of being drawn straight through it.
+    var obstacles = (view ? view.spells : []).map(function (sp) {
+      var elx = _nodeEls[sp.id];
+      if (!elx) return null;
+      var r = elx.querySelector(".node-box").getBoundingClientRect();
+      return {
+        id: sp.id, row: sp.row, col: view.colOf(sp),
+        top: r.top - hostRect.top, bottom: r.bottom - hostRect.top
+      };
+    }).filter(Boolean);
+
+    (view ? view.spells : []).forEach(function (sp) {
       var childEl = _nodeEls[sp.id];
       if (!childEl) return;
       var reqs = sp.requires || {};
@@ -351,43 +366,112 @@
         var pre = viewById[ln.pid];
         var preEl = _nodeEls[ln.pid];
         if (!pre || !preEl) return;
-        drawPath(hostRect, preEl, childEl, pre, sp, state, ln.dashed);
+        var between = obstacles.filter(function (o) { return o.id !== pre.id && o.id !== sp.id; });
+        drawPath(hostRect, preEl, childEl, pre, sp, state, ln.dashed, view, between);
       });
     });
   }
 
-  function drawPath(hostRect, preEl, childEl, pre, child, state, dashed) {
+  function drawPath(hostRect, preEl, childEl, pre, child, state, dashed, view, between) {
     var pb = preEl.querySelector(".node-box").getBoundingClientRect();
     var cb = childEl.querySelector(".node-box").getBoundingClientRect();
+    var preCol = view.colOf(pre), childCol = view.colOf(child);
 
-    var d;
-    if (pre.row === child.row) {
-      // Side-by-side prerequisite (same row): draw a horizontal connector
-      // between the facing edges of the two boxes.
-      var leftToRight = (pre.col || 0) <= (child.col || 0);
+    var points = pre.row === child.row
+      ? sameRowPoints(hostRect, pb, cb, pre.row, preCol, childCol, between)
+      : verticalPoints(hostRect, pb, cb, pre.row, child.row, preCol, childCol, between);
+
+    var preOwned = nodeOwned(pre, state);
+    var childOwned = nodeOwned(child, state);
+    var linkState = preOwned && childOwned ? "active" : preOwned ? "ready" : "idle";
+    var cls = "link link-" + linkState;
+    if (dashed) cls += " link-any";
+
+    var path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", pathFromPoints(points));
+    path.setAttribute("class", cls);
+    _svg.appendChild(path);
+
+    var chevron = document.createElementNS(SVG_NS, "path");
+    var mid = midpointOf(points);
+    chevron.setAttribute("d", "M -4 -4 L 3 0 L -4 4");
+    chevron.setAttribute("class", "link-chevron link-" + linkState);
+    chevron.setAttribute("transform", "translate(" + mid.x + " " + mid.y + ") rotate(" + mid.angle + ")");
+    _svg.appendChild(chevron);
+  }
+
+  function pathFromPoints(points) {
+    return "M " + points.map(function (p) { return p.x + " " + p.y; }).join(" L ");
+  }
+
+  // A small chevron drawn halfway along the link's total length (not at the
+  // box edge, where a routed corner can leave it pointing the wrong way),
+  // rotated to match the line's direction at that point.
+  function midpointOf(points) {
+    var segs = [], total = 0;
+    for (var i = 1; i < points.length; i++) {
+      var a = points[i - 1], b = points[i];
+      var len = Math.hypot(b.x - a.x, b.y - a.y);
+      segs.push({ a: a, b: b, len: len });
+      total += len;
+    }
+    var half = total / 2, acc = 0;
+    for (var j = 0; j < segs.length; j++) {
+      var s = segs[j];
+      if (acc + s.len >= half || j === segs.length - 1) {
+        var t = s.len ? (half - acc) / s.len : 0;
+        return {
+          x: s.a.x + (s.b.x - s.a.x) * t,
+          y: s.a.y + (s.b.y - s.a.y) * t,
+          angle: Math.atan2(s.b.y - s.a.y, s.b.x - s.a.x) * 180 / Math.PI
+        };
+      }
+      acc += s.len;
+    }
+    return { x: points[0].x, y: points[0].y, angle: 0 };
+  }
+
+  // Side-by-side prerequisite (same row): a square horizontal connector
+  // between the facing edges of the two boxes — or, if another box sits
+  // between them, a squared-off hop over the top of the row so the line
+  // never crosses it.
+  function sameRowPoints(hostRect, pb, cb, row, preCol, childCol, between) {
+    var loCol = Math.min(preCol, childCol), hiCol = Math.max(preCol, childCol);
+    var blockers = (between || []).filter(function (o) {
+      return o.row === row && o.col > loCol && o.col < hiCol;
+    });
+
+    if (!blockers.length) {
+      var leftToRight = preCol <= childCol;
       var hsx = (leftToRight ? pb.right : pb.left) - hostRect.left;
       var hex = (leftToRight ? cb.left : cb.right) - hostRect.left;
       var hsy = pb.top - hostRect.top + pb.height / 2;
       var hey = cb.top - hostRect.top + cb.height / 2;
-      var midX = (hsx + hex) / 2;
-      d = "M " + hsx + " " + hsy + " C " + midX + " " + hsy + " " + midX + " " + hey + " " + hex + " " + hey;
-    } else {
-      // Vertical prerequisite (prereq bottom-of-grid → dependent above it).
-      var sx = pb.left - hostRect.left + pb.width / 2, sy = pb.top - hostRect.top;
-      var ex = cb.left - hostRect.left + cb.width / 2, ey = cb.bottom - hostRect.top;
-      var midY = (sy + ey) / 2;
-      d = "M " + sx + " " + sy + " C " + sx + " " + midY + " " + ex + " " + midY + " " + ex + " " + ey;
+      return [{ x: hsx, y: hsy }, { x: hex, y: hey }];
     }
 
-    var preOwned = nodeOwned(pre, state);
-    var childOwned = nodeOwned(child, state);
-    var cls = "link " + (preOwned && childOwned ? "link-active" : preOwned ? "link-ready" : "link-idle");
-    if (dashed) cls += " link-any";
+    var sx = pb.left - hostRect.left + pb.width / 2, sy = pb.top - hostRect.top;
+    var ex = cb.left - hostRect.left + cb.width / 2, ey = cb.top - hostRect.top;
+    var tops = blockers.map(function (o) { return o.top; }).concat([sy, ey]);
+    var peakY = Math.max(0, Math.min.apply(null, tops) - 16);
+    return [{ x: sx, y: sy }, { x: sx, y: peakY }, { x: ex, y: peakY }, { x: ex, y: ey }];
+  }
 
-    var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", d);
-    path.setAttribute("class", cls);
-    _svg.appendChild(path);
+  // Vertical prerequisite (prereq bottom-of-grid → dependent above it): a
+  // square elbow between the two — jogging at the midpoint when nothing is
+  // in the way, or through the empty gap just above the prerequisite's own
+  // row, over to the dependent's column, when something is.
+  function verticalPoints(hostRect, pb, cb, preRow, childRow, preCol, childCol, between) {
+    var sx = pb.left - hostRect.left + pb.width / 2, sy = pb.top - hostRect.top;
+    var ex = cb.left - hostRect.left + cb.width / 2, ey = cb.bottom - hostRect.top;
+    var loRow = Math.min(preRow, childRow), hiRow = Math.max(preRow, childRow);
+    var loCol = Math.min(preCol, childCol), hiCol = Math.max(preCol, childCol);
+    var blocked = (between || []).some(function (o) {
+      return o.row > loRow && o.row < hiRow && o.col >= loCol && o.col <= hiCol;
+    });
+
+    var jogY = blocked ? Math.max(0, sy - 16) : (sy + ey) / 2;
+    return [{ x: sx, y: sy }, { x: sx, y: jogY }, { x: ex, y: jogY }, { x: ex, y: ey }];
   }
 
   // ---- Tooltip ------------------------------------------------------------

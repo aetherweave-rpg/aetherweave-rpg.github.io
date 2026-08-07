@@ -282,6 +282,9 @@ a { color: var(--accent); }
 .link-active { stroke: var(--accent); stroke-width: 3.5; }
 .link-any    { stroke-dasharray: 3 7; }
 
+/* A small chevron halfway along each prerequisite link, matching its color */
+path.link-chevron { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
 .empty { padding: 40px; text-align: center; color: var(--ink-faint); font-style: italic; }
 
 /* ---------- Legend ------------------------------------------------------- */
