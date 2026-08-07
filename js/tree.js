@@ -18,7 +18,7 @@
   var currentTree = window.SafeStorage.read(LAST_TREE_KEY) || null;
   var showAllCombos = window.SafeStorage.read(SHOW_COMBOS_KEY) === "1";
 
-  var _svg = null, _nodeEls = {}, _view = null;
+  var _svg = null, _nodeEls = {}, _view = null, _rowEls = {};
 
   function init() {
     UI.renderHeader("trees");
@@ -194,6 +194,7 @@
     hideTooltip();
     host.innerHTML = "";
     _nodeEls = {};
+    _rowEls = {};
 
     var state = State.get();
     var view = _view = buildView(state);
@@ -246,6 +247,7 @@
         rowEl.appendChild(cell);
       }
       grid.appendChild(rowEl);
+      _rowEls[row] = rowEl;   // drawLines widens these when a gap needs lanes
     }
 
     scheduleDraw();
@@ -458,15 +460,50 @@
   function drawLines() {
     var host = document.getElementById("tree");
     if (!host || !_svg) return;
+    var state = State.get();
+
+    // Measure demand against the stock row spacing, widen the gaps that need
+    // more lanes than they can fit, then route again against the new layout
+    // (§6b). Reset first, or a resize would keep stacking on last time's extra.
+    clearGapSpacing();
+    var plan = routePlan(host);
+    if (plan && applyGapSpacing(plan.gaps)) plan = routePlan(host);
+
     var w = host.clientWidth, h = host.clientHeight;
     _svg.setAttribute("width", w);
     _svg.setAttribute("height", h);
     _svg.setAttribute("viewBox", "0 0 " + w + " " + h);
     while (_svg.firstChild) _svg.removeChild(_svg.firstChild);
 
-    var hostRect = host.getBoundingClientRect();
-    var state = State.get();
+    (plan ? plan.routes : []).forEach(function (r) {
+      var preOwned = nodeOwned(r.link.pre, state);
+      var childOwned = nodeOwned(r.link.child, state);
+      drawRoute(r, preOwned && childOwned ? "active" : preOwned ? "ready" : "idle");
+    });
+  }
+
+  function clearGapSpacing() {
+    Object.keys(_rowEls).forEach(function (row) { _rowEls[row].style.marginTop = ""; });
+  }
+
+  // A gap wanting more lanes than the CSS row spacing allows gets the room it
+  // asked for. `gaps[i].row` is the row BELOW the gap, and the rows are laid
+  // out top-down, so margin-top on that row's element is the space above it.
+  function applyGapSpacing(gaps) {
+    var changed = false;
+    Object.keys(gaps || {}).forEach(function (i) {
+      var g = gaps[i], elx = _rowEls[g.row];
+      if (!elx || g.extra <= 0.5) return;
+      elx.style.marginTop = Math.ceil(g.extra) + "px";
+      changed = true;
+    });
+    return changed;
+  }
+
+  function routePlan(host) {
     var view = _view;
+    if (!view) return null;
+    var hostRect = host.getBoundingClientRect();
 
     // A prerequisite may point at something not rendered in THIS view (a spell
     // — spells live on their own page now — or a cross-domain talent) —
@@ -474,140 +511,58 @@
     // index; if neither has a DOM node for it, the requirement renders as
     // text instead.
     var viewById = {};
-    (view ? view.talents : []).forEach(function (t) { viewById[t.id] = t; });
+    view.talents.forEach(function (t) { viewById[t.id] = t; });
 
-    // Every rendered box, keyed by its DISPLAY row/col, so a link can detour
-    // around whatever sits between its two endpoints instead of being drawn
-    // straight through it.
-    var obstacles = (view ? view.talents : []).map(function (t) {
+    // Each rendered box in host coordinates, at its DISPLAY column (which the
+    // combined ancestral view offsets per block).
+    var nodes = view.talents.map(function (t) {
       var elx = _nodeEls[t.id];
       if (!elx) return null;
-      var r = elx.querySelector(".node-box").getBoundingClientRect();
       return {
         id: t.id, row: t.row, col: view.colOf(t),
-        top: r.top - hostRect.top, bottom: r.bottom - hostRect.top
+        box: relRect(elx.querySelector(".node-box"), hostRect),
+        outer: relRect(elx, hostRect),
       };
     }).filter(Boolean);
 
-    (view ? view.talents : []).forEach(function (t) {
-      var childEl = _nodeEls[t.id];
-      if (!childEl) return;
+    var links = [];
+    view.talents.forEach(function (t) {
+      if (!_nodeEls[t.id]) return;
       var reqs = t.requires || {};
-      var links = [];
-      (reqs.talents || []).forEach(function (pid) { links.push({ pid: pid, dashed: false }); });
-      (reqs.anyTalents || []).forEach(function (pid) { links.push({ pid: pid, dashed: true }); });
-
-      links.forEach(function (ln) {
+      var list = [];
+      (reqs.talents || []).forEach(function (pid) { list.push({ pid: pid, dashed: false }); });
+      (reqs.anyTalents || []).forEach(function (pid) { list.push({ pid: pid, dashed: true }); });
+      list.forEach(function (ln) {
         var pre = viewById[ln.pid] || Engine.talentById(ln.pid);
         if (!pre || pre.domain !== t.domain) return;   // cross-tree → shown as text
-        var preEl = _nodeEls[ln.pid];
-        if (!preEl) return;
-        var between = obstacles.filter(function (o) { return o.id !== pre.id && o.id !== t.id; });
-        drawPath(hostRect, preEl, childEl, pre, t, state, ln.dashed, view, between);
+        if (!_nodeEls[ln.pid]) return;
+        links.push({ from: ln.pid, to: t.id, dashed: ln.dashed, pre: pre, child: t });
       });
     });
+
+    return LinkRouter.route(nodes, links);
   }
 
-  function drawPath(hostRect, preEl, childEl, pre, child, state, dashed, view, between) {
-    var pb = preEl.querySelector(".node-box").getBoundingClientRect();
-    var cb = childEl.querySelector(".node-box").getBoundingClientRect();
-    var preCol = view.colOf(pre), childCol = view.colOf(child);
+  function relRect(elx, hostRect) {
+    var r = elx.getBoundingClientRect();
+    return {
+      left: r.left - hostRect.left, right: r.right - hostRect.left,
+      top: r.top - hostRect.top, bottom: r.bottom - hostRect.top,
+    };
+  }
 
-    var points = pre.row === child.row
-      ? sameRowPoints(hostRect, pb, cb, pre.row, preCol, childCol, between)
-      : verticalPoints(hostRect, pb, cb, pre.row, child.row, preCol, childCol, between);
-
-    var preOwned = nodeOwned(pre, state);
-    var childOwned = nodeOwned(child, state);
-    var linkState = preOwned && childOwned ? "active" : preOwned ? "ready" : "idle";
-    var cls = "link link-" + linkState;
-    if (dashed) cls += " link-any";
-
+  function drawRoute(r, linkState) {
     var path = document.createElementNS(SVG_NS, "path");
-    path.setAttribute("d", pathFromPoints(points));
-    path.setAttribute("class", cls);
+    path.setAttribute("d", "M " + r.points.map(function (p) { return p.x + " " + p.y; }).join(" L "));
+    path.setAttribute("class", "link link-" + linkState + (r.link.dashed ? " link-any" : ""));
     _svg.appendChild(path);
 
     var chevron = document.createElementNS(SVG_NS, "path");
-    var mid = midpointOf(points);
     chevron.setAttribute("d", "M -4 -4 L 3 0 L -4 4");
     chevron.setAttribute("class", "link-chevron link-" + linkState);
-    chevron.setAttribute("transform", "translate(" + mid.x + " " + mid.y + ") rotate(" + mid.angle + ")");
+    chevron.setAttribute("transform",
+      "translate(" + r.chevron.x + " " + r.chevron.y + ") rotate(" + r.chevron.angle + ")");
     _svg.appendChild(chevron);
-  }
-
-  function pathFromPoints(points) {
-    return "M " + points.map(function (p) { return p.x + " " + p.y; }).join(" L ");
-  }
-
-  // A small chevron drawn halfway along the link's total length (not at the
-  // box edge, where a routed corner can leave it pointing the wrong way),
-  // rotated to match the line's direction at that point.
-  function midpointOf(points) {
-    var segs = [], total = 0;
-    for (var i = 1; i < points.length; i++) {
-      var a = points[i - 1], b = points[i];
-      var len = Math.hypot(b.x - a.x, b.y - a.y);
-      segs.push({ a: a, b: b, len: len });
-      total += len;
-    }
-    var half = total / 2, acc = 0;
-    for (var j = 0; j < segs.length; j++) {
-      var s = segs[j];
-      if (acc + s.len >= half || j === segs.length - 1) {
-        var t = s.len ? (half - acc) / s.len : 0;
-        return {
-          x: s.a.x + (s.b.x - s.a.x) * t,
-          y: s.a.y + (s.b.y - s.a.y) * t,
-          angle: Math.atan2(s.b.y - s.a.y, s.b.x - s.a.x) * 180 / Math.PI
-        };
-      }
-      acc += s.len;
-    }
-    return { x: points[0].x, y: points[0].y, angle: 0 };
-  }
-
-  // Side-by-side prerequisite (same row): a square horizontal connector
-  // between the facing edges of the two boxes — or, if another box sits
-  // between them, a squared-off hop over the top of the row so the line
-  // never crosses it.
-  function sameRowPoints(hostRect, pb, cb, row, preCol, childCol, between) {
-    var loCol = Math.min(preCol, childCol), hiCol = Math.max(preCol, childCol);
-    var blockers = (between || []).filter(function (o) {
-      return o.row === row && o.col > loCol && o.col < hiCol;
-    });
-
-    if (!blockers.length) {
-      var leftToRight = preCol <= childCol;
-      var hsx = (leftToRight ? pb.right : pb.left) - hostRect.left;
-      var hex = (leftToRight ? cb.left : cb.right) - hostRect.left;
-      var hsy = pb.top - hostRect.top + pb.height / 2;
-      var hey = cb.top - hostRect.top + cb.height / 2;
-      return [{ x: hsx, y: hsy }, { x: hex, y: hey }];
-    }
-
-    var sx = pb.left - hostRect.left + pb.width / 2, sy = pb.top - hostRect.top;
-    var ex = cb.left - hostRect.left + cb.width / 2, ey = cb.top - hostRect.top;
-    var tops = blockers.map(function (o) { return o.top; }).concat([sy, ey]);
-    var peakY = Math.max(0, Math.min.apply(null, tops) - 16);
-    return [{ x: sx, y: sy }, { x: sx, y: peakY }, { x: ex, y: peakY }, { x: ex, y: ey }];
-  }
-
-  // Vertical prerequisite (prereq bottom-of-tree → dependent above it): a
-  // square elbow between the two — jogging at the midpoint when nothing is
-  // in the way, or through the empty gap just above the prerequisite's own
-  // row, over to the dependent's column, when something is.
-  function verticalPoints(hostRect, pb, cb, preRow, childRow, preCol, childCol, between) {
-    var sx = pb.left - hostRect.left + pb.width / 2, sy = pb.top - hostRect.top;
-    var ex = cb.left - hostRect.left + cb.width / 2, ey = cb.bottom - hostRect.top;
-    var loRow = Math.min(preRow, childRow), hiRow = Math.max(preRow, childRow);
-    var loCol = Math.min(preCol, childCol), hiCol = Math.max(preCol, childCol);
-    var blocked = (between || []).some(function (o) {
-      return o.row > loRow && o.row < hiRow && o.col >= loCol && o.col <= hiCol;
-    });
-
-    var jogY = blocked ? Math.max(0, sy - 16) : (sy + ey) / 2;
-    return [{ x: sx, y: sy }, { x: sx, y: jogY }, { x: ex, y: jogY }, { x: ex, y: ey }];
   }
 
   // ---- Tooltip ------------------------------------------------------------
