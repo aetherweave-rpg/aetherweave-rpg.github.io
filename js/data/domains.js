@@ -91,7 +91,7 @@ window.DOMAINS = [
         id: "inve_arsenal",
         name: "Arsenal",
         flavour: "You are an expert at crafting improvised technological weaponry to deal with the dangers at hand. You can combine different materials at hand in order to come up with lethal contraptions.\n\nWhen you select this talent, pick two Material Knowledge talents for which you qualify.",
-        description: "You throw an improvised contraption at a point in range. It there deploys itself, affecting a {inve_arsenal:\"4y\"} circle around it. Roll Intelligence + a chosen crafting proficiency to determine the effectiveness.\n\nYou can add up to {inve_arsenal:\"2\">inve_complicated_contraption:\"3\"} of the following additional effects based on your Material Knowledge to this maneuver:\n\n{inve_material_knowledge_bouncy:\"Bouncy: When added to a contraption: the target point no longer needs to be in line of sight as long it can be reached from where it is {inve_arsenal:\n\"thrown\"}.\"}\n\n{inve_material_knowledge_sticky:\"Sticky: When added, this material ensures the contraption moves around with whatever it is stuck on.\"}",
+        description: "You throw an improvised contraption at a point in range. It there deploys itself, affecting a {inve_arsenal:\"4y\"} circle around it. Roll Intelligence + a chosen crafting proficiency to determine the effectiveness.\n\nYou can add up to {inve_arsenal:\"2\">inve_complicated_contraption:\"3\"} of the below effects based on your Material Knowledge to this maneuver. The contraption affects all creatures and objects within range.\n\n{inve_material_knowledge_bouncy:\"Bouncy: When added to a contraption: the target point no longer needs to be in line of sight as long it can be reached from where it is {inve_arsenal:\"thrown\"}.\"}\n\n{inve_material_knowledge_sticky:\"Sticky: When added to a contraption, this material ensures the contraption moves around with whatever it is stuck on.\"}\n\n{inve_material_knowledge_explosive:\"Explosive\": Deal 1 bludgeoning damage per succes.\"}\n\n{inve_material_knowledge_sharp:\"Sharp: Deal 1 slashing damage per success.\"}\n\n{inve_material_knowledge_piercing:\"Piercing: Your contraption deals 1 piercing damage per success.\"}\n\n{inve_material_knowledge_incendiary:\"Incendiary: \nOn 1 success: deal 1 fire damage to all creatures and objects in range.\nOn 3+ successes: Deal 1 fire damage and inflict Burning #successes to all creatures and objects in range.\"}\n\n{inve_material_knowledge_electrifying:\"Electrifying: \nOn 1+ successes: Deal 1 lightning damage.\nOn 3+ successes: Deal 2 lightning damage.\nOn 4+ successes: Deal 2 lightning damage and inflict Stunned 1.\"}\n\n{inve_material_knowledge_smoking:\"Smoke: A blanket of smoke covers the affected area, blocking sight and obscuring everything within.\"}\n\n{cmba_alchemical_material_knowledge_acid:\"On 1 success: Deal 1 acid damage.\nOn 3+ successes: Deal 2 acid damage and inflict Corroded 1. \"}\n\n{inve_material_knowledge_cluster: \"When you use this material, halve the area of effect range of your contraption. You choose 3 distinct location in range to target with your contraption, and resolve each of them with a single roll.\"}\n\n{Inve_material_knowledge_seeking:\"You choose which creatures and targets in range of your contraptions are affected.\"}",
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -118,6 +118,24 @@ window.DOMAINS = [
             },
             {
               talent: "inve_material_knowledge_bouncy"
+            },
+            {
+              talent: "inve_explosive"
+            },
+            {
+              talent: "inve_material_knowledge_smoking"
+            },
+            {
+              talent: "inve_material_knowledge_sharp"
+            },
+            {
+              talent: "inve_material_knowledge_piercing"
+            },
+            {
+              talent: "inve_material_knowledge_incendiary"
+            },
+            {
+              talent: "inve_material_knowledge_electrifying"
             }
           ],
           count: 2
@@ -142,7 +160,7 @@ window.DOMAINS = [
         id: "inve_material_knowledge_sticky",
         name: "Material Knowledge: Sticky",
         flavour: "Your inventions can leverage sticky materials to ensure they stick to whatever you throw them at.",
-        description: "When added, this material ensures the contraption moves around with whatever it is stuck on.",
+        description: "When added to a contraption, this material ensures the contraption moves around with whatever it is stuck on.",
         pool: "combat",
         cost: 1,
         tier: 1,
@@ -183,9 +201,9 @@ window.DOMAINS = [
         name: "Material Hoarder",
         description: "You have a larger collection of materials, allowing for an extra use per session of your Arsenal ability.",
         pool: "combat",
-        cost: 1,
+        cost: 2,
         tier: 1,
-        row: 2,
+        row: 3,
         col: 5,
         ability: "modifier",
         modifies: {
@@ -207,9 +225,9 @@ window.DOMAINS = [
         flavour: "You are adept at making even more complicated contraptions, combining more materials for wild effects.",
         description: "You can add an additional material to your Arsenal contraptions.",
         pool: "combat",
-        cost: 1,
+        cost: 2,
         tier: 2,
-        row: 3,
+        row: 4,
         col: 4,
         ability: "modifier",
         modifies: {
@@ -218,6 +236,235 @@ window.DOMAINS = [
         requires: {
           talents: [
             "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_explosive",
+        name: "Material Knowledge: Explosive",
+        flavour: "You are proficient in the use of explosive materials",
+        description: "Deal 1 bludgeoning damage per succes.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 5,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_material_knowledge_smoking",
+        name: "Material Knowledge: Smoking",
+        flavour: "You have mastered the use of materials to produce smoke. Your contraptions can cloak their area of effect in smoke",
+        description: "A blanket of smoke covers the affected area, blocking sight and obscuring everything within.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 6,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_material_knowledge_sharp",
+        name: "Material Knowledge: Sharp",
+        flavour: "You can add sharp material to your contraptions, cutting through anything in their path.",
+        description: "Your contraption deals 1 slashing damage per success.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 4,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_material_knowledge_piercing",
+        name: "Material Knowledge: Piercing",
+        flavour: "You can add piercing objects such as nails or needles to your contraptions.",
+        description: "Your contraption deals 1 piercing damage per success.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 3,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_material_knowledge_incendiary",
+        name: "Material Knowledge: Incendiary",
+        flavour: "You have intimate knowledge of inflammable materials.",
+        description: "On 1 success: deal 1 fire damage to all creatures and objects in range.\nOn 3+ successes: Deal 1 fire damage and inflict Burning #successes to all creatures and objects in range.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 2,
+        col: 3,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_material_knowledge_electrifying",
+        name: "Material Knowledge: Electrifying",
+        flavour: "You have learnt how to shock targets with your contraptions.",
+        description: "On 1+ successes: Deal 1 lightning damage.\nOn 3+ successes: Deal 2 lightning damage.\nOn 4+ successes: Deal 2 lightning damage and inflict Stunned 1.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 2,
+        col: 4,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_contraption_launcher",
+        name: "Contraption Launcher",
+        flavour: "You have developed a weapon for launching your contraptions a greater distance.",
+        description: "You can now launch your contraptions up to twice the base range.",
+        pool: "combat",
+        cost: 2,
+        tier: 2,
+        row: 4,
+        col: 5,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {
+            range: {
+              mul: 2
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_close_range_delivery",
+        name: "Close range delivery",
+        flavour: "You have devised a mechanism through which you can activate and deliver the payload of your contraptions locally and in melee range.",
+        description: "Instead of using your Arsenal ability at range, you can choose to deliver it through a melee strike. If you do so, you can choose to roll for an unarmed melee attack to determine the number of successes instead.\nWhen choosing to activate the contraption in this manner, the effect size and shape changes to a {inve_increased_contraption_range:\"12y\"> inve_arsenal:\"6y\"} cone.",
+        pool: "combat",
+        cost: 2,
+        tier: 2,
+        row: 4,
+        col: 6,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_increased_contraption_range",
+        name: "Increased contraption range",
+        flavour: "You can extend the affected area of your contraption significantly.",
+        description: "You double the range of Arsenal's area of effect.",
+        pool: "combat",
+        cost: 3,
+        tier: 2,
+        row: 4,
+        col: 7,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {
+            aoe: {
+              mul: 2
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_material_knowledge_seeking",
+        name: "Material Knowledge: Seeking",
+        flavour: "Your contraptions can now specifically target objects or creatures in range.",
+        description: "You choose which creatures and targets in range of your contraptions are affected.",
+        pool: "combat",
+        cost: 1,
+        tier: 2,
+        row: 5,
+        col: 3,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "inve_material_knowledge_cluster",
+        name: "Material Knowledge: Cluster",
+        flavour: "You are able to launch cluster contraptions, which explode in midair and deliver their payload in 3 distinct locations in range.",
+        description: "When you use this material, halve the area of effect range of your contraption. You choose 3 distinct location in range to target with your contraption, and resolve each of them with a single roll.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 5,
+        col: 4,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "inve_arsenal",
+            "inve_explosive"
           ]
         }
       }

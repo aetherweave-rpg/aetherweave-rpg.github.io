@@ -13,6 +13,30 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-09",
+    entries: [
+      "Added talent \"Close range delivery\" (tier 2) to the Invention domain.",
+      "Added talent \"Material Knowledge: Cluster\" (tier 1) to the Invention domain.",
+      "Added talent \"Material Knowledge: Electrifying\" (tier 1) to the Invention domain.",
+      "Added talent \"Material Knowledge: Incendiary\" (tier 1) to the Invention domain.",
+      "Changed talent \"Arsenal\" (tier 1) in the Invention domain: description: wording changed (both start \"You throw an improvised contraption at a...\").",
+      "Changed talent \"Material Hoarder\" (tier 1) in the Invention domain: cost: 1 -> 2.",
+      "Added talent \"Increased contraption range\" (tier 2) to the Invention domain.",
+      "Added talent \"Material Knowledge: Explosive\" (tier 1) to the Invention domain.",
+      "Changed talent \"Material Knowledge: Sticky\" (tier 1) in the Invention domain: description: \"When added, this material ensures the contraption moves arou...\" -> \"When added to a contraption, this material ensures the contr...\".",
+      "Added talent \"Material Knowledge: Seeking\" (tier 2) to the Invention domain.",
+      "Added talent \"Material Knowledge: Smoking\" (tier 1) to the Invention domain.",
+      "Added talent \"Contraption Launcher\" (tier 2) to the Invention domain.",
+      "Added talent \"Material Knowledge: Sharp\" (tier 1) to the Invention domain.",
+      "Added talent \"Material Knowledge: Piercing\" (tier 1) to the Invention domain.",
+      "Changed talent \"Complicated Contraption\" (tier 2) in the Invention domain: cost: 1 -> 2.",
+      "Added talent \"Alchemical Material Knowledge: Poison\" (tier 1) to the Alchemical Invention combination tree.",
+      "Added talent \"Alchemical Material Knowledge: Acid\" (tier 1) to the Alchemical Invention combination tree.",
+      "Added talent \"Alchemical Material Knowledge: Freezing\" (tier 1) to the Alchemical Invention combination tree.",
+      "Added talent \"Alchemical Arsenal\" (tier 1) to the Alchemical Invention combination tree.",
+    ],
+  },
+  {
     date: "2026-08-04",
     entries: [
       "Changed talent \"Arsenal\" (tier 1) in the Invention domain: description: \"You can add up to {inve_arsenal:\"2\"} of the following additi...\" -> \"You throw an improvised contraption at a point in range. It...\"; uses: (none) -> 2.",

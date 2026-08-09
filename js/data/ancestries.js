@@ -204,9 +204,8 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     cols: 3,
-    flavour: "",
     talents: [],
-    hidden: true
+    pickable: false
   },
   {
     id: "dwarf",

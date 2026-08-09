@@ -110,6 +110,107 @@ window.COMBINATIONS = [
         }
       }
     ]
+  },
+  {
+    id: "cmb_alchemical_invention",
+    name: "Alchemical Invention",
+    icon: "",
+    accent: "#7a4a6b",
+    cols: 3,
+    parents: [
+      "alchemy",
+      "invention"
+    ],
+    flavour: "You combine your knowledge of alchemy with invention",
+    talents: [
+      {
+        id: "cmba_alchemical_arsenal",
+        name: "Alchemical Arsenal",
+        flavour: "You have learnt how to stabilize alchemical mixtures and dispense them through your contraptions.",
+        description: "You can use your contraptions one additional time per scene.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 1,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {
+            uses: {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "cmba_alchemical_material_knowledge_acid",
+        name: "Alchemical Material Knowledge: Acid",
+        flavour: "You have learnt how to dispense powerful acids through your contraptions.",
+        description: "On 1 success: Deal 1 acid damage.\nOn 3+ successes: Deal 2 acid damage and inflict Corroded 1.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 0,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "cmba_alchemical_arsenal",
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "cmba_alchemical_material_knowledge_poison",
+        name: "Alchemical Material Knowledge: Poison",
+        flavour: "You can dispense poison through your contraptions.",
+        description: "On 1+ successes: Deal 1 poison damage.\nOn 3+ successes: Deal 1 poison damage and inflict Poisoned 1.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 1,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "cmba_alchemical_arsenal",
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "cmba_alchemical_material_knowledge_freezing",
+        name: "Alchemical Material Knowledge: Freezing",
+        flavour: "You can apply freezing effects to your contraptions.",
+        description: "On 1+ successes: Deal #successes ice damage and inflict Slowed 4 x #successes.\nOn 3+ successes: Deal #successes ice damage and inflict Snared 1",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 2,
+        ability: "modifier",
+        modifies: {
+          inve_arsenal: {}
+        },
+        requires: {
+          talents: [
+            "cmba_alchemical_arsenal",
+            "inve_arsenal"
+          ]
+        }
+      }
+    ]
   }
 ];
 
