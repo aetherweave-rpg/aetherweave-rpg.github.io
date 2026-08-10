@@ -91,7 +91,8 @@ window.CONFIG = {
   // Holding tier N of a domain's Spellcasting proficiency unlocks casting
   // tier-N spells in that domain and adds N dice to its spell test pool.
   // Individual spells (js/data/spells.js) carry their own exp `cost`/`pool`
-  // and a `castingTime` ("action" / "minor_action" / "reaction" / minutes); mana cost is
+  // and a `castingTime` ("minor_action" = 1 action / "action" = 2 actions /
+  // "major_action" = 3 actions / "reaction" / "free" / minutes); mana cost is
   // never authored — it's always tier - 1, so tier-1 spells are free cantrips.
   MAX_SPELL_TIER: 5,
 

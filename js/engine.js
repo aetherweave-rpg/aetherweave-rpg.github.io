@@ -608,9 +608,10 @@
   // the message prefix already used by the caller's other problems for this
   // object (e.g. `t.id` for a talent, `"spell '" + sp.id + "'"` for a spell).
   function validateCastableFields(problems, label, obj) {
-    if (!(obj.castingTime === "action" || obj.castingTime === "minor_action" || obj.castingTime === "reaction" ||
-          obj.castingTime === "free" || (typeof obj.castingTime === "number" && obj.castingTime > 0)))
-      problems.push(label + ": castingTime must be 'action', 'minor_action', 'reaction', 'free', or a positive number of minutes (got " + JSON.stringify(obj.castingTime) + ")");
+    if (!(obj.castingTime === "minor_action" || obj.castingTime === "action" || obj.castingTime === "major_action" ||
+          obj.castingTime === "reaction" || obj.castingTime === "free" ||
+          (typeof obj.castingTime === "number" && obj.castingTime > 0)))
+      problems.push(label + ": castingTime must be 'minor_action' (1 action), 'action' (2 actions), 'major_action' (3 actions), 'reaction', 'free', or a positive number of minutes (got " + JSON.stringify(obj.castingTime) + ")");
     if (obj.range != null &&
         !(obj.range === "self" || obj.range === "touch" || obj.range === "weapon" || (typeof obj.range === "number" && obj.range > 0)))
       problems.push(label + ": range must be 'self', 'touch', 'weapon', or a positive number of yards (got " + JSON.stringify(obj.range) + ")");
@@ -2000,16 +2001,17 @@
     if (!spell) return 0;
     return Math.max(0, (spell.tier || 1) - 1);
   }
-  // Human-readable casting time: "action", "minor action", "reaction", "free",
-  // or "N min" for a longer ritual cast (castingTime holds a number of
-  // minutes in that case).
+  // Human-readable casting time: "1 action", "2 actions", "3 actions",
+  // "reaction", "free", or "N min" for a longer ritual cast (castingTime
+  // holds a number of minutes in that case).
   function castingTimeLabel(spell) {
     var ct = spell && spell.castingTime;
-    if (ct === "minor_action") return "minor action";
+    if (ct === "minor_action") return "1 action";
+    if (ct === "major_action") return "3 actions";
     if (ct === "reaction") return "reaction";
     if (ct === "free") return "free";
     if (typeof ct === "number") return ct + " min";
-    return "action";
+    return "2 actions";
   }
   // Human-readable range: "Self", "Melee (2y)", "Weapon Range", "Ny", or ""
   // when not applicable.
