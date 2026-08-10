@@ -11,11 +11,8 @@ window.CHANGELOG_RULES = [
   {
     date: "2026-08-10",
     entries: [
-      "Changed: Mana",
-      "Changed: Combination Trees",
-      "Changed: Combat",
-      "Changed: Attacking",
-      "Changed: Combined Actions",
+      "Changed: Reworked action economy",
+	  "Changed: Added several conditions",
     ],
   },
   {

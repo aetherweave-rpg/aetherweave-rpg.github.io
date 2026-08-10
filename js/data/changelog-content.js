@@ -15,12 +15,6 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-08-10",
     entries: [
-      "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / creation points).",
-    ],
-  },
-  {
-    date: "2026-08-10",
-    entries: [
       "Changed talent \"Material Knowledge: Cluster\" (tier 2) in the Invention domain: tier: 1 -> 2; requires: \"talents inve_arsenal, inve_explosive\" -> \"talents inve_arsenal, inve_material_knowledge_explosive\".",
       "Changed talent \"Arsenal\" (tier 1) in the Invention domain: description: wording changed (both start \"You throw an improvised contraption at a...\").",
       "Changed talent \"Flurry\" (tier 1) in the Arms domain: description: \"Requires the character to dual wield weapons: Make 2 single-...\" -> \"Requires dual wielding weapons: Make 2 single-handed attacks...\".",
