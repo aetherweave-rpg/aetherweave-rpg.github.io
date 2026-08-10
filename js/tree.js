@@ -683,7 +683,10 @@
       });
     });
 
-    return LinkRouter.route(nodes, links);
+    // The host's own width, not just the span of the nodes: a tree whose last
+    // column is empty still owns that space, and the edge corridors should be
+    // free to use it.
+    return LinkRouter.route(nodes, links, { bounds: { left: 0, right: host.clientWidth } });
   }
 
   function relRect(elx, hostRect) {

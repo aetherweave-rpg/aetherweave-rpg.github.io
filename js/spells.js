@@ -336,9 +336,15 @@
     // Measure demand against the stock row spacing, widen the gaps that need
     // more lanes than they can fit, then route again against the new layout
     // (§6b). Reset first, or a resize would keep stacking on last time's extra.
+    // Bounded, and repeated: widening a gap can let a run that had collapsed
+    // onto its neighbour take its own lane, which is a demand only the next
+    // measurement can see.
     clearGapSpacing();
     var plan = routePlan(host);
-    if (plan && applyGapSpacing(plan.gaps)) plan = routePlan(host);
+    for (var pass = 0; pass < 3; pass++) {
+      if (!plan || !applyGapSpacing(plan.gaps)) break;
+      plan = routePlan(host);
+    }
 
     var w = host.clientWidth, h = host.clientHeight;
     _svg.setAttribute("width", w);
@@ -365,7 +371,10 @@
     Object.keys(gaps || {}).forEach(function (i) {
       var g = gaps[i], elx = _rowEls[g.row];
       if (!elx || g.extra <= 0.5) return;
-      elx.style.marginTop = Math.ceil(g.extra) + "px";
+      var have = parseFloat(elx.style.marginTop) || 0;
+      var want = Math.ceil(g.extra) + have;
+      if (want <= have + 0.5) return;
+      elx.style.marginTop = want + "px";
       changed = true;
     });
     return changed;
@@ -403,7 +412,7 @@
       });
     });
 
-    return LinkRouter.route(nodes, links);
+    return LinkRouter.route(nodes, links, { bounds: { left: 0, right: host.clientWidth } });
   }
 
   function relRect(elx, hostRect) {
