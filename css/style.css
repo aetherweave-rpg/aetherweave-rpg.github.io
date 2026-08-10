@@ -285,6 +285,32 @@ a { color: var(--accent); }
 /* A small chevron halfway along each prerequisite link, matching its color */
 path.link-chevron { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
+/* The solid head where a link meets what it unlocks. The mid-line chevron
+   alone left the two ends looking alike, so which one was the prerequisite
+   could only be worked out by tracing the line. */
+path.link-head { stroke: none; }
+path.link-head.link-idle   { fill: var(--line-strong); opacity: .7; }
+path.link-head.link-ready  { fill: color-mix(in srgb, var(--accent) 55%, var(--line-strong)); }
+path.link-head.link-active { fill: var(--accent); }
+
+/* Talent groups (§6b): adjacent talents sharing a requirement, boxed so the
+   tree can draw one arrow into the box instead of one per member. */
+rect.talent-group {
+  fill: color-mix(in srgb, var(--accent) 5%, transparent);
+  stroke: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+  stroke-width: 2; stroke-dasharray: 5 5;
+}
+rect.talent-group.some-owned { stroke: color-mix(in srgb, var(--accent) 70%, var(--line-strong)); }
+rect.talent-group.all-owned {
+  stroke: var(--accent); stroke-dasharray: none;
+  fill: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+text.talent-group-label {
+  font-family: var(--serif); font-size: 12px; font-weight: 700;
+  fill: color-mix(in srgb, var(--accent) 70%, var(--ink-soft));
+  dominant-baseline: middle;
+}
+
 .empty { padding: 40px; text-align: center; color: var(--ink-faint); font-style: italic; }
 
 /* ---------- Legend ------------------------------------------------------- */

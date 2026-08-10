@@ -81,11 +81,16 @@
       o[k] = (opts && opts[k] !== undefined) ? opts[k] : DEFAULTS[k];
     });
 
+    // `ghost` nodes can be linked to but are not obstacles. A talent group is
+    // one: its box is the dotted rectangle round several talents, so a link can
+    // aim at it, but treating that whole rectangle as solid would wall off the
+    // middle of the tree and send everything passing by on an enormous detour.
+    // The members inside it are ordinary nodes and still block on their own.
     var byId = {}, byRow = {}, colX = {};
     (nodes || []).forEach(function (n) {
       byId[n.id] = n;
-      (byRow[n.row] = byRow[n.row] || []).push(n);
-      if (colX[n.col] === undefined) colX[n.col] = cx(n.box);
+      if (!n.ghost) (byRow[n.row] = byRow[n.row] || []).push(n);
+      if (colX[n.col] === undefined && !n.ghost) colX[n.col] = cx(n.box);
     });
 
     // A link whose ends aren't both laid out here can't be drawn at all; the
@@ -310,7 +315,11 @@
       for (var i = idxLo + 1; i < idxHi; i++) {
         var list = byRow[rowsDrawn[i]] || [];
         for (var j = 0; j < list.length; j++) {
-          var b = list[j].box;
+          // The name/cost caption is wider than the icon box and is exactly
+          // what a straight pass-through run would otherwise clip — checking
+          // only the box let a vertical ascent thread the gap between two
+          // captions while still cutting through both of them.
+          var b = list[j].outer || list[j].box;
           if (x > b.left - o.clearance && x < b.right + o.clearance) return true;
         }
       }

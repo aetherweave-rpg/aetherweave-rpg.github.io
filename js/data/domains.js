@@ -91,7 +91,7 @@ window.DOMAINS = [
         id: "inve_arsenal",
         name: "Arsenal",
         flavour: "You are an expert at crafting improvised technological weaponry to deal with the dangers at hand. You can combine different materials at hand in order to come up with lethal contraptions.\n\nWhen you select this talent, pick two Material Knowledge talents for which you qualify.",
-        description: "You throw an improvised contraption at a point in range. It there deploys itself, affecting a {inve_arsenal:\"4y\"} circle around it. Roll Intelligence + a chosen crafting proficiency to determine the effectiveness.\n\nYou can add up to {inve_arsenal:\"2\">inve_complicated_contraption:\"3\"} of the below effects based on your Material Knowledge to this maneuver. The contraption affects all creatures and objects within range.\n\n{inve_material_knowledge_bouncy:\"Bouncy: When added to a contraption: the target point no longer needs to be in line of sight as long it can be reached from where it is {inve_arsenal:\"thrown\"}.\"}\n\n{inve_material_knowledge_sticky:\"Sticky: When added to a contraption, this material ensures the contraption moves around with whatever it is stuck on.\"}\n\n{inve_material_knowledge_explosive:\"Explosive\": Deal 1 bludgeoning damage per succes.\"}\n\n{inve_material_knowledge_sharp:\"Sharp: Deal 1 slashing damage per success.\"}\n\n{inve_material_knowledge_piercing:\"Piercing: Your contraption deals 1 piercing damage per success.\"}\n\n{inve_material_knowledge_incendiary:\"Incendiary: \nOn 1 success: deal 1 fire damage to all creatures and objects in range.\nOn 3+ successes: Deal 1 fire damage and inflict Burning #successes to all creatures and objects in range.\"}\n\n{inve_material_knowledge_electrifying:\"Electrifying: \nOn 1+ successes: Deal 1 lightning damage.\nOn 3+ successes: Deal 2 lightning damage.\nOn 4+ successes: Deal 2 lightning damage and inflict Stunned 1.\"}\n\n{inve_material_knowledge_smoking:\"Smoke: A blanket of smoke covers the affected area, blocking sight and obscuring everything within.\"}\n\n{cmba_alchemical_material_knowledge_acid:\"On 1 success: Deal 1 acid damage.\nOn 3+ successes: Deal 2 acid damage and inflict Corroded 1. \"}\n\n{inve_material_knowledge_cluster: \"When you use this material, halve the area of effect range of your contraption. You choose 3 distinct location in range to target with your contraption, and resolve each of them with a single roll.\"}\n\n{Inve_material_knowledge_seeking:\"You choose which creatures and targets in range of your contraptions are affected.\"}",
+        description: "You throw an improvised contraption at a point in range. It there deploys itself, affecting a {inve_arsenal:\"4y\"} circle around it. Roll Intelligence + a chosen crafting proficiency to determine the effectiveness.\n\nYou can add up to {inve_arsenal:\"2\">inve_complicated_contraption:\"3\"} of the below effects based on your Material Knowledge to this maneuver. The contraption affects all creatures and objects within range.\n\n{inve_material_knowledge_bouncy:\"Bouncy: When added to a contraption: the target point no longer needs to be in line of sight as long it can be reached from where it is {inve_arsenal:\"thrown\"}.\"}\n\n{inve_material_knowledge_sticky:\"Sticky: When added to a contraption, this material ensures the contraption moves around with whatever it is stuck on.\"}\n\n{inve_material_knowledge_explosive:\"Explosive: Deal 1 bludgeoning damage per success.\"}\n\n{inve_material_knowledge_sharp:\"Sharp: Deal 1 slashing damage per success.\"}\n\n{inve_material_knowledge_piercing:\"Piercing: Your contraption deals 1 piercing damage per success.\"}\n\n{inve_material_knowledge_incendiary:\"Incendiary: \nOn 1 success: deal 1 fire damage to all creatures and objects in range.\nOn 3+ successes: Deal 1 fire damage and inflict Burning #successes to all creatures and objects in range.\"}\n\n{inve_material_knowledge_electrifying:\"Electrifying: \nOn 1+ successes: Deal 1 lightning damage.\nOn 3+ successes: Deal 2 lightning damage.\nOn 4+ successes: Deal 2 lightning damage and inflict Stunned 1.\"}\n\n{inve_material_knowledge_smoking:\"Smoke: A blanket of smoke covers the affected area, blocking sight and obscuring everything within.\"}\n\n{cmba_alchemical_material_knowledge_acid:\"On 1 success: Deal 1 acid damage.\nOn 3+ successes: Deal 2 acid damage and inflict Corroded 1. \"}\n\n{inve_material_knowledge_cluster: \"When you use this material, halve the area of effect range of your contraption. You choose 3 distinct location in range to target with your contraption, and resolve each of them with a single roll.\"}\n\n{inve_material_knowledge_seeking:\"You choose which creatures and targets in range of your contraptions are affected.\"}",
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -120,7 +120,7 @@ window.DOMAINS = [
               talent: "inve_material_knowledge_bouncy"
             },
             {
-              talent: "inve_explosive"
+              talent: "inve_material_knowledge_explosive"
             },
             {
               talent: "inve_material_knowledge_smoking"
@@ -164,8 +164,8 @@ window.DOMAINS = [
         pool: "combat",
         cost: 1,
         tier: 1,
-        row: 0,
-        col: 6,
+        row: 2,
+        col: 5,
         ability: "modifier",
         modifies: {
           inve_arsenal: {}
@@ -184,8 +184,8 @@ window.DOMAINS = [
         pool: "combat",
         cost: 1,
         tier: 1,
-        row: 0,
-        col: 7,
+        row: 2,
+        col: 6,
         ability: "modifier",
         modifies: {
           inve_arsenal: {}
@@ -240,15 +240,15 @@ window.DOMAINS = [
         }
       },
       {
-        id: "inve_explosive",
+        id: "inve_material_knowledge_explosive",
         name: "Material Knowledge: Explosive",
         flavour: "You are proficient in the use of explosive materials",
-        description: "Deal 1 bludgeoning damage per succes.",
+        description: "Deal 1 bludgeoning damage per success.",
         pool: "combat",
         cost: 1,
         tier: 1,
-        row: 1,
-        col: 5,
+        row: 2,
+        col: 3,
         ability: "modifier",
         modifies: {
           inve_arsenal: {}
@@ -268,7 +268,7 @@ window.DOMAINS = [
         cost: 1,
         tier: 1,
         row: 1,
-        col: 6,
+        col: 5,
         ability: "modifier",
         modifies: {
           inve_arsenal: {}
@@ -327,8 +327,8 @@ window.DOMAINS = [
         pool: "combat",
         cost: 1,
         tier: 1,
-        row: 2,
-        col: 3,
+        row: 1,
+        col: 6,
         ability: "modifier",
         modifies: {
           inve_arsenal: {}
@@ -436,7 +436,7 @@ window.DOMAINS = [
         cost: 1,
         tier: 2,
         row: 5,
-        col: 3,
+        col: 4,
         ability: "modifier",
         modifies: {
           inve_arsenal: {}
@@ -454,9 +454,9 @@ window.DOMAINS = [
         description: "When you use this material, halve the area of effect range of your contraption. You choose 3 distinct location in range to target with your contraption, and resolve each of them with a single roll.",
         pool: "combat",
         cost: 1,
-        tier: 1,
+        tier: 2,
         row: 5,
-        col: 4,
+        col: 3,
         ability: "modifier",
         modifies: {
           inve_arsenal: {}
@@ -464,7 +464,56 @@ window.DOMAINS = [
         requires: {
           talents: [
             "inve_arsenal",
-            "inve_explosive"
+            "inve_material_knowledge_explosive"
+          ]
+        }
+      }
+    ],
+    groups: [
+      {
+        id: "material_knowledge",
+        name: "Basic Material Knowledge",
+        members: [
+          "inve_material_knowledge_incendiary",
+          "inve_material_knowledge_electrifying",
+          "inve_material_knowledge_sticky",
+          "inve_material_knowledge_bouncy",
+          "inve_material_knowledge_smoking",
+          "inve_material_knowledge_explosive",
+          "inve_material_knowledge_sharp",
+          "inve_material_knowledge_piercing"
+        ],
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "improved_contraptions",
+        name: "Improved Contraptions",
+        members: [
+          "inve_complicated_contraption",
+          "inve_contraption_launcher",
+          "inve_close_range_delivery",
+          "inve_increased_contraption_range"
+        ],
+        requires: {
+          talents: [
+            "inve_arsenal"
+          ]
+        }
+      },
+      {
+        id: "advanced_material_knowledge",
+        name: "Advanced Material Knowledge",
+        members: [
+          "inve_material_knowledge_seeking",
+          "inve_material_knowledge_cluster"
+        ],
+        requires: {
+          talents: [
+            "inve_arsenal"
           ]
         }
       }
@@ -481,7 +530,7 @@ window.DOMAINS = [
       {
         id: "arms_flurry",
         name: "Flurry",
-        description: "Requires the character to dual wield weapons:\nMake 2 single-handed attacks. If both hit, deal an additional 3 damage based on the weapon type.",
+        description: "Requires dual wielding weapons:\nMake 2 single-handed attacks. {arms_coordinated_flurry: \"Combine the damage of both attacks\" > arms_flurry:\"Each attack deals damage separately\"}",
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -536,6 +585,26 @@ window.DOMAINS = [
         requires: {
           talents: [
             "arms_ricochet"
+          ]
+        }
+      },
+      {
+        id: "arms_coordinated_flurry",
+        name: "Coordinated Flurry",
+        flavour: "Your first strike creates a perfect opening for your second.",
+        description: "You combine the damage of the two individual strikes of your Flurry.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 1,
+        col: 3,
+        ability: "modifier",
+        modifies: {
+          arms_flurry: {}
+        },
+        requires: {
+          talents: [
+            "arms_flurry"
           ]
         }
       }

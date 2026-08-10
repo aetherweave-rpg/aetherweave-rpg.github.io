@@ -17,15 +17,15 @@
   function buildTrees() {
     trees = [];
     (window.DOMAINS || []).forEach(function (d) {
-      trees.push({ id: d.id, name: d.name, icon: d.icon, accent: d.accent, cols: d.cols, kind: d.kind || "core", magical: !!d.magical, hidden: !!d.hidden });
+      trees.push({ id: d.id, name: d.name, icon: d.icon, accent: d.accent, cols: d.cols, kind: d.kind || "core", magical: !!d.magical, hidden: !!d.hidden, groups: d.groups || [] });
     });
     (window.ANCESTRIES || []).forEach(function (a) {
       trees.push({ id: a.treeId, name: a.name, icon: a.icon, accent: a.accent, cols: a.cols || 3,
-        kind: "ancestry", ancestry: a.id, parent: a.parent || null, description: a.description, hidden: !!a.hidden });
+        kind: "ancestry", ancestry: a.id, parent: a.parent || null, description: a.description, hidden: !!a.hidden, groups: a.groups || [] });
     });
     (window.COMBINATIONS || []).forEach(function (c) {
       trees.push({ id: c.id, name: c.name, icon: c.icon, accent: c.accent, cols: c.cols || 3,
-        kind: "combination", parents: c.parents || [], description: c.description });
+        kind: "combination", parents: c.parents || [], description: c.description, groups: c.groups || [] });
     });
     treeIndex = {};
     trees.forEach(function (t) { treeIndex[t.id] = t; });
@@ -34,6 +34,46 @@
   function allTrees() { return trees; }
   function treeById(id) { return treeIndex[id]; }
   function treesOfKind(kind) { return trees.filter(function (t) { return t.kind === kind; }); }
+
+  // ---- Talent groups ------------------------------------------------------
+  // A group boxes up adjacent talents that share a requirement, so the tree can
+  // draw ONE arrow into the box instead of one per member (§6b). It is a
+  // drawing construct with a validated claim behind it: each member still
+  // carries its own full `requires`, so the engine, the sheet and the PDF never
+  // need to know groups exist. `requires` on the group is the part they have in
+  // common — the validator checks that it really is common, and the editor is
+  // what keeps them in step.
+  function treeGroups(treeId) {
+    var t = treeById(treeId);
+    return (t && t.groups) || [];
+  }
+
+  // The group a talent belongs to, if any.
+  function groupOf(talentId) {
+    var t = byId[talentId];
+    if (!t) return null;
+    var found = null;
+    treeGroups(t.domain).forEach(function (g) {
+      if ((g.members || []).indexOf(talentId) >= 0) found = g;
+    });
+    return found;
+  }
+
+  // Does `whole` contain everything `part` asks for? Used to check that a
+  // group's declared shared requirement really is shared by every member.
+  function requirementsCover(whole, part) {
+    whole = whole || {}; part = part || {};
+    var listsOk = ["talents", "anyTalents"].every(function (key) {
+      var have = whole[key] || [];
+      return (part[key] || []).every(function (id) { return have.indexOf(id) >= 0; });
+    });
+    if (!listsOk) return false;
+    var mapsOk = ["skills", "characteristics", "proficiencies", "spent"].every(function (key) {
+      var have = whole[key] || {}, want = part[key] || {};
+      return Object.keys(want).every(function (k) { return (have[k] || 0) >= want[k]; });
+    });
+    return mapsOk;
+  }
 
   // ---- Talent index -------------------------------------------------------
   var byId = {}, allTalents = [];
@@ -1058,6 +1098,79 @@
       (window.SPELLS[domainId] || []).forEach(function (sp) { checkHooks("spell '" + sp.id + "'", sp); });
     });
 
+    // Talent groups (§6b). A group is drawn as one box with one arrow into it,
+    // so the claim it makes — these talents sit together and share this
+    // requirement — has to actually hold, or the single arrow would be lying
+    // about what the members need.
+    var groupOwner = {};
+    trees.forEach(function (tree) {
+      var seenGroup = {};
+      (tree.groups || []).forEach(function (g) {
+        var label = "group '" + (g.id || "(unnamed)") + "' in " + tree.id;
+        if (!g.id) problems.push(tree.id + ": a talent group has no id");
+        else if (seenGroup[g.id]) problems.push(tree.id + ": duplicate talent group id '" + g.id + "'");
+        seenGroup[g.id] = true;
+        if (!g.name || !String(g.name).trim()) problems.push(label + ": missing name");
+
+        var members = g.members || [];
+        if (members.length < 2) {
+          problems.push(label + ": needs at least 2 members (has " + members.length + ")");
+          return;
+        }
+        var cells = [], ok = true, seenMember = {};
+        members.forEach(function (id) {
+          var t = byId[id];
+          if (!t) { problems.push(label + ": unknown member '" + id + "'"); ok = false; return; }
+          if (t.domain !== tree.id) {
+            problems.push(label + ": member '" + id + "' is in tree '" + t.domain + "'");
+            ok = false; return;
+          }
+          if (seenMember[id]) { problems.push(label + ": lists '" + id + "' twice"); ok = false; return; }
+          seenMember[id] = true;
+          if (groupOwner[id]) {
+            problems.push(label + ": '" + id + "' is already in group '" + groupOwner[id] + "'");
+            ok = false; return;
+          }
+          groupOwner[id] = g.id;
+          cells.push({ id: id, row: t.row, col: t.col });
+          // Every member must actually carry what the group says they share.
+          if (g.requires && !requirementsCover(t.requires, g.requires)) {
+            problems.push(label + ": member '" + id + "' does not carry the group's shared requirement");
+          }
+        });
+        if (!ok || !cells.length) return;
+
+        // Members must form one orthogonally connected block, or a box drawn
+        // round them would swallow talents that are not in the group.
+        var key = function (c) { return c.row + "," + c.col; };
+        var inGroup = {};
+        cells.forEach(function (c) { inGroup[key(c)] = true; });
+        var seenCell = {}, stack = [cells[0]];
+        seenCell[key(cells[0])] = true;
+        while (stack.length) {
+          var c = stack.pop();
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+            var n = { row: c.row + d[0], col: c.col + d[1] };
+            if (inGroup[key(n)] && !seenCell[key(n)]) { seenCell[key(n)] = true; stack.push(n); }
+          });
+        }
+        if (Object.keys(seenCell).length !== cells.length) {
+          problems.push(label + ": members are not adjacent — a group has to be one connected block");
+        }
+        // Nothing outside the group may sit inside its bounding box.
+        var rows = cells.map(function (c) { return c.row; });
+        var cols = cells.map(function (c) { return c.col; });
+        var r0 = Math.min.apply(null, rows), r1 = Math.max.apply(null, rows);
+        var c0 = Math.min.apply(null, cols), c1 = Math.max.apply(null, cols);
+        talentsForDomain(tree.id).forEach(function (t) {
+          if (inGroup[t.row + "," + t.col]) return;
+          if (t.row >= r0 && t.row <= r1 && t.col >= c0 && t.col <= c1) {
+            problems.push(label + ": '" + t.id + "' sits inside the group's box but is not a member");
+          }
+        });
+      });
+    });
+
     // Crossing prerequisite lines are a layout mistake, not a content gap —
     // the tree/spell grid renderer draws a straight-ish line between a
     // prerequisite and what it unlocks, so two links that cross read as
@@ -1965,6 +2078,8 @@
     // talents
     talentById: talentById, talentsForDomain: talentsForDomain,
     allTalents: function () { return allTalents; },
+    // talent groups (§6b)
+    treeGroups: treeGroups, groupOf: groupOf, requirementsCover: requirementsCover,
     // costs & tiers
     computeSpent: computeSpent, currentTierIndex: currentTierIndex, tierThreshold: tierThreshold,
     treeAccessCharges: treeAccessCharges, nextTreeCost: nextTreeCost, learnCost: learnCost,

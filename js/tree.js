@@ -18,7 +18,7 @@
   var currentTree = window.SafeStorage.read(LAST_TREE_KEY) || null;
   var showAllCombos = window.SafeStorage.read(SHOW_COMBOS_KEY) === "1";
 
-  var _svg = null, _nodeEls = {}, _view = null, _rowEls = {};
+  var _svg = null, _nodeEls = {}, _view = null, _rowEls = {}, _groupBoxes = [];
 
   function init() {
     UI.renderHeader("trees");
@@ -75,6 +75,7 @@
       id: real.id, kind: real.kind, name: real.name, icon: real.icon, accent: real.accent,
       flavour: real.flavour, cols: real.cols, realTree: real,
       talents: talents, colOf: function (t) { return t.col; },
+      groups: Engine.treeGroups(real.id),
     };
   }
 
@@ -103,6 +104,9 @@
       flavour: ordered.length > 1 ? "Your ancestral line, joined into one tree." : ((ordered[0] || {}).flavour || ""),
       cols: Math.max(1, cur), talents: talents, blocks: blocks,
       colOf: function (t) { return (offset[t.domain] || 0) + (t.col || 0); },
+      // Each ancestry in the chain keeps its own groups; the display column
+      // offset is applied when the boxes are measured, same as the nodes.
+      groups: ordered.reduce(function (a, tr) { return a.concat(Engine.treeGroups(tr.id)); }, []),
     };
   }
 
@@ -195,6 +199,7 @@
     host.innerHTML = "";
     _nodeEls = {};
     _rowEls = {};
+    _groupBoxes = [];
 
     var state = State.get();
     var view = _view = buildView(state);
@@ -462,12 +467,23 @@
     if (!host || !_svg) return;
     var state = State.get();
 
-    // Measure demand against the stock row spacing, widen the gaps that need
-    // more lanes than they can fit, then route again against the new layout
-    // (§6b). Reset first, or a resize would keep stacking on last time's extra.
+    // Two things can demand more room than the stock row spacing offers: a
+    // node with many dependents wanting more lanes than a gap can hold
+    // (LinkRouter's own gap report), and two group boxes landing close enough
+    // that their padding overlaps once measured. Both are satisfied the same
+    // way — widen the row gap — so they are measured and applied together,
+    // then the whole thing is re-measured until nothing more is asked for.
+    // Bounded, so a pathological layout cannot loop forever; reset first, or a
+    // resize would keep stacking on last time's extra.
     clearGapSpacing();
+    measureGroups(host);
     var plan = routePlan(host);
-    if (plan && applyGapSpacing(plan.gaps)) plan = routePlan(host);
+    for (var pass = 0; pass < 3; pass++) {
+      var extras = combinedRowExtras(plan);
+      if (!applyRowExtras(extras)) break;
+      measureGroups(host);
+      plan = routePlan(host);
+    }
 
     var w = host.clientWidth, h = host.clientHeight;
     _svg.setAttribute("width", w);
@@ -475,27 +491,132 @@
     _svg.setAttribute("viewBox", "0 0 " + w + " " + h);
     while (_svg.firstChild) _svg.removeChild(_svg.firstChild);
 
+    _groupBoxes.forEach(function (gb) { drawGroupBox(gb, state); });
+
     (plan ? plan.routes : []).forEach(function (r) {
       var preOwned = nodeOwned(r.link.pre, state);
-      var childOwned = nodeOwned(r.link.child, state);
+      // A group's arrow reads as satisfied once the prerequisite is held; the
+      // members light up individually as they are bought.
+      var childOwned = r.link.child ? nodeOwned(r.link.child, state)
+        : r.link.group.members.every(function (id) { return (state.talents || []).indexOf(id) >= 0; });
       drawRoute(r, preOwned && childOwned ? "active" : preOwned ? "ready" : "idle");
     });
+  }
+
+  // The dotted rectangle round each group's members, measured after layout.
+  // `sharedIds` are the prerequisites every member has in common — those are
+  // the ones drawn once into the box instead of once per member. The top gets
+  // extra room beyond the other three sides: that is where the label sits, and
+  // GROUP_PAD alone left it crowding the border.
+  var GROUP_PAD = 16;
+  var GROUP_PAD_TOP = 28;
+  function measureGroups(host) {
+    var hostRect = host.getBoundingClientRect();
+    var view = _view;
+    _groupBoxes = [];
+    if (!view || !view.groups) return;
+
+    view.groups.forEach(function (g, i) {
+      var members = (g.members || []).filter(function (id) { return _nodeEls[id]; });
+      if (members.length < 2) return;
+      var rects = members.map(function (id) { return relRect(_nodeEls[id], hostRect); });
+      var rect = {
+        left: Math.min.apply(null, rects.map(function (r) { return r.left; })) - GROUP_PAD,
+        right: Math.max.apply(null, rects.map(function (r) { return r.right; })) + GROUP_PAD,
+        top: Math.min.apply(null, rects.map(function (r) { return r.top; })) - GROUP_PAD_TOP,
+        bottom: Math.max.apply(null, rects.map(function (r) { return r.bottom; })) + GROUP_PAD,
+      };
+      var talents = members.map(function (id) { return Engine.talentById(id); });
+      var reqs = g.requires || {};
+      _groupBoxes.push({
+        key: "__group__" + (g.id || i),
+        group: g, members: members, rect: rect,
+        // The group sits at its lowest row, so the shared arrow arrives from
+        // below like any other link.
+        row: Math.min.apply(null, talents.map(function (t) { return t.row; })),
+        col: Math.round(talents.reduce(function (a, t) { return a + view.colOf(t); }, 0) / talents.length),
+        sharedIds: (reqs.talents || []).concat(reqs.anyTalents || []),
+        sharedAny: (reqs.anyTalents || []).slice(),
+      });
+    });
+  }
+
+  function drawGroupBox(gb, state) {
+    var r = gb.rect;
+    var all = gb.members.every(function (id) { return (state.talents || []).indexOf(id) >= 0; });
+    var some = gb.members.some(function (id) { return (state.talents || []).indexOf(id) >= 0; });
+    var box = document.createElementNS(SVG_NS, "rect");
+    box.setAttribute("x", r.left); box.setAttribute("y", r.top);
+    box.setAttribute("width", Math.max(0, r.right - r.left));
+    box.setAttribute("height", Math.max(0, r.bottom - r.top));
+    box.setAttribute("rx", 16);
+    box.setAttribute("class", "talent-group" + (all ? " all-owned" : some ? " some-owned" : ""));
+    _svg.appendChild(box);
+
+    if (!gb.group.name) return;
+    var label = document.createElementNS(SVG_NS, "text");
+    label.setAttribute("x", r.left + 16);
+    label.setAttribute("y", r.top + 16);
+    label.setAttribute("class", "talent-group-label");
+    label.textContent = gb.group.name;
+    _svg.appendChild(label);
   }
 
   function clearGapSpacing() {
     Object.keys(_rowEls).forEach(function (row) { _rowEls[row].style.marginTop = ""; });
   }
 
-  // A gap wanting more lanes than the CSS row spacing allows gets the room it
-  // asked for. `gaps[i].row` is the row BELOW the gap, and the rows are laid
-  // out top-down, so margin-top on that row's element is the space above it.
-  function applyGapSpacing(gaps) {
+  // Combines LinkRouter's own lane-demand gaps with the extra room any
+  // overlapping pair of group boxes needs, one number per row — the largest
+  // of whatever asked for that row.
+  function combinedRowExtras(plan) {
+    var extras = {};
+    if (plan && plan.gaps) {
+      Object.keys(plan.gaps).forEach(function (i) {
+        var g = plan.gaps[i];
+        if (g.extra > 0.5) extras[g.row] = Math.max(extras[g.row] || 0, g.extra);
+      });
+    }
+    groupOverlapRows().forEach(function (o) {
+      extras[o.row] = Math.max(extras[o.row] || 0, o.extra);
+    });
+    return extras;
+  }
+
+  // Two group boxes land close enough to overlap most often because they sit
+  // on neighbouring rows and the padding on their facing edges eats the gap
+  // between them. Rather than shrinking a box back down — which would undo
+  // the label's own breathing room — the row gap itself is widened, the same
+  // lever LinkRouter's lane packing already uses, so the boxes end up with
+  // real space between them instead of touching.
+  function groupOverlapRows() {
+    var out = [];
+    for (var i = 0; i < _groupBoxes.length; i++) {
+      for (var j = i + 1; j < _groupBoxes.length; j++) {
+        var a = _groupBoxes[i], b = _groupBoxes[j];
+        var ox = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
+        var oy = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top);
+        if (ox <= 0 || oy <= 0) continue;   // boxes don't actually overlap
+        // Push whichever box sits physically lower down, away from the one above it.
+        var lower = a.rect.top > b.rect.top ? a : b;
+        out.push({ row: lower.row, extra: oy + 10 });
+      }
+    }
+    return out;
+  }
+
+  // A row wanting more room than the CSS row spacing gives it — either more
+  // lanes than the gap can hold, or a group box overlapping its neighbour —
+  // gets exactly that. `extras[row]` is keyed by the raw row number (not the
+  // rendered index), matching `_rowEls`; rows are laid out top-down, so
+  // margin-top on a row's element is the space above it.
+  function applyRowExtras(extras) {
     var changed = false;
-    Object.keys(gaps || {}).forEach(function (i) {
-      var g = gaps[i], elx = _rowEls[g.row];
-      if (!elx || g.extra <= 0.5) return;
-      elx.style.marginTop = Math.ceil(g.extra) + "px";
-      changed = true;
+    Object.keys(extras || {}).forEach(function (row) {
+      var elx = _rowEls[row], want = Math.ceil(extras[row]);
+      if (!elx || want <= 0.5) return;
+      var have = parseFloat(elx.style.marginTop) || 0;
+      if (want > have + 0.5) { elx.style.marginTop = want + "px"; changed = true; }
     });
     return changed;
   }
@@ -525,6 +646,15 @@
       };
     }).filter(Boolean);
 
+    // A group is routed to as if it were one node: its box is the dotted
+    // rectangle round its members, so the single shared arrow lands on the
+    // box's edge rather than on any one member (§6b).
+    var memberGroup = {};
+    _groupBoxes.forEach(function (gb) {
+      nodes.push({ id: gb.key, row: gb.row, col: gb.col, box: gb.rect, outer: gb.rect, ghost: true });
+      gb.members.forEach(function (id) { memberGroup[id] = gb; });
+    });
+
     var links = [];
     view.talents.forEach(function (t) {
       if (!_nodeEls[t.id]) return;
@@ -536,7 +666,20 @@
         var pre = viewById[ln.pid] || Engine.talentById(ln.pid);
         if (!pre || pre.domain !== t.domain) return;   // cross-tree → shown as text
         if (!_nodeEls[ln.pid]) return;
+        // Drawn once into the box instead of once per member.
+        var gb = memberGroup[t.id];
+        if (gb && gb.sharedIds.indexOf(ln.pid) >= 0) return;
         links.push({ from: ln.pid, to: t.id, dashed: ln.dashed, pre: pre, child: t });
+      });
+    });
+
+    // One link per group, per shared prerequisite.
+    _groupBoxes.forEach(function (gb) {
+      gb.sharedIds.forEach(function (pid) {
+        var pre = viewById[pid] || Engine.talentById(pid);
+        if (!pre || !_nodeEls[pid]) return;
+        links.push({ from: pid, to: gb.key, dashed: gb.sharedAny.indexOf(pid) >= 0,
+                     pre: pre, child: null, group: gb });
       });
     });
 
@@ -557,12 +700,32 @@
     path.setAttribute("class", "link link-" + linkState + (r.link.dashed ? " link-any" : ""));
     _svg.appendChild(path);
 
+    // A solid head at the dependent end says which way the link runs without
+    // having to trace it; the mid-line chevron keeps a long detour readable
+    // where its two ends are far apart.
+    var head = arrowHead(r.points);
+    if (head) {
+      var h = document.createElementNS(SVG_NS, "path");
+      h.setAttribute("d", "M 0 0 L -7 -3.5 L -7 3.5 z");
+      h.setAttribute("class", "link-head link-" + linkState);
+      h.setAttribute("transform", "translate(" + head.x + " " + head.y + ") rotate(" + head.angle + ")");
+      _svg.appendChild(h);
+    }
+
     var chevron = document.createElementNS(SVG_NS, "path");
     chevron.setAttribute("d", "M -4 -4 L 3 0 L -4 4");
     chevron.setAttribute("class", "link-chevron link-" + linkState);
     chevron.setAttribute("transform",
       "translate(" + r.chevron.x + " " + r.chevron.y + ") rotate(" + r.chevron.angle + ")");
     _svg.appendChild(chevron);
+  }
+
+  // The last point, pointing along the final segment.
+  function arrowHead(points) {
+    if (!points || points.length < 2) return null;
+    var b = points[points.length - 1], a = points[points.length - 2];
+    if (Math.abs(b.x - a.x) < 0.5 && Math.abs(b.y - a.y) < 0.5) return null;
+    return { x: b.x, y: b.y, angle: Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI };
   }
 
   // ---- Tooltip ------------------------------------------------------------

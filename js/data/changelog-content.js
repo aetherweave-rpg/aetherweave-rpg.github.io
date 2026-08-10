@@ -13,6 +13,17 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-10",
+    entries: [
+      "Changed talent \"Material Knowledge: Cluster\" (tier 2) in the Invention domain: tier: 1 -> 2; requires: \"talents inve_arsenal, inve_explosive\" -> \"talents inve_arsenal, inve_material_knowledge_explosive\".",
+      "Changed talent \"Arsenal\" (tier 1) in the Invention domain: description: wording changed (both start \"You throw an improvised contraption at a...\").",
+      "Changed talent \"Flurry\" (tier 1) in the Arms domain: description: \"Requires the character to dual wield weapons: Make 2 single-...\" -> \"Requires dual wielding weapons: Make 2 single-handed attacks...\".",
+      "Added talent \"Material Knowledge: Explosive\" (tier 1) to the Invention domain.",
+      "Added talent \"Coordinated Flurry\" (tier 1) to the Arms domain.",
+      "Removed talent \"Material Knowledge: Explosive\" (tier 1) from the Invention domain.",
+    ],
+  },
+  {
     date: "2026-08-09",
     entries: [
       "Added talent \"Close range delivery\" (tier 2) to the Invention domain.",

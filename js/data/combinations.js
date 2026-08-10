@@ -35,7 +35,6 @@ window.COMBINATIONS = [
         duration: "instantaneous",
         grants: {
           mode: "pick",
-          count: 1,
           options: [
             {
               talent: "arel_flaming_arrow"
@@ -46,7 +45,8 @@ window.COMBINATIONS = [
             {
               talent: "arel_lightning_arrow"
             }
-          ]
+          ],
+          count: 1
         }
       },
       {
@@ -103,6 +103,22 @@ window.COMBINATIONS = [
         modifies: {
           arel_elemental_shot: {}
         },
+        requires: {
+          talents: [
+            "arel_elemental_shot"
+          ]
+        }
+      }
+    ],
+    groups: [
+      {
+        id: "elemental_shots",
+        name: "Elemental shots",
+        members: [
+          "arel_flaming_arrow",
+          "arel_frost_arrow",
+          "arel_lightning_arrow"
+        ],
         requires: {
           talents: [
             "arel_elemental_shot"
@@ -203,6 +219,23 @@ window.COMBINATIONS = [
         modifies: {
           inve_arsenal: {}
         },
+        requires: {
+          talents: [
+            "cmba_alchemical_arsenal",
+            "inve_arsenal"
+          ]
+        }
+      }
+    ],
+    groups: [
+      {
+        id: "alchemical_material_knowledge",
+        name: "Alchemical Material Knowledge",
+        members: [
+          "cmba_alchemical_material_knowledge_acid",
+          "cmba_alchemical_material_knowledge_poison",
+          "cmba_alchemical_material_knowledge_freezing"
+        ],
         requires: {
           talents: [
             "cmba_alchemical_arsenal",
