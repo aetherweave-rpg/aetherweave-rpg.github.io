@@ -15,6 +15,21 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-08-10",
     entries: [
+      "Added talent \"More Preparations\" (tier 1) to the Invention domain.",
+      "Added talent \"Flamethrower\" (tier 1) to the Invention domain.",
+      "Added talent \"Riposte\" (tier 1) to the Arms domain.",
+      "Added talent \"Penetrating Bolt\" (tier 1) to the Arms domain.",
+      "Added talent \"Whirlwind\" (tier 2) to the Arms domain.",
+      "Changed talent \"Well-prepared\" (tier 1) in the Invention domain: description: wording changed (both start \"Regardless of mode of play you can perfo...\"); range: (none) -> \"touch\".",
+      "Added talent \"Hail of Arrows\" (tier 1) to the Arms domain.",
+      "Added talent \"Piercing Bolt\" (tier 1) to the Arms domain.",
+      "Added talent \"Cleave\" (tier 1) to the Arms domain.",
+      "Added talent \"Greater Cleave\" (tier 1) to the Arms domain.",
+    ],
+  },
+  {
+    date: "2026-08-10",
+    entries: [
       "Changed talent \"Material Knowledge: Cluster\" (tier 2) in the Invention domain: tier: 1 -> 2; requires: \"talents inve_arsenal, inve_explosive\" -> \"talents inve_arsenal, inve_material_knowledge_explosive\".",
       "Changed talent \"Arsenal\" (tier 1) in the Invention domain: description: wording changed (both start \"You throw an improvised contraption at a...\").",
       "Changed talent \"Flurry\" (tier 1) in the Arms domain: description: \"Requires the character to dual wield weapons: Make 2 single-...\" -> \"Requires dual wielding weapons: Make 2 single-handed attacks...\".",

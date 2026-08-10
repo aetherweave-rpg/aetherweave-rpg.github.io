@@ -17,15 +17,15 @@
   function buildTrees() {
     trees = [];
     (window.DOMAINS || []).forEach(function (d) {
-      trees.push({ id: d.id, name: d.name, icon: d.icon, accent: d.accent, cols: d.cols, kind: d.kind || "core", magical: !!d.magical, hidden: !!d.hidden, groups: d.groups || [] });
+      trees.push({ id: d.id, name: d.name, icon: d.icon, accent: d.accent, cols: d.cols, kind: d.kind || "core", magical: !!d.magical, hidden: !!d.hidden, groups: d.groups || [], anchors: d.anchors || [] });
     });
     (window.ANCESTRIES || []).forEach(function (a) {
       trees.push({ id: a.treeId, name: a.name, icon: a.icon, accent: a.accent, cols: a.cols || 3,
-        kind: "ancestry", ancestry: a.id, parent: a.parent || null, description: a.description, hidden: !!a.hidden, groups: a.groups || [] });
+        kind: "ancestry", ancestry: a.id, parent: a.parent || null, description: a.description, hidden: !!a.hidden, groups: a.groups || [], anchors: a.anchors || [] });
     });
     (window.COMBINATIONS || []).forEach(function (c) {
       trees.push({ id: c.id, name: c.name, icon: c.icon, accent: c.accent, cols: c.cols || 3,
-        kind: "combination", parents: c.parents || [], description: c.description, groups: c.groups || [] });
+        kind: "combination", parents: c.parents || [], description: c.description, groups: c.groups || [], anchors: c.anchors || [] });
     });
     treeIndex = {};
     trees.forEach(function (t) { treeIndex[t.id] = t; });
@@ -46,6 +46,27 @@
   function treeGroups(treeId) {
     var t = treeById(treeId);
     return (t && t.groups) || [];
+  }
+
+  // ---- Manual link anchors ------------------------------------------------
+  // A drawing construct like a group, and on the tree for the same reason: it
+  // says nothing about the rules, only about where one already-implied arrow
+  // should be dragged. Each entry pins one prerequisite line through a list of
+  // waypoints in grid coordinates (`{ col, row }`, half steps meaning
+  // "between"), so an anchor survives a resize, a row widening for its lanes,
+  // or a talent landing in the column it passes. `to` names either a talent or
+  // one of the tree's groups, matching what the line actually points at.
+  function treeAnchors(treeId) {
+    var t = treeById(treeId);
+    return (t && t.anchors) || [];
+  }
+
+  function anchorFor(treeId, from, to) {
+    var found = null;
+    treeAnchors(treeId).forEach(function (a) {
+      if (a.from === from && a.to === to) found = a;
+    });
+    return found;
   }
 
   // The group a talent belongs to, if any.
@@ -72,7 +93,19 @@
       var have = whole[key] || {}, want = part[key] || {};
       return Object.keys(want).every(function (k) { return (have[k] || 0) >= want[k]; });
     });
-    return mapsOk;
+    if (!mapsOk) return false;
+    // The any* (OR-group) counterparts hold richer entries than a plain id,
+    // so containment is entry-by-entry equality on their own key fields
+    // rather than an indexOf/threshold check.
+    var anyGroupsOk = [["anySkills", ["name", "tier"]], ["anyCharacteristics", ["key", "value"]],
+                        ["anyProficiencies", ["name", "tier"]]].every(function (spec) {
+      var key = spec[0], fields = spec[1];
+      var have = whole[key] || [];
+      return (part[key] || []).every(function (want) {
+        return have.some(function (h) { return fields.every(function (f) { return h[f] === want[f]; }); });
+      });
+    });
+    return anyGroupsOk;
   }
 
   // ---- Talent index -------------------------------------------------------
@@ -437,6 +470,38 @@
   }
 
   // ---- Requirement evaluation --------------------------------------------
+  // The "at least one of these" counterpart to anyTalents, for skills/
+  // characteristics/proficiencies — same OR relationship, richer entries
+  // since each also carries its own threshold (a bare id isn't enough).
+  // Shared by requirementStatus and spellRequirementStatus, which otherwise
+  // duplicate the plain AND-map handling for these three kinds.
+  function pushAnyReqReasons(reasons, state, reqs) {
+    if (reqs.anySkills && reqs.anySkills.length) {
+      var anySkillsMet = reqs.anySkills.some(function (s) { return ((state.skills || {})[s.name] || 0) >= s.tier; });
+      reqs.anySkills.forEach(function (s) {
+        var have = (state.skills || {})[s.name] || 0;
+        reasons.push({ type: "skill", mode: "any", groupMet: anySkillsMet,
+          label: s.name + " " + s.tier, detail: "have " + have, met: have >= s.tier });
+      });
+    }
+    if (reqs.anyCharacteristics && reqs.anyCharacteristics.length) {
+      var anyCharsMet = reqs.anyCharacteristics.some(function (c) { return ((state.characteristics || {})[c.key] || 0) >= c.value; });
+      reqs.anyCharacteristics.forEach(function (c) {
+        var have = (state.characteristics || {})[c.key] || 0;
+        reasons.push({ type: "characteristic", mode: "any", groupMet: anyCharsMet,
+          label: charLabel(c.key) + " " + c.value, detail: "have " + have, met: have >= c.value });
+      });
+    }
+    if (reqs.anyProficiencies && reqs.anyProficiencies.length) {
+      var anyProfsMet = reqs.anyProficiencies.some(function (p) { return profTier(state, p.name) >= p.tier; });
+      reqs.anyProficiencies.forEach(function (p) {
+        var have = profTier(state, p.name);
+        reasons.push({ type: "proficiency", mode: "any", groupMet: anyProfsMet,
+          label: p.name + " " + p.tier, detail: "have " + have, met: have >= p.tier });
+      });
+    }
+  }
+
   // Returns { owned, granted, met, reasons }. Each reason renders as one
   // requirement line, coloured by reasonMet().
   function requirementStatus(talent, state) {
@@ -529,6 +594,8 @@
       reasons.push({ type: "proficiency", label: name + " " + need, detail: "have " + have, met: have >= need });
     });
 
+    pushAnyReqReasons(reasons, state, reqs);
+
     if (reqs.spent) {
       Object.keys(reqs.spent).forEach(function (pool) {
         var need = reqs.spent[pool], have = spent[pool] || 0;
@@ -544,8 +611,11 @@
     };
   }
 
+  // Any reason belonging to an OR-group (anyTalents, anySkills,
+  // anyCharacteristics, anyProficiencies) is met when the GROUP is, not when
+  // its own individual `met` is true — groupMet is precomputed once per group.
   function reasonMet(r) {
-    if (r.type === "talent" && r.mode === "any") return r.groupMet;
+    if (r.mode === "any") return r.groupMet;
     return r.met;
   }
 
@@ -601,6 +671,8 @@
 
   // ---- Database validation ------------------------------------------------
   var validSpellTargets = { self: true, ally: true, enemy: true, object: true, point: true };
+  // Target kinds a `numTargets` count applies to — "self" is always exactly one.
+  var countableTargets = { ally: true, enemy: true, object: true, point: true };
   var validDurationUnits = { minutes: true, hours: true, days: true, weeks: true, rounds: true };
 
   // Shared by spells and maneuver talents — both carry the same "castable"
@@ -617,6 +689,12 @@
       problems.push(label + ": range must be 'self', 'touch', 'weapon', or a positive number of yards (got " + JSON.stringify(obj.range) + ")");
     if (obj.target != null && (!Array.isArray(obj.target) || obj.target.some(function (t) { return !validSpellTargets[t]; })))
       problems.push(label + ": target must be a list from self/ally/enemy/object/point, or omitted entirely (got " + JSON.stringify(obj.target) + ")");
+    if (obj.numTargets != null) {
+      if (typeof obj.numTargets !== "number" || obj.numTargets < 1 || Math.floor(obj.numTargets) !== obj.numTargets)
+        problems.push(label + ": numTargets must be a whole number of 1 or more (got " + JSON.stringify(obj.numTargets) + ")");
+      if (!(obj.target || []).some(function (t) { return countableTargets[t]; }))
+        problems.push(label + ": numTargets only applies when target includes ally, enemy, object, or point");
+    }
     var dur = obj.duration;
     var durOk = dur === "instantaneous" || dur === "indefinite" ||
       (!!dur && typeof dur === "object" && typeof dur.value === "number" && dur.value > 0 && validDurationUnits[dur.unit]);
@@ -624,8 +702,8 @@
       problems.push(label + ": duration must be 'instantaneous', 'indefinite', or { value, unit: minutes|hours|days|weeks|rounds } (got " + JSON.stringify(dur) + ")");
     if (obj.aoe) {
       var aoe = obj.aoe;
-      if (aoe.shape !== "cone" && aoe.shape !== "line" && aoe.shape !== "circle")
-        problems.push(label + ": aoe.shape must be 'cone', 'line', or 'circle' (got " + JSON.stringify(aoe.shape) + ")");
+      if (aoe.shape !== "cone" && aoe.shape !== "arc" && aoe.shape !== "line" && aoe.shape !== "circle")
+        problems.push(label + ": aoe.shape must be 'cone', 'arc', 'line', or 'circle' (got " + JSON.stringify(aoe.shape) + ")");
       if (aoe.origin !== "self" && aoe.origin !== "point")
         problems.push(label + ": aoe.origin must be 'self' or 'point' (got " + JSON.stringify(aoe.origin) + ")");
       if (aoe.origin === "point" && typeof obj.range !== "number")
@@ -638,12 +716,10 @@
       } else if (aoe.width != null) {
         problems.push(label + ": only a line aoe may set 'width'");
       }
-      if (aoe.shape === "cone") {
-        if (aoe.arc != null && aoe.arc !== 90 && aoe.arc !== 180)
-          problems.push(label + ": a cone aoe's 'arc' must be 90 or 180 (got " + JSON.stringify(aoe.arc) + ")");
-      } else if (aoe.arc != null) {
-        problems.push(label + ": only a cone aoe may set 'arc'");
-      }
+      // Cone is fixed at 90°; a 180° wedge is its own shape, "arc" — so there
+      // is no longer a variable 'arc' field on any shape.
+      if (aoe.arc != null)
+        problems.push(label + ": aoe.arc is no longer a field; use shape 'arc' for a 180° wedge (cone is fixed at 90°)");
     }
   }
 
@@ -655,6 +731,27 @@
       (window.SKILLS[g] || []).forEach(function (s) { skillNames[s.name] = true; });
     });
     var charKeys = (CONFIG.CHARACTERISTICS || []).reduce(function (m, c) { m[c.key] = true; return m; }, {});
+
+    // The any* (OR-group) counterparts to anyTalents, for skills/
+    // characteristics/proficiencies — each entry carries its own name/key
+    // plus threshold, so (unlike the plain talents/anyTalents id lists) they
+    // need their own shape check, not just a lookup.
+    function checkAnyReqGroups(label, reqs) {
+      (reqs.anySkills || []).forEach(function (s) {
+        if (!s || typeof s.name !== "string" || !s.name) { problems.push(label + ": anySkills entry needs a 'name'"); return; }
+        if (!skillNames[s.name]) problems.push(label + ": unknown skill '" + s.name + "' in anySkills");
+        if (typeof s.tier !== "number") problems.push(label + ": anySkills entry '" + s.name + "' needs a numeric 'tier'");
+      });
+      (reqs.anyCharacteristics || []).forEach(function (c) {
+        if (!c || typeof c.key !== "string" || !c.key) { problems.push(label + ": anyCharacteristics entry needs a 'key'"); return; }
+        if (!charKeys[c.key]) problems.push(label + ": unknown characteristic '" + c.key + "' in anyCharacteristics");
+        if (typeof c.value !== "number") problems.push(label + ": anyCharacteristics entry '" + c.key + "' needs a numeric 'value'");
+      });
+      (reqs.anyProficiencies || []).forEach(function (p) {
+        if (!p || typeof p.name !== "string" || !p.name) { problems.push(label + ": anyProficiencies entry needs a 'name'"); return; }
+        if (typeof p.tier !== "number") problems.push(label + ": anyProficiencies entry '" + p.name + "' needs a numeric 'tier'");
+      });
+    }
 
     allTalents.forEach(function (t) {
       if (seen[t.id]) problems.push("Duplicate talent id: " + t.id);
@@ -695,6 +792,7 @@
       Object.keys(reqs.characteristics || {}).forEach(function (k) {
         if (!charKeys[k]) problems.push(t.id + ": unknown characteristic '" + k + "'");
       });
+      checkAnyReqGroups(t.id, reqs);
     });
 
     // Grants (§4.9). Anything that hands out content must hand out something
@@ -1062,6 +1160,7 @@
         Object.keys(sreqs.characteristics || {}).forEach(function (k) {
           if (!charKeys[k]) problems.push("spell '" + sp.id + "': unknown characteristic '" + k + "'");
         });
+        checkAnyReqGroups("spell '" + sp.id + "'", sreqs);
       });
     });
 
@@ -1168,6 +1267,50 @@
           if (t.row >= r0 && t.row <= r1 && t.col >= c0 && t.col <= c1) {
             problems.push(label + ": '" + t.id + "' sits inside the group's box but is not a member");
           }
+        });
+      });
+    });
+
+    // Manual link anchors (§6b). An anchor that names a line the tree does not
+    // draw is not a content gap but a typo, and a silent one: nothing appears,
+    // and the author has no way to tell a mis-typed id from a route that just
+    // ignored them.
+    trees.forEach(function (tree) {
+      var seenPair = {};
+      var groupIds = {};
+      (tree.groups || []).forEach(function (g) { if (g.id) groupIds[g.id] = g; });
+
+      (tree.anchors || []).forEach(function (a) {
+        var pair = (a.from || "?") + " → " + (a.to || "?");
+        var label = "anchor " + pair + " in " + tree.id;
+        if (seenPair[pair]) problems.push(tree.id + ": two anchors for the same line, " + pair);
+        seenPair[pair] = true;
+
+        var pre = byId[a.from];
+        if (!pre || pre.domain !== tree.id) {
+          problems.push(label + ": '" + a.from + "' is not a talent in this tree");
+        }
+        // The far end is whatever the arrow points at: a talent, or the box
+        // round a group when the shared requirement is drawn once into it.
+        var grp = groupIds[a.to], child = byId[a.to];
+        if (!grp && (!child || child.domain !== tree.id)) {
+          problems.push(label + ": '" + a.to + "' is neither a talent in this tree nor one of its groups");
+        } else if (pre) {
+          var reqs = (grp ? grp.requires : child.requires) || {};
+          var named = (reqs.talents || []).concat(reqs.anyTalents || []);
+          if (named.indexOf(a.from) < 0) {
+            problems.push(label + ": '" + a.to + "' does not require '" + a.from + "', so there is no line to anchor");
+          }
+        }
+
+        var via = a.via || [];
+        if (!via.length) problems.push(label + ": has no waypoints");
+        via.forEach(function (w, i) {
+          if (!w || typeof w.col !== "number" || typeof w.row !== "number")
+            problems.push(label + ": waypoint " + (i + 1) + " needs a numeric col and row");
+          else if (w.col < -1 || w.col > (tree.cols || 0) + 1)
+            problems.push(label + ": waypoint " + (i + 1) + " sits at column " + w.col +
+              ", outside a tree " + (tree.cols || 0) + " columns wide");
         });
       });
     });
@@ -1293,7 +1436,7 @@
           tier: t.tier || 1, name: t.name, icon: t.icon || "",
           description: t.description || "", flavour: t.flavour || "",
           ability: t.ability || "passive", uses: t.uses, usesPer: t.usesPer,
-          castingTime: t.castingTime, range: t.range, target: t.target,
+          castingTime: t.castingTime, range: t.range, target: t.target, numTargets: t.numTargets,
           duration: t.duration, aoe: t.aoe,
           sourceName: src.name,
           unlocked: cur >= (t.tier || 1),
@@ -1317,7 +1460,7 @@
         return {
           id: t.id, name: t.name, icon: t.icon, description: t.description, flavour: t.flavour,
           tier: t.tier, ability: t.ability, uses: t.uses, usesPer: t.usesPer,
-          castingTime: t.castingTime, range: t.range, target: t.target,
+          castingTime: t.castingTime, range: t.range, target: t.target, numTargets: t.numTargets,
           duration: t.duration, aoe: t.aoe,
           fromSource: true, sourceName: t.sourceName,
         };
@@ -1846,7 +1989,8 @@
   // need — a modifier that only rewrites text still declares `{ target: {} }`.
   var MODIFIABLE_FIELDS = {
     name: 1, icon: 1, flavour: 1, description: 1,
-    uses: 1, usesPer: 1, castingTime: 1, range: 1, target: 1, duration: 1, aoe: 1,
+    uses: 1, usesPer: 1, castingTime: 1, range: 1, target: 1, numTargets: 1, duration: 1, aoe: 1,
+    "aoe.shape": 1,
   };
   // Deliberately NOT modifiable, and each for a specific reason:
   //   id/row/col   — identity and layout; a moving node breaks the drawn lines
@@ -1906,7 +2050,19 @@
       var spec = m.modifies[entry.id] || {};
       Object.keys(spec).forEach(function (field) {
         if (!MODIFIABLE_FIELDS[field]) return;      // validator reports these
-        out[field] = applyFieldOps(out[field], spec[field]);
+        // A dotted field ("aoe.shape") reaches one step into a nested object
+        // instead of replacing the whole thing, so a modifier can change just
+        // that sub-field (e.g. Cone → Circle) without re-authoring size/origin.
+        var dot = field.indexOf(".");
+        if (dot < 0) {
+          out[field] = applyFieldOps(out[field], spec[field]);
+        } else {
+          var top = field.slice(0, dot), sub = field.slice(dot + 1);
+          var base = {};
+          if (out[top]) Object.keys(out[top]).forEach(function (k) { base[k] = out[top][k]; });
+          base[sub] = applyFieldOps(base[sub], spec[field]);
+          out[top] = base;
+        }
       });
     });
     out.modifiedBy = mods.map(function (m) { return m.id; });
@@ -1969,6 +2125,7 @@
       var need = reqs.characteristics[key], have = (state.characteristics || {})[key] || 0;
       reasons.push({ type: "characteristic", label: charLabel(key) + " " + need, detail: "have " + have, met: have >= need });
     });
+    pushAnyReqReasons(reasons, state, reqs);
     if (reqs.spent) {
       spent = spent || computeSpent(state);
       Object.keys(reqs.spent).forEach(function (pool) {
@@ -2024,9 +2181,13 @@
     return "";
   }
   var TARGET_LABELS = { self: "Self", ally: "Ally", enemy: "Enemy", object: "Object", point: "Point" };
-  // Human-readable target list, e.g. "Enemy" or "Self, Ally".
+  // Human-readable target list, e.g. "Enemy" or "Self, Ally". A `numTargets`
+  // above 1 appends a "×N" count, the same convention a maneuver's uses badge
+  // uses ("Maneuver ×N").
   function targetLabel(spell) {
-    return ((spell && spell.target) || []).map(function (t) { return TARGET_LABELS[t] || t; }).join(", ");
+    var base = ((spell && spell.target) || []).map(function (t) { return TARGET_LABELS[t] || t; }).join(", ");
+    var n = spell && spell.numTargets;
+    return (base && n > 1) ? base + " ×" + n : base;
   }
   // Human-readable duration: "Instantaneous", "Indefinite", or "N unit".
   function durationLabel(spell) {
@@ -2036,14 +2197,15 @@
     if (d && typeof d === "object") return d.value + " " + d.unit;
     return "";
   }
-  // Human-readable area of effect, or "" when the spell has none. Cones are
-  // always 90°, unless `arc: 180` widens them to a half-circle "Arc".
+  // Human-readable area of effect, or "" when the spell has none. Cone (90°)
+  // and Arc (180°) are separate shapes, not variants of one another.
   function aoeLabel(spell) {
     var a = spell && spell.aoe;
     if (!a) return "";
     var originLabel = a.origin === "self" ? "self" : "point in range";
     if (a.shape === "line") return a.size + "y x " + a.width + "y Line (" + originLabel + ")";
-    if (a.shape === "cone") return a.size + "y " + (a.arc === 180 ? "Arc" : "Cone") + " (" + originLabel + ")";
+    if (a.shape === "cone") return a.size + "y Cone (" + originLabel + ")";
+    if (a.shape === "arc") return a.size + "y Arc (" + originLabel + ")";
     return a.size + "y Circle (" + originLabel + ")";
   }
 
@@ -2082,6 +2244,7 @@
     allTalents: function () { return allTalents; },
     // talent groups (§6b)
     treeGroups: treeGroups, groupOf: groupOf, requirementsCover: requirementsCover,
+    treeAnchors: treeAnchors, anchorFor: anchorFor,
     // costs & tiers
     computeSpent: computeSpent, currentTierIndex: currentTierIndex, tierThreshold: tierThreshold,
     treeAccessCharges: treeAccessCharges, nextTreeCost: nextTreeCost, learnCost: learnCost,

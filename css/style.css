@@ -181,9 +181,20 @@ a { color: var(--accent); }
 .tree-grid { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 22px; }
 
 .tree-row {
-  display: grid; grid-template-columns: repeat(var(--cols), 1fr);
+  display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   gap: 14px; align-items: stretch;
 }
+/* `minmax(0, 1fr)` above, not plain `1fr`: a bare `1fr` track's automatic
+   minimum is its content's min-content size, so a column holding a talent
+   (the fixed-width .node) grows past its equal share while an empty column in
+   the SAME position on another row does not. Two rows with a different mix of
+   occupied columns then compute different track widths for that same column
+   index, so a node's box drifts a few px left/right from its own prerequisite
+   one row down — visible as boxes that don't quite center-align between rows,
+   and as prerequisite arrows with a needless kink where a straight line was
+   expected. `minmax(0, 1fr)` pins every track to an equal, content-independent
+   share of the row, so a column's pixel position is the same in every row that
+   uses it, whatever text happens to be in any of the cells. */
 .tree-cell { display: flex; justify-content: center; }
 /* Left edge of each concatenated ancestral block (combined ancestry view). */
 .tree-cell.block-start { border-left: 2px dotted var(--line-strong); margin-left: -8px; padding-left: 6px; }

@@ -124,8 +124,10 @@
   //        group is one, and treating its whole dotted rectangle as solid would
   //        wall off the middle of the tree. The members inside it are ordinary
   //        nodes and block on their own, which is the real constraint.
-  // links: [{ from: <node id>, to: <node id>, ... }] — anything else rides
-  //        along untouched on `.link`.
+  // links: [{ from: <node id>, to: <node id>, via?: [{col,row}], ... }] —
+  //        anything else rides along untouched on `.link`. `via` is a list of
+  //        manual anchors in grid coordinates the route must pass through; see
+  //        "manual anchors" below.
   // opts:  overrides for DEFAULTS, plus an optional `bounds: {left,right}` — the
   //        host's own width, so the edge corridors can use space the outermost
   //        node does not reach into (an empty last column, say).
@@ -237,13 +239,33 @@
         if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
         else occupied.push([r[0], r[1]]);
       });
+    // A free stretch much wider than a node is not one routing line, it is
+    // several: a tree with a gap in the middle of it would otherwise funnel
+    // everything crossing that gap onto a single line, and an anchor dropped
+    // anywhere in the empty space would have nowhere to snap but its centre.
+    // The unit is a whole node's width — measured, like everything else here.
+    var nodeWidth = 0;
+    solid.forEach(function (n) {
+      var r = n.outer || n.box;
+      nodeWidth = Math.max(nodeWidth, r.right - r.left);
+    });
+    nodeWidth = Math.max(nodeWidth, 4 * o.portSpacing);
+
+    function addFree(a, b) {
+      if (b - a < o.minCorridor) return;
+      var n = Math.max(1, Math.round((b - a) / nodeWidth));
+      for (var i = 0; i < n; i++) {
+        var lo = a + (b - a) * i / n, hi = a + (b - a) * (i + 1) / n;
+        addCorridor((lo + hi) / 2, lo + 2, hi - 2, "free");
+      }
+    }
+
     var cursor = bounds.left;
     occupied.forEach(function (r) {
-      if (r[0] - cursor >= o.minCorridor) addCorridor((cursor + r[0]) / 2, cursor + 2, r[0] - 2, "free");
+      addFree(cursor, r[0]);
       cursor = Math.max(cursor, r[1]);
     });
-    if (bounds.right - cursor >= o.minCorridor)
-      addCorridor((cursor + bounds.right) / 2, cursor + 2, bounds.right - 2, "free");
+    addFree(cursor, bounds.right);
 
     // Column corridors: one per distinct box centre, ghosts included so a group
     // gets its own arrival line. This is the only place a link may touch a
@@ -411,10 +433,10 @@
       return Math.abs(x1 - x2) + ghostCost(x1, x2, y, y);
     }
 
-    function search(startCi, startG, goalCi, goalG) {
+    function search(startCi, startG, goalCi, goalG, startDir) {
       var dist = new Array(STATES), prev = new Array(STATES), i;
       for (i = 0; i < STATES; i++) dist[i] = Infinity;
-      var start = sid(startCi, startG, 0);   // 0 = travelling vertically
+      var start = sid(startCi, startG, startDir || 0);   // 0 = travelling vertically
       dist[start] = 0;
       var heap = new Heap();
       heap.push(0, start);
@@ -455,9 +477,99 @@
       return path.reverse();
     }
 
+    // ---- manual anchors -----------------------------------------------------
+    // `link.via` is a list of grid-relative waypoints the route has to pass
+    // through: `{ col, row }` in the same coordinates the talents are authored
+    // in, with a half step meaning "between" — col 5.5 is the gutter right of
+    // column 5, row 1.5 the space above row 1. Grid-relative and not pixels,
+    // because everything about the drawing moves: the window resizes, a row
+    // widens to fit its lanes, a new talent lands in a column, and an anchor
+    // pinned to a pixel would be pointing at empty space by then.
+    //
+    // A waypoint resolves to a vertex of the same graph the search already
+    // runs on, so an anchored link is not a special case: it is the same
+    // search, run in legs. Everything else still holds — it cannot cut through
+    // a node, and its runs are packed with all the others.
+    var colXs = {};
+    all.forEach(function (n) { if (!n.ghost && colXs[n.col] === undefined) colXs[n.col] = cx(n.box); });
+    var knownCols = Object.keys(colXs).map(Number).sort(function (a, b) { return a - b; });
+
+    function colToX(col) {
+      if (!knownCols.length) return corridors.length ? corridors[0].x : 0;
+      var lo = knownCols[0], hi = knownCols[knownCols.length - 1], i;
+      for (i = 0; i < knownCols.length; i++) if (knownCols[i] <= col) lo = knownCols[i];
+      for (i = knownCols.length - 1; i >= 0; i--) if (knownCols[i] >= col) hi = knownCols[i];
+      if (lo === hi) {
+        // Outside the populated columns: step off the nearest one by the
+        // average column spacing, which is only ever used to pick a corridor.
+        var pitch = knownCols.length > 1
+          ? (colXs[knownCols[knownCols.length - 1]] - colXs[knownCols[0]]) /
+            (knownCols[knownCols.length - 1] - knownCols[0])
+          : 100;
+        return colXs[lo] + (col - lo) * pitch;
+      }
+      return colXs[lo] + (col - lo) * (colXs[hi] - colXs[lo]) / (hi - lo);
+    }
+
+    // A waypoint's `row` says which KIND of anchor it is, and the half step
+    // that already tells a column from a gutter does the same job here:
+    //
+    //   row 1.5   a point in the band above row 1 — pins where a horizontal
+    //             run travels.
+    //   row 1     crossing row 1 — pins the corridor a vertical run climbs in,
+    //             which is two vertices, one either side of that row.
+    //
+    // The distinction is not cosmetic. Pinning a single point in a band the
+    // link already passes through asks it to go sideways and come straight
+    // back, and a detour that retraces itself draws as nothing at all: the
+    // author drags the line, lets go, and watches it snap back for no visible
+    // reason. "Climb here" is what grabbing a vertical run has to mean.
+    function anchorStops(w, prevG) {
+      var x = colToX(Number(w.col) || 0), ci = 0, bd = Infinity;
+      corridors.forEach(function (c, i) {
+        var d = Math.abs(c.x - x);
+        if (d < bd) { bd = d; ci = i; }
+      });
+      var raw = Number(w.row) || 0, r = Math.floor(raw), g = rowIdx[r];
+      if (g === undefined) {
+        g = 0;
+        rowsDrawn.forEach(function (rr, i) { if (rr <= r) g = i; });
+      }
+      if (Math.abs(raw - r - 0.5) < 0.01) return [{ ci: ci, g: clampGap(g) }];
+      var lo = clampGap(g - 1), hi = clampGap(g);
+      if (lo === hi) return [{ ci: ci, g: lo }];
+      // Nearer end first, so the pair never asks the route to double back on
+      // its way in.
+      return Math.abs(hi - prevG) < Math.abs(lo - prevG)
+        ? [{ ci: ci, g: hi }, { ci: ci, g: lo }]
+        : [{ ci: ci, g: lo }, { ci: ci, g: hi }];
+    }
+
+    function endDirOf(path, fallback) {
+      if (!path || path.length < 2) return fallback;
+      var a = path[path.length - 2], b = path[path.length - 1];
+      return a.ci === b.ci ? 0 : 1;
+    }
+
     routed.forEach(function (it) {
-      it.path = search(portCorr[it.from.id], it.gapFrom, portCorr[it.to.id], it.gapTo) ||
-                [{ ci: portCorr[it.from.id], g: it.gapFrom }, { ci: portCorr[it.to.id], g: it.gapTo }];
+      var stops = [{ ci: portCorr[it.from.id], g: it.gapFrom }];
+      (it.link.via || []).forEach(function (w) {
+        anchorStops(w, stops[stops.length - 1].g).forEach(function (v) { stops.push(v); });
+      });
+      stops.push({ ci: portCorr[it.to.id], g: it.gapTo });
+
+      var path = null, dir = 0;
+      for (var s = 1; s < stops.length; s++) {
+        var leg = search(stops[s - 1].ci, stops[s - 1].g, stops[s].ci, stops[s].g, dir);
+        if (!leg) { path = null; break; }
+        dir = endDirOf(leg, dir);
+        if (!path) { path = leg; continue; }
+        // The legs share the waypoint itself; keep one copy of it.
+        path = path.concat(leg.slice(1));
+      }
+      it.path = (path || [{ ci: portCorr[it.from.id], g: it.gapFrom },
+                          { ci: portCorr[it.to.id], g: it.gapTo }])
+        .filter(function (v, i, a) { return i === 0 || v.ci !== a[i - 1].ci || v.g !== a[i - 1].g; });
       for (var k = 1; k < it.path.length; k++) {
         var a = it.path[k - 1], b = it.path[k];
         if (a.ci === b.ci) vertUse[a.ci + "^" + Math.min(a.g, b.g)] = (vertUse[a.ci + "^" + Math.min(a.g, b.g)] || 0) + 1;

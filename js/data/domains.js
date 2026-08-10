@@ -66,7 +66,7 @@ window.DOMAINS = [
     name: "Invention",
     icon: "⚙️",
     accent: "#8a6d3b",
-    cols: 8,
+    cols: 9,
     kind: "core",
     talents: [
       {
@@ -145,7 +145,7 @@ window.DOMAINS = [
         id: "inve_well_prepared",
         name: "Well-prepared",
         flavour: "You are always on top of your game, and have prepared even for the most absurd of situations.",
-        description: "Regardless of mode of play you can perform a Minor Flashback to have acquired an item, or grant you an extra use of Arsenal.",
+        description: "Regardless of mode of play you can perform a Minor Flashback {inve_more_preparations:\"twice\">inve_well_prepared:\"once\"} per session to have acquired an item, or grant you an extra use of Arsenal.",
         pool: "noncombat",
         cost: 1,
         tier: 1,
@@ -154,6 +154,7 @@ window.DOMAINS = [
         ability: "maneuver",
         uses: 1,
         castingTime: "free",
+        range: "touch",
         duration: "instantaneous"
       },
       {
@@ -467,6 +468,51 @@ window.DOMAINS = [
             "inve_material_knowledge_explosive"
           ]
         }
+      },
+      {
+        id: "inve_more_preparations",
+        name: "More Preparations",
+        flavour: "You are even better prepared than your peers!",
+        description: "Gain an additional use of Well-prepared",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 1,
+        ability: "modifier",
+        modifies: {
+          inve_well_prepared: {
+            uses: {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "inve_well_prepared"
+          ]
+        }
+      },
+      {
+        id: "inve_flamethrower",
+        name: "Flamethrower",
+        flavour: "You have constructed a simple flamethrower.",
+        description: "1+ successes: Deal fire damage equal to the number of successes\n3+ successes: Deal fire damage equal to the number of successes and inflict Burning 1\n5+ successes: Deal fire damage equal to the number of successes and inflict Burning 2",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 2,
+        ability: "maneuver",
+        uses: 1,
+        castingTime: "action",
+        range: 6,
+        duration: "instantaneous",
+        aoe: {
+          shape: "cone",
+          origin: "self",
+          size: 6
+        }
       }
     ],
     groups: [
@@ -524,7 +570,7 @@ window.DOMAINS = [
     name: "Arms",
     icon: "⚔️",
     accent: "#8a6d3b",
-    cols: 5,
+    cols: 9,
     kind: "core",
     talents: [
       {
@@ -605,6 +651,170 @@ window.DOMAINS = [
         requires: {
           talents: [
             "arms_flurry"
+          ]
+        }
+      },
+      {
+        id: "arms_hail_of_arrows",
+        name: "Hail of Arrows",
+        description: "Make an attack with a bow, rolling 2 extra dice. Split the however you wish among as many enemies as desired.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 5,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "weapon",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        requires: {
+          proficiencies: {
+            Bows: 2
+          }
+        }
+      },
+      {
+        id: "arms_riposte",
+        name: "Riposte",
+        flavour: "You can exploit the openings an opponent leaves when they attack.",
+        description: "When fully parrying an attack: deal damage to the attacking enemy equal to the number of successes that are left after damage is reduced to 0.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 8,
+        ability: "maneuver",
+        castingTime: "reaction",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "arms_cleave",
+        name: "Cleave",
+        flavour: "You can hit multiple enemies with your sweeping attacks.",
+        description: "Requires a two-handed blade or axe:\nRoll an attack with your weapon against up to {arms_cleave:\"2\">arms_greater_cleave:\"3\"} enemies within a 180° arc.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 2,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        numTargets: 2,
+        duration: "instantaneous",
+        aoe: {
+          shape: "arc",
+          origin: "self",
+          size: 2
+        },
+        requires: {
+          anyProficiencies: [
+            { name: "Blades", tier: 2 },
+            { name: "Axes", tier: 2 }
+          ]
+        }
+      },
+      {
+        id: "arms_greater_cleave",
+        name: "Greater Cleave",
+        flavour: "Your sweeping cleave can hit an additional enemy",
+        description: "Cleave can hit an additional enemy in range.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 2,
+        ability: "modifier",
+        modifies: {
+          arms_cleave: {
+            numTargets: {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "arms_cleave"
+          ]
+        }
+      },
+      {
+        id: "arms_whirlwind",
+        name: "Whirlwind",
+        flavour: "You become a whirlwind of steel attacking al enemies around you.",
+        description: "You bec",
+        pool: "combat",
+        cost: 2,
+        tier: 2,
+        row: 4,
+        col: 2,
+        ability: "modifier",
+        modifies: {
+          arms_cleave: {
+            aoe: {
+              set: ""
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "arms_greater_cleave"
+          ]
+        }
+      },
+      {
+        id: "arms_piercing_bolt",
+        name: "Piercing Bolt",
+        flavour: "Your bolts can pierce even the toughest of scales and the hardest armor.",
+        description: "Make an attack with your crossbow: Ignore {arms_penetrating_bolt:\"all\">arms_piercing_bolt:\"up to 2\"} physical armor during this attack.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 6,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "weapon",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        requires: {
+          proficiencies: {
+            Crossbows: 2
+          }
+        }
+      },
+      {
+        id: "arms_penetrating_bolt",
+        name: "Penetrating Bolt",
+        flavour: "Your bolts are targetted even more precisely, finding any weakness.",
+        description: "Your penetrating bolt now ignores all armor.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 1,
+        col: 6,
+        ability: "modifier",
+        modifies: {
+          arms_piercing_bolt: {}
+        },
+        requires: {
+          talents: [
+            "arms_piercing_bolt"
           ]
         }
       }
@@ -702,6 +912,7 @@ window.DOMAINS = [
         target: [
           "enemy"
         ],
+        numTargets: 5,
         duration: {
           value: 1,
           unit: "rounds"

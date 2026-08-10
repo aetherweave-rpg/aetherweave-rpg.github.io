@@ -76,6 +76,7 @@
       flavour: real.flavour, cols: real.cols, realTree: real,
       talents: talents, colOf: function (t) { return t.col; },
       groups: Engine.treeGroups(real.id),
+      anchors: Engine.treeAnchors(real.id),
     };
   }
 
@@ -107,6 +108,18 @@
       // Each ancestry in the chain keeps its own groups; the display column
       // offset is applied when the boxes are measured, same as the nodes.
       groups: ordered.reduce(function (a, tr) { return a.concat(Engine.treeGroups(tr.id)); }, []),
+      // An anchor's column is authored against its own tree, so shift it by
+      // that tree's block offset the same way a talent's column is.
+      anchors: ordered.reduce(function (a, tr) {
+        return a.concat(Engine.treeAnchors(tr.id).map(function (an) {
+          return {
+            from: an.from, to: an.to,
+            via: (an.via || []).map(function (w) {
+              return { col: w.col + (offset[tr.id] || 0), row: w.row };
+            }),
+          };
+        }));
+      }, []),
     };
   }
 
@@ -655,6 +668,13 @@
       gb.members.forEach(function (id) { memberGroup[id] = gb; });
     });
 
+    // Manual anchors are keyed by the pair the author sees: a talent id, or a
+    // group's own id where the arrow lands on the box rather than a member.
+    var viaFor = {};
+    (view.anchors || []).forEach(function (a) {
+      if (a.from && a.to && (a.via || []).length) viaFor[a.from + "→" + a.to] = a.via;
+    });
+
     var links = [];
     view.talents.forEach(function (t) {
       if (!_nodeEls[t.id]) return;
@@ -669,7 +689,8 @@
         // Drawn once into the box instead of once per member.
         var gb = memberGroup[t.id];
         if (gb && gb.sharedIds.indexOf(ln.pid) >= 0) return;
-        links.push({ from: ln.pid, to: t.id, dashed: ln.dashed, pre: pre, child: t });
+        links.push({ from: ln.pid, to: t.id, dashed: ln.dashed, pre: pre, child: t,
+                     via: viaFor[ln.pid + "→" + t.id] });
       });
     });
 
@@ -679,7 +700,8 @@
         var pre = viewById[pid] || Engine.talentById(pid);
         if (!pre || !_nodeEls[pid]) return;
         links.push({ from: pid, to: gb.key, dashed: gb.sharedAny.indexOf(pid) >= 0,
-                     pre: pre, child: null, group: gb });
+                     pre: pre, child: null, group: gb,
+                     via: viaFor[pid + "→" + (gb.group.id || "")] });
       });
     });
 
