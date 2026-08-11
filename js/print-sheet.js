@@ -232,7 +232,7 @@
   }
 
   function proficiencies(state) {
-    var b = block("Proficiencies");
+    var b = block("Proficiencies", "filled to current level · max " + Engine.skillCap(state) + " at this tier");
     var wrap = el("div", "ps-profs");
     window.PROFICIENCY_KINDS.forEach(function (kind) {
       var col = el("div", "ps-prof-col");

@@ -1,8 +1,14 @@
 // ============================================================================
 // Talent Trees page (index.html): tree tabs (core / ancestral / combination),
 // the tree grid, tier dividers, SVG prerequisite lines, node states,
-// click-to-learn/refund, and tooltips. Spells have their own top-level page —
-// see spells.html / js/spells.js.
+// click-to-learn/refund, and tooltips.
+//
+// A magical domain's SPELLS are nodes in this grid too (§4.6) — same row/col
+// space, same tier bands, same prerequisite lines. What differs is the rules
+// behind a node, not the drawing, so everything here works on "entries" and
+// dispatches on Engine.entryKind only where the rules genuinely diverge:
+// which requirement check runs, and what a click does. The Spells page is now
+// a reading reference, not a second place to buy things.
 // ============================================================================
 
 (function () {
@@ -18,7 +24,11 @@
   var currentTree = window.SafeStorage.read(LAST_TREE_KEY) || null;
   var showAllCombos = window.SafeStorage.read(SHOW_COMBOS_KEY) === "1";
 
-  var _svg = null, _nodeEls = {}, _view = null, _rowEls = {}, _groupBoxes = [];
+  // `_grid` is the coordinate origin for every measurement: it and the SVG
+  // overlay are both inside the horizontal scroller, so they move together and
+  // a rect taken against the grid is already in the overlay's own space —
+  // scrollLeft never enters the arithmetic.
+  var _svg = null, _nodeEls = {}, _view = null, _rowEls = {}, _groupBoxes = [], _grid = null;
 
   function init() {
     UI.renderHeader("trees");
@@ -52,8 +62,9 @@
   }
 
   // Resolve the current selection to a renderable "view":
-  //   { id, kind, name, icon, accent, flavour, cols, talents, colOf, blocks?, realTree? }
-  // colOf(t) gives a talent's DISPLAY column (offset within the combined grid).
+  //   { id, kind, name, icon, accent, flavour, cols, entries, colOf, blocks?, realTree? }
+  // `entries` are the tree's talents AND its spells; colOf(e) gives an entry's
+  // DISPLAY column (offset within the combined grid).
   function buildView(state) {
     var ancTrees = ancestryTreesVisible(state);
 
@@ -70,11 +81,10 @@
       else if (ancTrees.length) { currentTree = ANCESTRY_VIEW; return ancestryView(state, ancTrees); }
       else return null;
     }
-    var talents = Engine.talentsForDomain(real.id);
     return {
       id: real.id, kind: real.kind, name: real.name, icon: real.icon, accent: real.accent,
       flavour: real.flavour, cols: real.cols, realTree: real,
-      talents: talents, colOf: function (t) { return t.col; },
+      entries: Engine.treeEntries(real.id), colOf: function (t) { return t.col; },
       groups: Engine.treeGroups(real.id),
       anchors: Engine.treeAnchors(real.id),
     };
@@ -90,11 +100,11 @@
       .filter(function (t) { return t && ancTrees.indexOf(t) >= 0; });
     if (!ordered.length) ordered = ancTrees;
 
-    var offset = {}, cur = 0, blocks = [], talents = [];
+    var offset = {}, cur = 0, blocks = [], entries = [];
     ordered.forEach(function (tr) {
       offset[tr.id] = cur;
       blocks.push({ id: tr.id, name: tr.name, icon: tr.icon, accent: tr.accent, offset: cur, cols: tr.cols });
-      Engine.talentsForDomain(tr.id).forEach(function (t) { talents.push(t); });
+      Engine.treeEntries(tr.id).forEach(function (t) { entries.push(t); });
       cur += tr.cols;
     });
     var selfA = Engine.ancestryById(state.creation && state.creation.ancestry);
@@ -103,8 +113,8 @@
       name: "Ancestry", icon: (selfA && selfA.icon) || (ordered[0] || {}).icon || "🧬",
       accent: (selfA && selfA.accent) || (ordered[ordered.length - 1] || {}).accent,
       flavour: ordered.length > 1 ? "Your ancestral line, joined into one tree." : ((ordered[0] || {}).flavour || ""),
-      cols: Math.max(1, cur), talents: talents, blocks: blocks,
-      colOf: function (t) { return (offset[t.domain] || 0) + (t.col || 0); },
+      cols: Math.max(1, cur), entries: entries, blocks: blocks,
+      colOf: function (t) { return (offset[Engine.entryTreeId(t)] || 0) + (t.col || 0); },
       // Each ancestry in the chain keeps its own groups; the display column
       // offset is applied when the boxes are measured, same as the nodes.
       groups: ordered.reduce(function (a, tr) { return a.concat(Engine.treeGroups(tr.id)); }, []),
@@ -213,6 +223,8 @@
     _nodeEls = {};
     _rowEls = {};
     _groupBoxes = [];
+    _svg = null;
+    _grid = null;
 
     var state = State.get();
     var view = _view = buildView(state);
@@ -225,18 +237,27 @@
 
     host.appendChild(treeHeader(view, state));
 
-    var talents = view.talents;
-    if (!talents.length) {
-      host.appendChild(el("div", "empty", "No talents defined for this tree yet."));
+    var entries = view.entries;
+    if (!entries.length) {
+      // "No talents" would be half the story on a magical domain, whose grid
+      // holds spells too.
+      host.appendChild(el("div", "empty", "Nothing in this tree yet."));
       return;
     }
 
+    // A tree wider than the panel scrolls sideways rather than squeezing its
+    // nodes. The scroller holds BOTH the line overlay and the grid so they
+    // scroll as one piece: the SVG is positioned against the scrolled content,
+    // not the viewport, and a route measured at x = 1800 stays under its nodes.
+    var scroller = el("div", "tree-scroll");
+    host.appendChild(scroller);
+
     _svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     _svg.setAttribute("class", "tree-lines");
-    host.appendChild(_svg);
+    scroller.appendChild(_svg);
 
-    var grid = el("div", "tree-grid");
-    host.appendChild(grid);
+    var grid = _grid = el("div", "tree-grid");
+    scroller.appendChild(grid);
 
     // Column boundaries between concatenated blocks (combined ancestral view).
     var boundaries = {};
@@ -245,22 +266,22 @@
       grid.appendChild(blockHeaderRow(view));
     }
 
-    var maxRow = talents.reduce(function (m, t) { return Math.max(m, t.row); }, 0);
+    var maxRow = entries.reduce(function (m, t) { return Math.max(m, t.row); }, 0);
 
     var prevTier = null;
     for (var row = maxRow; row >= 0; row--) {
-      var rowTalents = talents.filter(function (t) { return t.row === row; });
-      if (!rowTalents.length) continue;
-      var rowTier = rowTalents[0].tier;
+      var rowEntries = entries.filter(function (t) { return t.row === row; });
+      if (!rowEntries.length) continue;
+      var rowTier = rowEntries[0].tier;
 
-      if (prevTier !== null && rowTier !== prevTier) grid.appendChild(tierDivider(prevTier));
+      if (prevTier !== null && rowTier !== prevTier) grid.appendChild(tierDivider(prevTier, view));
       prevTier = rowTier;
 
       var rowEl = el("div", "tree-row");
       rowEl.style.setProperty("--cols", view.cols);
       for (var c = 0; c < view.cols; c++) {
         var cell = el("div", "tree-cell" + (boundaries[c] ? " block-start" : ""));
-        var t = matchAt(rowTalents, view, c);
+        var t = matchAt(rowEntries, view, c);
         if (t) cell.appendChild(makeNode(t, state));
         rowEl.appendChild(cell);
       }
@@ -271,8 +292,8 @@
     scheduleDraw();
   }
 
-  function matchAt(rowTalents, view, c) {
-    for (var i = 0; i < rowTalents.length; i++) if (view.colOf(rowTalents[i]) === c) return rowTalents[i];
+  function matchAt(rowEntries, view, c) {
+    for (var i = 0; i < rowEntries.length; i++) if (view.colOf(rowEntries[i]) === c) return rowEntries[i];
     return null;
   }
 
@@ -318,7 +339,9 @@
     // Talent tiers are gated on exp spent inside this tree, so surface it.
     tags.appendChild(el("span", "tree-tag", Engine.treeSpent(state, tree.id) + " exp spent in this tree"));
 
-    // Magical domains: the effective spell test pool (source characteristic + spine).
+    // Magical domains: the effective spell test pool (source characteristic +
+    // Spellcasting proficiency tier), which is also the gate on every spell
+    // node in this grid.
     if (Engine.isMagicalDomain(tree.id)) {
       var pool = Engine.spellPool(state, tree.id);
       tags.appendChild(el("span", "tree-tag caster-tag", pool.charKey
@@ -356,12 +379,15 @@
     return head;
   }
 
-  function nodeOwned(t, state) {
-    return (state.talents || []).indexOf(t.id) >= 0;
-  }
+  function nodeOwned(t, state) { return Engine.entryOwned(state, t); }
+  function idOwned(id, state) { return Engine.entryOwned(state, Engine.entryById(id)); }
 
-  // Small badges reused by a maneuver talent's tooltip (§ showTooltip); the
-  // mana badge isn't among them since maneuvers never cost mana.
+  // Small badges shared by a spell's and a maneuver talent's tooltip
+  // (§ showTooltip). Only a spell gets the mana badge — maneuvers cost none.
+  function spellManaTag(sp) {
+    var m = Engine.spellManaCost(sp);
+    return el("span", "spell-mana-tag" + (m ? "" : " cantrip"), m ? (m + " mana") : "cantrip");
+  }
   function spellCastingTimeTag(sp) {
     return el("span", "spell-casting-time-tag", Engine.castingTimeLabel(sp));
   }
@@ -380,22 +406,53 @@
     return line;
   }
 
-  function tierDivider(tierNumber) {
-    var conf = CONFIG.TIERS[tierNumber - 1] || { name: "Tier " + tierNumber, minSpent: 0 };
+  // The band above the line. A tier number means two different things
+  // depending on what sits in the band: a talent needs that tier of play, a
+  // spell needs that Spellcasting proficiency tier. So the sub-label names
+  // whichever gates actually apply here rather than always claiming exp.
+  function tierDivider(tierNumber, view) {
+    var conf = CONFIG.TIERS[tierNumber - 1];
     var reached = (Engine.currentTierIndex(State.get()) + 1) >= tierNumber;
+    var kinds = tierKinds(view, tierNumber);
+    var parts = [];
+    if (kinds.talents && conf) parts.push(conf.minSpent + " exp spent");
+    if (kinds.spells) parts.push("Spellcasting " + tierNumber);
+    if (!parts.length) parts.push((conf ? conf.minSpent : 0) + " exp spent");
+
     var d = el("div", "tier-divider" + (reached ? " reached" : " locked"));
     d.appendChild(el("span", "tier-divider-line"));
     var lab = el("span", "tier-divider-label");
-    lab.appendChild(el("span", "tdl-name", conf.name));
-    lab.appendChild(el("span", "tdl-sub", conf.minSpent + " exp spent"));
+    lab.appendChild(el("span", "tdl-name", (conf && conf.name) || ("Tier " + tierNumber)));
+    lab.appendChild(el("span", "tdl-sub", parts.join(" · ")));
     d.appendChild(lab);
     d.appendChild(el("span", "tier-divider-line"));
     return d;
   }
 
+  // Which kinds of node occupy a given tier band in this view.
+  function tierKinds(view, tierNumber) {
+    var out = { talents: false, spells: false };
+    ((view && view.entries) || []).forEach(function (e) {
+      if ((e.tier || 1) !== tierNumber) return;
+      if (Engine.isSpellEntry(e)) out.spells = true; else out.talents = true;
+    });
+    return out;
+  }
+
+  // The kind marker in the box's top-left corner: P / M / S / mod. It answers
+  // "what does this node give me" before the tooltip is open, which is the
+  // question a mixed grid of passives, maneuvers, spells and modifiers raises
+  // on every single node. The owned ✓/★ badge keeps the top-right corner.
+  function kindMark(entry) {
+    var kind = Engine.entryKind(entry);
+    var m = el("span", "node-kind kind-" + kind, Engine.entryKindMark(entry));
+    m.title = Engine.entryKindName(entry);
+    return m;
+  }
+
   function makeNode(raw, state) {
     var t = Engine.effective(raw, state);   // name/icon may be modified
-    var status = Engine.requirementStatus(t, state);
+    var status = Engine.entryRequirementStatus(t, state);
     var owned = status.owned, met = status.met, granted = status.granted;
 
     var cls = "node ";
@@ -407,10 +464,12 @@
 
     var node = el("div", cls);
     node.dataset.id = t.id;
+    node.dataset.kind = Engine.entryKind(t);
     _nodeEls[t.id] = node;
 
     var box = el("div", "node-box");
     box.appendChild(el("span", "node-icon", t.icon || (t.name || "?").charAt(0)));
+    box.appendChild(kindMark(t));
     if (owned) box.appendChild(el("span", "node-badge", granted ? "★" : met ? "✓" : "!"));
     node.appendChild(box);
 
@@ -418,10 +477,10 @@
 
     var cost = el("div", "node-cost " + (t.pool === "combat" ? "combat" : "noncombat"));
     if (granted) { cost.textContent = "free"; cost.className = "node-cost granted"; }
-    else cost.textContent = t.cost + (t.pool === "combat" ? "C" : "NC");
+    else cost.textContent = (t.cost || 0) + (t.pool === "combat" ? "C" : "NC");
     node.appendChild(cost);
 
-    // Both take the AUTHORED talent, not `t`: Engine.effective is not
+    // Both take the AUTHORED entry, not `t`: Engine.effective is not
     // idempotent (a second pass would add the same bonus twice), and
     // learn/refund must act on what the database says this node costs.
     node.addEventListener("mouseenter", function () { showTooltip(raw, status, node); });
@@ -431,7 +490,39 @@
     return node;
   }
 
-  function onNodeClick(t) {
+  function onNodeClick(entry) {
+    if (Engine.isSpellEntry(entry)) return onSpellClick(entry);
+    return onTalentClick(entry);
+  }
+
+  // Unlearning a spell is never blocked (§5): nothing runs a dependency
+  // simulation for it, whatever else names it as a prerequisite just flags red.
+  function onSpellClick(sp) {
+    hideTooltip();
+    var state = State.get();
+    var status = Engine.spellRequirementStatus(sp, state);
+    if (status.owned) {
+      State.update(function (s) {
+        Engine.revokeGrants(s, sp.id);           // takes back what it handed out
+        s.spells = (s.spells || []).filter(function (id) { return id !== sp.id; });
+      });
+      UI.toast("Unlearned " + sp.name);
+      return;
+    }
+    if (!status.met) { UI.toast("Requirements not met for " + sp.name, "error"); return; }
+    var learned = function (keys) {
+      State.update(function (s) {
+        s.spells = s.spells || [];
+        s.spells.push(sp.id);
+        if (Engine.grantsOf(sp)) Engine.applyGrants(s, sp.id, keys || []);
+      });
+      UI.toast("Learned " + sp.name + " (" + (sp.cost || 0) + " " + Engine.poolLabel(sp.pool) + " exp)", "success");
+    };
+    if (Engine.grantNeedsChoice(sp)) UI.grantPicker(sp, state, learned);
+    else learned([]);
+  }
+
+  function onTalentClick(t) {
     hideTooltip();
     var state = State.get();
     var status = Engine.requirementStatus(t, state);
@@ -477,7 +568,7 @@
 
   function drawLines() {
     var host = document.getElementById("tree");
-    if (!host || !_svg) return;
+    if (!host || !_svg || !_grid) return;
     var state = State.get();
 
     // Two things can demand more room than the stock row spacing offers: a
@@ -489,16 +580,21 @@
     // Bounded, so a pathological layout cannot loop forever; reset first, or a
     // resize would keep stacking on last time's extra.
     clearGapSpacing();
-    measureGroups(host);
-    var plan = routePlan(host);
+    measureGroups();
+    if (applyGroupHeadroom()) measureGroups();
+    var plan = routePlan();
     for (var pass = 0; pass < 3; pass++) {
       var extras = combinedRowExtras(plan);
       if (!applyRowExtras(extras)) break;
-      measureGroups(host);
-      plan = routePlan(host);
+      measureGroups();
+      if (applyGroupHeadroom()) measureGroups();
+      plan = routePlan();
     }
 
-    var w = host.clientWidth, h = host.clientHeight;
+    // The GRID's box, not the panel's: on a tree wider than the screen the
+    // panel is the viewport and the grid is the drawing, and the overlay has
+    // to cover the drawing.
+    var w = _grid.offsetWidth, h = _grid.offsetHeight;
     _svg.setAttribute("width", w);
     _svg.setAttribute("height", h);
     _svg.setAttribute("viewBox", "0 0 " + w + " " + h);
@@ -511,7 +607,7 @@
       // A group's arrow reads as satisfied once the prerequisite is held; the
       // members light up individually as they are bought.
       var childOwned = r.link.child ? nodeOwned(r.link.child, state)
-        : r.link.group.members.every(function (id) { return (state.talents || []).indexOf(id) >= 0; });
+        : r.link.group.members.every(function (id) { return idOwned(id, state); });
       drawRoute(r, preOwned && childOwned ? "active" : preOwned ? "ready" : "idle");
     });
   }
@@ -523,8 +619,8 @@
   // GROUP_PAD alone left it crowding the border.
   var GROUP_PAD = 16;
   var GROUP_PAD_TOP = 28;
-  function measureGroups(host) {
-    var hostRect = host.getBoundingClientRect();
+  function measureGroups() {
+    var baseRect = _grid.getBoundingClientRect();
     var view = _view;
     _groupBoxes = [];
     if (!view || !view.groups) return;
@@ -532,22 +628,22 @@
     view.groups.forEach(function (g, i) {
       var members = (g.members || []).filter(function (id) { return _nodeEls[id]; });
       if (members.length < 2) return;
-      var rects = members.map(function (id) { return relRect(_nodeEls[id], hostRect); });
+      var rects = members.map(function (id) { return relRect(_nodeEls[id], baseRect); });
       var rect = {
         left: Math.min.apply(null, rects.map(function (r) { return r.left; })) - GROUP_PAD,
         right: Math.max.apply(null, rects.map(function (r) { return r.right; })) + GROUP_PAD,
         top: Math.min.apply(null, rects.map(function (r) { return r.top; })) - GROUP_PAD_TOP,
         bottom: Math.max.apply(null, rects.map(function (r) { return r.bottom; })) + GROUP_PAD,
       };
-      var talents = members.map(function (id) { return Engine.talentById(id); });
+      var boxed = members.map(function (id) { return Engine.entryById(id); });
       var reqs = g.requires || {};
       _groupBoxes.push({
         key: "__group__" + (g.id || i),
         group: g, members: members, rect: rect,
         // The group sits at its lowest row, so the shared arrow arrives from
         // below like any other link.
-        row: Math.min.apply(null, talents.map(function (t) { return t.row; })),
-        col: Math.round(talents.reduce(function (a, t) { return a + view.colOf(t); }, 0) / talents.length),
+        row: Math.min.apply(null, boxed.map(function (t) { return t.row; })),
+        col: Math.round(boxed.reduce(function (a, t) { return a + view.colOf(t); }, 0) / boxed.length),
         sharedIds: (reqs.talents || []).concat(reqs.anyTalents || []),
         sharedAny: (reqs.anyTalents || []).slice(),
       });
@@ -556,8 +652,8 @@
 
   function drawGroupBox(gb, state) {
     var r = gb.rect;
-    var all = gb.members.every(function (id) { return (state.talents || []).indexOf(id) >= 0; });
-    var some = gb.members.some(function (id) { return (state.talents || []).indexOf(id) >= 0; });
+    var all = gb.members.every(function (id) { return idOwned(id, state); });
+    var some = gb.members.some(function (id) { return idOwned(id, state); });
     var box = document.createElementNS(SVG_NS, "rect");
     box.setAttribute("x", r.left); box.setAttribute("y", r.top);
     box.setAttribute("width", Math.max(0, r.right - r.left));
@@ -577,6 +673,24 @@
 
   function clearGapSpacing() {
     Object.keys(_rowEls).forEach(function (row) { _rowEls[row].style.marginTop = ""; });
+    if (_grid) _grid.style.paddingTop = "";
+  }
+
+  // A group box reaches GROUP_PAD_TOP above its highest member to make room for
+  // its label, so a group in the TOP row wants space above the grid's own
+  // origin — which is where the overlay's coordinates start and where the
+  // scroller clips. Give the grid that much headroom instead: the same lever
+  // the row gaps already use, and it keeps the overlay and the grid sharing one
+  // origin rather than introducing a second, negative one. Only ever grows
+  // within a draw (clearGapSpacing resets it first), so this cannot oscillate.
+  function applyGroupHeadroom() {
+    if (!_grid) return false;
+    var minTop = 0;
+    _groupBoxes.forEach(function (gb) { minTop = Math.min(minTop, gb.rect.top); });
+    if (minTop >= 0) return false;
+    var have = parseFloat(_grid.style.paddingTop) || 0;
+    _grid.style.paddingTop = (have + Math.ceil(-minTop) + 2) + "px";
+    return true;
   }
 
   // Combines LinkRouter's own lane-demand gaps with the extra room any
@@ -634,28 +748,27 @@
     return changed;
   }
 
-  function routePlan(host) {
+  function routePlan() {
     var view = _view;
-    if (!view) return null;
-    var hostRect = host.getBoundingClientRect();
+    if (!view || !_grid) return null;
+    var baseRect = _grid.getBoundingClientRect();
 
-    // A prerequisite may point at something not rendered in THIS view (a spell
-    // — spells live on their own page now — or a cross-domain talent) —
-    // resolve within the current view first, then fall back to the engine's
-    // index; if neither has a DOM node for it, the requirement renders as
-    // text instead.
+    // A prerequisite may point at something not rendered in THIS view (a
+    // cross-tree talent or spell) — resolve within the current view first,
+    // then fall back to the engine's index; if neither has a DOM node for it,
+    // the requirement renders as text instead.
     var viewById = {};
-    view.talents.forEach(function (t) { viewById[t.id] = t; });
+    view.entries.forEach(function (t) { viewById[t.id] = t; });
 
-    // Each rendered box in host coordinates, at its DISPLAY column (which the
+    // Each rendered box in grid coordinates, at its DISPLAY column (which the
     // combined ancestral view offsets per block).
-    var nodes = view.talents.map(function (t) {
+    var nodes = view.entries.map(function (t) {
       var elx = _nodeEls[t.id];
       if (!elx) return null;
       return {
         id: t.id, row: t.row, col: view.colOf(t),
-        box: relRect(elx.querySelector(".node-box"), hostRect),
-        outer: relRect(elx, hostRect),
+        box: relRect(elx.querySelector(".node-box"), baseRect),
+        outer: relRect(elx, baseRect),
       };
     }).filter(Boolean);
 
@@ -668,23 +781,26 @@
       gb.members.forEach(function (id) { memberGroup[id] = gb; });
     });
 
-    // Manual anchors are keyed by the pair the author sees: a talent id, or a
+    // Manual anchors are keyed by the pair the author sees: an entry id, or a
     // group's own id where the arrow lands on the box rather than a member.
     var viaFor = {};
     (view.anchors || []).forEach(function (a) {
       if (a.from && a.to && (a.via || []).length) viaFor[a.from + "→" + a.to] = a.via;
     });
 
+    // Talents and spells link to each other freely inside one tree: a spell
+    // chaining off a spell, a talent gated on a spell, a spell gated on a
+    // talent. Only the tree boundary still decides line vs. text.
     var links = [];
-    view.talents.forEach(function (t) {
+    view.entries.forEach(function (t) {
       if (!_nodeEls[t.id]) return;
       var reqs = t.requires || {};
       var list = [];
       (reqs.talents || []).forEach(function (pid) { list.push({ pid: pid, dashed: false }); });
       (reqs.anyTalents || []).forEach(function (pid) { list.push({ pid: pid, dashed: true }); });
       list.forEach(function (ln) {
-        var pre = viewById[ln.pid] || Engine.talentById(ln.pid);
-        if (!pre || pre.domain !== t.domain) return;   // cross-tree → shown as text
+        var pre = viewById[ln.pid] || Engine.entryById(ln.pid);
+        if (!pre || Engine.entryTreeId(pre) !== Engine.entryTreeId(t)) return;   // cross-tree → shown as text
         if (!_nodeEls[ln.pid]) return;
         // Drawn once into the box instead of once per member.
         var gb = memberGroup[t.id];
@@ -697,7 +813,7 @@
     // One link per group, per shared prerequisite.
     _groupBoxes.forEach(function (gb) {
       gb.sharedIds.forEach(function (pid) {
-        var pre = viewById[pid] || Engine.talentById(pid);
+        var pre = viewById[pid] || Engine.entryById(pid);
         if (!pre || !_nodeEls[pid]) return;
         links.push({ from: pid, to: gb.key, dashed: gb.sharedAny.indexOf(pid) >= 0,
                      pre: pre, child: null, group: gb,
@@ -705,17 +821,18 @@
       });
     });
 
-    // The host's own width, not just the span of the nodes: a tree whose last
+    // The grid's own width, not just the span of the nodes: a tree whose last
     // column is empty still owns that space, and the edge corridors should be
-    // free to use it.
-    return LinkRouter.route(nodes, links, { bounds: { left: 0, right: host.clientWidth } });
+    // free to use it. On a scrolling tree that is the full drawing width, not
+    // the visible slice of it.
+    return LinkRouter.route(nodes, links, { bounds: { left: 0, right: _grid.offsetWidth } });
   }
 
-  function relRect(elx, hostRect) {
+  function relRect(elx, baseRect) {
     var r = elx.getBoundingClientRect();
     return {
-      left: r.left - hostRect.left, right: r.right - hostRect.left,
-      top: r.top - hostRect.top, bottom: r.bottom - hostRect.top,
+      left: r.left - baseRect.left, right: r.right - baseRect.left,
+      top: r.top - baseRect.top, bottom: r.bottom - baseRect.top,
     };
   }
 
@@ -766,29 +883,40 @@
     // changes already folded in (§4.8). Cost/pool/tier aren't modifiable, so
     // the price and gates below still read the authored values.
     var t = Engine.effective(raw, state);
+    var isSpell = Engine.isSpellEntry(t);
     var tip = tooltipEl();
     tip.innerHTML = "";
     tip.appendChild(el("div", "tt-name", t.name));
 
     var meta = el("div", "tt-meta");
-    var lc = Engine.learnCost(t, state);
-    var grantedBy = status.granted ? Engine.grantSource(state, "talent", t.id) : null;
+    // A spell never opens a tree and never carries a surcharge, so its price is
+    // simply its cost (§4.6).
+    var lc = isSpell
+      ? { total: t.cost || 0, surcharge: 0, opensTree: false, pool: t.pool === "combat" ? "combat" : "noncombat" }
+      : Engine.learnCost(t, state);
+    var grantedBy = status.granted ? Engine.grantSource(state, isSpell ? "spell" : "talent", t.id) : null;
     if (status.granted) {
       meta.appendChild(el("span", "tt-cost granted", grantedBy ? "granted by " + grantedBy.name : "granted at creation"));
     } else {
       meta.appendChild(el("span", "tt-cost " + (t.pool === "combat" ? "combat" : "noncombat"),
-        t.cost + " " + (t.pool === "combat" ? "combat" : "non-combat") + " exp"));
+        (t.cost || 0) + " " + (t.pool === "combat" ? "combat" : "non-combat") + " exp"));
       if (!status.owned && lc.opensTree && lc.surcharge)
         meta.appendChild(el("span", "tt-cost surcharge", "+" + lc.surcharge + " tree access"));
     }
-    meta.appendChild(el("span", "tt-tier", (CONFIG.TIERS[t.tier - 1] || {}).name || ("Tier " + t.tier)));
-    if (t.ability === "maneuver")
+    // A spell's tier is a Spellcasting-proficiency gate, not a tier of play, so
+    // it must not borrow the tier-of-play name.
+    meta.appendChild(el("span", "tt-tier", isSpell
+      ? "Tier " + (t.tier || 1)
+      : ((CONFIG.TIERS[t.tier - 1] || {}).name || ("Tier " + t.tier))));
+    if (isSpell) meta.appendChild(el("span", "tt-ability spell", "Spell"));
+    else if (t.ability === "maneuver")
       meta.appendChild(el("span", "tt-ability maneuver", "Maneuver" + (t.uses ? " · " + t.uses + "/" + (t.usesPer || "session") : "")));
     else if (Engine.isModifier(t))
       meta.appendChild(el("span", "tt-ability modifier", "Modifier"));
     else
       meta.appendChild(el("span", "tt-ability passive", "Passive"));
-    if (t.ability === "maneuver" && t.castingTime != null) {
+    if (isSpell) meta.appendChild(spellManaTag(t));
+    if ((isSpell || t.ability === "maneuver") && t.castingTime != null) {
       meta.appendChild(spellCastingTimeTag(t));
       [spellMetaTag("spell-range-tag", Engine.rangeLabel(t)),
        spellMetaTag("spell-target-tag", Engine.targetLabel(t)),
@@ -808,7 +936,7 @@
     // place naming what it changes.
     if (Engine.isModifier(t) && t.modifies) {
       var targets = Object.keys(t.modifies).map(function (id) {
-        var target = Engine.talentById(id) || Engine.spellById(id);
+        var target = Engine.entryById(id);
         return target ? target.name : id;
       });
       tip.appendChild(el("div", "tt-modifies", "Modifies: " + targets.join(", ")));
@@ -825,6 +953,10 @@
     if (status.granted) {
       hint.textContent = (grantedBy ? "Granted by " + grantedBy.name : "Granted at creation") +
         ", free, can't be refunded";
+      hint.classList.add("ok");
+    } else if (status.owned && isSpell) {
+      // Never blocked: nothing simulates dependencies on a spell (§5).
+      hint.textContent = "Click to unlearn";
       hint.classList.add("ok");
     } else if (status.owned) {
       var chk = Engine.canRefund(t.id, state);

@@ -50,9 +50,13 @@ window.CONFIG = {
   MAX_CHARACTERISTIC: 5,
 
   // --- Level caps by tier of play ------------------------------------------
-  // How high a skill or characteristic may be raised, given the tier of play.
+  // How high a skill, proficiency or characteristic may be raised, given the
+  // tier of play.
   //   cap = min(max, tierOfPlay + offset)
   // Skills:          tier 1 → 2, tier 2 → 3, tier 3 → 4, tier 4 → 5
+  // Proficiencies:   as skills — every kind, crafting through Spellcasting,
+  //                  shares skillOffset, so levels 1 and 2 are available at
+  //                  creation and each further level waits on the next tier.
   // Characteristics: tier 1 → 3, tier 2 → 4, tier 3 → 5, tier 4 → 5 (capped)
   LEVEL_CAPS: {
     skillOffset: 1,

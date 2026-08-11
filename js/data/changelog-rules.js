@@ -9,6 +9,14 @@
 
 window.CHANGELOG_RULES = [
   {
+    date: "2026-08-11",
+    entries: [
+      "Changed: Level Caps",
+      "Changed: Tiers of Play",
+      "Changed: Skills",
+    ],
+  },
+  {
     date: "2026-08-10",
     entries: [
       "Changed: Reworked action economy",

@@ -480,7 +480,8 @@
       window.PROFICIENCY_KINDS.filter(function (k) { return k.pool === poolName; }).forEach(function (kind) {
         var costs = CONFIG.SKILL_COSTS[kind.costKey];
         var col = el("div", "prof-col");
-        col.appendChild(withNote(el("h3", "prof-title", kind.label), "(" + costs.join(", ") + " exp)"));
+        col.appendChild(withNote(el("h3", "prof-title", kind.label),
+          "(" + costs.join(", ") + " exp · max " + Engine.skillCap(state) + " at this tier)"));
 
         // A Spellcasting proficiency is named after a magical domain, so its
         // suggestions are the domains that exist, not a static authored list.

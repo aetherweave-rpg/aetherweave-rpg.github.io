@@ -177,11 +177,30 @@ a { color: var(--accent); }
   border: 1px solid var(--line-strong); border-radius: 14px;
   padding: 26px 24px; box-shadow: var(--shadow); overflow: hidden;
 }
-.tree-lines { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
-.tree-grid { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 22px; }
+/* A tree wider than the panel scrolls sideways instead of squeezing its nodes
+   into unreadable slivers. The line overlay lives INSIDE the scroller, so it
+   and the grid move together and a route drawn at x = 1800 stays under the
+   node it belongs to — no scroll offset enters the geometry anywhere. */
+.tree-scroll { position: relative; overflow-x: auto; overflow-y: visible; padding-bottom: 4px; }
+.tree-lines { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 1; }
+/* `fit-content`, not `max-content`: the grid takes the panel's width while the
+   rows still fit in it, and only grows to the rows' min-content width once they
+   don't. `max-content` would have widened every tree to its nodes' preferred
+   118px columns and put a scrollbar on trees that fit perfectly well. The
+   grid's width is also what the tier dividers and block headers stretch to, so
+   they span the whole drawing rather than stopping at the visible edge. */
+.tree-grid {
+  position: relative; z-index: 2; display: flex; flex-direction: column; gap: 22px;
+  width: fit-content; min-width: 100%;
+}
 
+/* Columns stay fluid until they would squeeze a node past legibility, then the
+   row keeps its width and the panel scrolls. `--col-w` is the floor, not the
+   node's size: a node fills its column up to 118px, so a tree that fits still
+   looks exactly as it did, and only a tree too wide for the panel scrolls. */
 .tree-row {
-  display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  --col-w: 104px;
+  display: grid; grid-template-columns: repeat(var(--cols), minmax(var(--col-w), 1fr));
   gap: 14px; align-items: stretch;
 }
 /* `minmax(0, 1fr)` above, not plain `1fr`: a bare `1fr` track's automatic
@@ -225,7 +244,7 @@ a { color: var(--accent); }
 .node {
   --accent: inherit;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  width: 118px; cursor: pointer; user-select: none; position: relative;
+  width: 100%; max-width: 118px; cursor: pointer; user-select: none; position: relative;
   padding: 4px; border-radius: 12px; transition: transform .07s ease;
 }
 .node-box {
@@ -235,7 +254,7 @@ a { color: var(--accent); }
   border: 2px solid var(--line-strong); box-shadow: var(--shadow);
 }
 .node-icon { line-height: 1; }
-.node-name { font-size: 12.5px; font-weight: 600; text-align: center; color: var(--ink); max-width: 118px; }
+.node-name { font-size: 12.5px; font-weight: 600; text-align: center; color: var(--ink); max-width: 118px; overflow-wrap: anywhere; }
 .node-cost {
   font-size: 11px; font-weight: 800; letter-spacing: .3px; padding: 1px 8px;
   border-radius: 999px; color: #fff; font-variant-numeric: tabular-nums;
@@ -247,6 +266,22 @@ a { color: var(--accent); }
   display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff;
   border: 2px solid var(--panel);
 }
+
+/* Kind marker — the box's top-left corner, opposite the owned badge. Says what
+   a node *gives* (passive / maneuver / spell / modifier) without opening the
+   tooltip, which is the question a grid mixing all four raises on every node. */
+.node-kind {
+  position: absolute; top: -7px; left: -7px; min-width: 20px; height: 18px;
+  padding: 0 5px; border-radius: 9px;
+  display: grid; place-items: center;
+  font-size: 10px; font-weight: 800; letter-spacing: .3px; line-height: 1;
+  color: #fff; background: var(--ink-soft);
+  border: 2px solid var(--panel); box-shadow: 0 1px 2px rgba(60, 45, 20, .18);
+}
+.node-kind.kind-passive  { background: #6b6152; }
+.node-kind.kind-maneuver { background: var(--combat); }
+.node-kind.kind-spell    { background: #6b5ca5; }
+.node-kind.kind-modifier { background: #7a6a2f; }
 
 /* States */
 .node.available:hover { transform: translateY(-2px); }
@@ -267,7 +302,17 @@ a { color: var(--accent); }
 .node.owned .node-badge { background: var(--owned); }
 
 .node.locked { cursor: default; }
-.node.locked .node-box { filter: grayscale(1); opacity: .5; }
+/* Dim the ICON rather than the whole box: a CSS filter applies to every
+   descendant and cannot be undone by one, so greyscaling the box also
+   greyscaled the kind marker sitting in its corner — and that marker says what
+   the node *is*, which a player still wants to read while it is locked. The
+   emoji is the colourful part anyway, so this looks the same. */
+.node.locked .node-icon { filter: grayscale(1); opacity: .5; }
+.node.locked .node-box {
+  border-color: var(--line);
+  background: linear-gradient(180deg, #f8f4ea, #f1e9d6);
+  box-shadow: none;
+}
 .node.locked .node-name { color: var(--ink-faint); }
 .node.locked .node-cost { opacity: .55; }
 
@@ -338,6 +383,8 @@ text.talent-group-label {
 .swatch.node-locked { filter: grayscale(1); opacity: .5; background: var(--panel-2); }
 .swatch.node-invalid { border-style: dashed; border-color: var(--unmet); }
 .line-swatch { width: 22px; height: 0; border-top: 3px solid #8a6d3b; display: inline-block; }
+/* The kind marker, shown inline in the legend rather than pinned to a box. */
+.node-kind.legend-kind { position: static; border-color: var(--panel-2); }
 
 /* ---------- Tooltip ------------------------------------------------------ */
 .tooltip {
@@ -918,6 +965,7 @@ text.talent-group-label {
 .tt-ability { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-soft); }
 .tt-ability.maneuver { background: #eef2fb; border-color: #b9c8e6; color: #34507e; }
 .tt-ability.modifier { background: #f5edfa; border-color: #d3bde3; color: #63407f; }
+.tt-ability.spell { background: #eae6fb; border-color: #cfc6ef; color: #4c3f8c; }
 /* Which entry a modifier rewrites. The tree is the only place this is shown:
    modifiers are absent from the character sheet by design (DESIGN.md §4.8). */
 .tt-modifies { margin-top: 6px; font-size: 12px; font-style: italic; color: var(--ink-soft); }
@@ -984,7 +1032,38 @@ text.talent-group-label {
 .sdh-icon { font-size: 16px; }
 .sdh-name { font-family: var(--serif); font-weight: 700; font-size: 15px; }
 .sdh-pool { font-size: 11.5px; color: var(--ink-faint); }
-.spell-sheet-row .talent-name { display: flex; align-items: baseline; gap: 8px; }
+.spell-sheet-row .talent-name { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+/* ---------- Spells page (a casting reference, not a grid) ---------------- */
+.spell-reference {
+  --accent: #6b5ca5;
+  background:
+    linear-gradient(180deg, rgba(255,252,244,.6), rgba(246,238,218,.6)),
+    var(--panel);
+  border: 1px solid var(--line-strong); border-radius: 14px;
+  padding: 26px 24px; box-shadow: var(--shadow);
+}
+.spell-tier-block { margin-top: 18px; }
+.spell-tier-head {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding-bottom: 6px; margin-bottom: 10px; border-bottom: 2px dashed var(--line-strong);
+}
+.spell-tier-head.reached { border-bottom-style: solid; border-bottom-color: color-mix(in srgb, var(--accent) 55%, var(--line-strong)); }
+.sth-name { font-family: var(--serif); font-weight: 700; font-size: 15px; color: var(--ink-soft); }
+.spell-tier-head.reached .sth-name { color: var(--accent); }
+.sth-sub { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-faint); }
+.sth-mana { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); }
+
+/* Whether the character has it, could have it, or cannot yet. */
+.spell-status-tag {
+  font-size: 10px; font-weight: 800; letter-spacing: .3px; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-faint);
+}
+.spell-status-tag.known { background: color-mix(in srgb, var(--owned) 16%, #fff); border-color: color-mix(in srgb, var(--owned) 45%, var(--line)); color: color-mix(in srgb, var(--owned) 75%, black); }
+.spell-status-tag.learnable { background: color-mix(in srgb, var(--accent) 14%, #fff); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); color: color-mix(in srgb, var(--accent) 75%, black); }
+.talent-row.spell-sheet-row.unavailable .talent-icon { filter: grayscale(1); opacity: .55; }
+.talent-row.spell-sheet-row.unavailable .talent-name { color: var(--ink-faint); }
+.locked-note { color: var(--ink-faint); font-style: italic; }
 
 /* Spell-test pool tag (trees-page header, magical domains) */
 .caster-tag {

@@ -69,13 +69,14 @@
     return found;
   }
 
-  // The group a talent belongs to, if any.
-  function groupOf(talentId) {
-    var t = byId[talentId];
+  // The group a node belongs to, if any. Takes a talent or a spell: both are
+  // nodes in the same grid, so either can be boxed into a group.
+  function groupOf(entryId) {
+    var t = entryById(entryId);
     if (!t) return null;
     var found = null;
-    treeGroups(t.domain).forEach(function (g) {
-      if ((g.members || []).indexOf(talentId) >= 0) found = g;
+    treeGroups(entryTreeId(t)).forEach(function (g) {
+      if ((g.members || []).indexOf(entryId) >= 0) found = g;
     });
     return found;
   }
@@ -153,6 +154,56 @@
     var out = [];
     Object.keys(spellsByDomain).forEach(function (d) { (spellsByDomain[d] || []).forEach(function (s) { out.push(s); }); });
     return out;
+  }
+
+  // ---- Tree entries (talents AND spells share one grid) -------------------
+  // A magical domain's spells sit in its talent tree, in the same row/col
+  // space, drawn as ordinary nodes and linked by the same prerequisite lines
+  // (§4.6). The two stay different *rules* — a spell gates on a Spellcasting
+  // proficiency tier, a talent on tier of play plus in-tree exp — but they are
+  // one set of nodes to place, so every grid renderer asks for entries rather
+  // than talents, and dispatches on `entryKind` where the rules differ.
+  //
+  // A node's corner marker is exactly this classification, which is why it
+  // lives here and not in a renderer: the trees page, the editor and the tests
+  // must agree on what a given entry *is*.
+  var ENTRY_KIND_MARKS = { passive: "P", maneuver: "M", spell: "S", modifier: "mod" };
+  var ENTRY_KIND_NAMES = { passive: "Passive", maneuver: "Maneuver", spell: "Spell", modifier: "Modifier" };
+
+  function isSpellEntry(entry) { return !!(entry && spellDomainById[entry.id] !== undefined); }
+  function entryKind(entry) {
+    if (!entry) return null;
+    if (isSpellEntry(entry)) return "spell";
+    if (entry.ability === "modifier") return "modifier";
+    if (entry.ability === "maneuver") return "maneuver";
+    return "passive";
+  }
+  function entryKindMark(entry) { return ENTRY_KIND_MARKS[entryKind(entry)] || ""; }
+  function entryKindName(entry) { return ENTRY_KIND_NAMES[entryKind(entry)] || ""; }
+
+  // A talent or a spell, by id — the lookup every renderer wants now that a
+  // prerequisite, a modifier target and a grid node can all be either.
+  function entryById(id) { return byId[id] || spellsById[id] || null; }
+  function entryTreeId(entry) {
+    if (!entry) return null;
+    return entry.domain || spellDomainById[entry.id] || null;
+  }
+  // Everything placed in one tree's grid, talents first so a collision between
+  // the two reads consistently wherever the list is walked.
+  function treeEntries(treeId) {
+    return talentsForDomain(treeId).concat(spellsForDomain(treeId));
+  }
+  function entryOwned(state, entry) {
+    if (!entry) return false;
+    return isSpellEntry(entry)
+      ? spellOwned(state, entry.id)
+      : (state.talents || []).indexOf(entry.id) >= 0;
+  }
+  // The right requirement check for whichever kind this is, so a caller can
+  // treat a grid cell uniformly. Both return the same { owned, met, reasons }
+  // shape; only a talent can be `granted`.
+  function entryRequirementStatus(entry, state) {
+    return isSpellEntry(entry) ? spellRequirementStatus(entry, state) : requirementStatus(entry, state);
   }
 
   // ---- Granted (free) baseline -------------------------------------------
@@ -338,8 +389,10 @@
   }
 
   // ---- Level caps ---------------------------------------------------------
-  // Skills and characteristics both top out at 5, but how much of that range is
-  // reachable depends on the tier of play — each tier opens one more level.
+  // Skills, proficiencies and characteristics all top out at 5, but how much of
+  // that range is reachable depends on the tier of play — each tier opens one
+  // more level. `skillCap` covers proficiencies too (every kind, Spellcasting
+  // included): one rule, so there is nothing for the two to drift apart on.
   function skillCap(state) {
     var tier = currentTierIndex(state) + 1;
     return Math.min(CONFIG.MAX_SKILL_TIER, tier + CONFIG.LEVEL_CAPS.skillOffset);
@@ -1014,23 +1067,50 @@
       });
     });
 
-    // Each row of a tree should hold a single tier.
+    // The next three checks are about the GRID, so they run over entries —
+    // talents and spells together — rather than talents alone. A magical
+    // domain's spells share its tree's row/col space (§4.6), so two entries can
+    // now collide, a spell can break a row's single tier, and a prerequisite
+    // line can run the wrong way between kinds.
+    var gridEntries = [];
+    trees.forEach(function (tree) {
+      treeEntries(tree.id).forEach(function (e) { gridEntries.push({ tree: tree, entry: e }); });
+    });
+
+    // One entry per cell: two nodes at the same row/col would draw on top of
+    // each other, and only one of them could ever be clicked.
+    var cellTaken = {};
+    gridEntries.forEach(function (g) {
+      var key = g.tree.id + ":" + g.entry.row + ":" + g.entry.col;
+      if (cellTaken[key])
+        problems.push(g.tree.id + " row " + g.entry.row + " col " + g.entry.col +
+          ": '" + cellTaken[key] + "' and '" + g.entry.id + "' occupy the same cell");
+      else cellTaken[key] = g.entry.id;
+    });
+
+    // Each row of a tree holds a single tier — the horizontal dividers are
+    // derived from where the tier changes between rows, so a mixed row makes
+    // them lie. A spell's tier gates on the Spellcasting proficiency rather
+    // than tier of play, but it still shares the band, which is exactly what
+    // lets one divider label both gates.
     var rowTier = {};
-    allTalents.forEach(function (t) {
-      var key = t.domain + ":" + t.row;
-      if (rowTier[key] === undefined) rowTier[key] = t.tier;
-      else if (rowTier[key] !== t.tier)
-        problems.push(t.domain + " row " + t.row + " mixes tier " + rowTier[key] + " and tier " + t.tier);
+    gridEntries.forEach(function (g) {
+      var key = g.tree.id + ":" + g.entry.row;
+      if (rowTier[key] === undefined) rowTier[key] = g.entry.tier;
+      else if (rowTier[key] !== g.entry.tier)
+        problems.push(g.tree.id + " row " + g.entry.row + " mixes tier " + rowTier[key] + " and tier " + g.entry.tier);
     });
 
     // Same-tree prerequisites must sit on the same row or a lower one (trees
-    // grow upward) — never in a higher row, which would put them in a later tier.
-    allTalents.forEach(function (t) {
-      var reqs = t.requires || {};
+    // grow upward) — never in a higher row, which would put them in a later
+    // tier. A prerequisite may be a talent or a spell, and so may the thing it
+    // unlocks, so both ends are resolved through the entry index.
+    gridEntries.forEach(function (g) {
+      var reqs = g.entry.requires || {};
       (reqs.talents || []).concat(reqs.anyTalents || []).forEach(function (pid) {
-        var pre = byId[pid];
-        if (pre && pre.domain === t.domain && pre.row > t.row)
-          problems.push(t.id + ": prerequisite '" + pid + "' is above it (row " + pre.row + " > " + t.row + ")");
+        var pre = entryById(pid);
+        if (pre && entryTreeId(pre) === g.tree.id && pre.row > g.entry.row)
+          problems.push(g.entry.id + ": prerequisite '" + pid + "' is above it (row " + pre.row + " > " + g.entry.row + ")");
       });
     });
 
@@ -1054,6 +1134,14 @@
             " exp spent in this tree, but only " + fundable + " exp of lower-tier talents exist here");
         }
       });
+    });
+
+    // A tree's width has no upper bound — a wide tree scrolls sideways rather
+    // than squeezing its nodes — but it still has to be a whole number of
+    // columns, or every `col` in it is checked against nonsense.
+    trees.forEach(function (tree) {
+      if (typeof tree.cols !== "number" || !isFinite(tree.cols) || tree.cols < 1 || Math.floor(tree.cols) !== tree.cols)
+        problems.push(tree.id + ": cols must be a whole number of at least 1 (got " + JSON.stringify(tree.cols) + ")");
     });
 
     // Combination trees need exactly two registered parents.
@@ -1145,8 +1233,10 @@
           problems.push("spell '" + sp.id + "': cost must be a non-negative number");
         validateCastableFields(problems, "spell '" + sp.id + "'", sp);
 
-        // Spells are placed in their own per-domain grid (the Spells tab),
-        // separate from the talent grid, but use the same row/col scheme.
+        // Spells are placed in their domain's TALENT grid, sharing the row/col
+        // space with its talents (§4.6) — the collision, single-tier-per-row
+        // and prerequisite-direction checks over `gridEntries` above cover both
+        // kinds together; this is just the per-spell range check.
         if (tree) {
           if (typeof sp.col !== "number" || sp.col < 0 || sp.col >= tree.cols)
             problems.push("spell '" + sp.id + "': col " + sp.col + " out of range 0.." + (tree.cols - 1));
@@ -1228,10 +1318,10 @@
         }
         var cells = [], ok = true, seenMember = {};
         members.forEach(function (id) {
-          var t = byId[id];
+          var t = entryById(id);
           if (!t) { problems.push(label + ": unknown member '" + id + "'"); ok = false; return; }
-          if (t.domain !== tree.id) {
-            problems.push(label + ": member '" + id + "' is in tree '" + t.domain + "'");
+          if (entryTreeId(t) !== tree.id) {
+            problems.push(label + ": member '" + id + "' is in tree '" + entryTreeId(t) + "'");
             ok = false; return;
           }
           if (seenMember[id]) { problems.push(label + ": lists '" + id + "' twice"); ok = false; return; }
@@ -1271,7 +1361,8 @@
         var cols = cells.map(function (c) { return c.col; });
         var r0 = Math.min.apply(null, rows), r1 = Math.max.apply(null, rows);
         var c0 = Math.min.apply(null, cols), c1 = Math.max.apply(null, cols);
-        talentsForDomain(tree.id).forEach(function (t) {
+        // Spells share the grid, so the box can swallow one of those too.
+        treeEntries(tree.id).forEach(function (t) {
           if (inGroup[t.row + "," + t.col]) return;
           if (t.row >= r0 && t.row <= r1 && t.col >= c0 && t.col <= c1) {
             problems.push(label + ": '" + t.id + "' sits inside the group's box but is not a member");
@@ -1295,15 +1386,16 @@
         if (seenPair[pair]) problems.push(tree.id + ": two anchors for the same line, " + pair);
         seenPair[pair] = true;
 
-        var pre = byId[a.from];
-        if (!pre || pre.domain !== tree.id) {
-          problems.push(label + ": '" + a.from + "' is not a talent in this tree");
+        // Either end may be a spell now that spells are nodes in the tree.
+        var pre = entryById(a.from);
+        if (!pre || entryTreeId(pre) !== tree.id) {
+          problems.push(label + ": '" + a.from + "' is not a talent or spell in this tree");
         }
-        // The far end is whatever the arrow points at: a talent, or the box
+        // The far end is whatever the arrow points at: an entry, or the box
         // round a group when the shared requirement is drawn once into it.
-        var grp = groupIds[a.to], child = byId[a.to];
-        if (!grp && (!child || child.domain !== tree.id)) {
-          problems.push(label + ": '" + a.to + "' is neither a talent in this tree nor one of its groups");
+        var grp = groupIds[a.to], child = entryById(a.to);
+        if (!grp && (!child || entryTreeId(child) !== tree.id)) {
+          problems.push(label + ": '" + a.to + "' is not a talent, spell or group in this tree");
         } else if (pre) {
           var reqs = (grp ? grp.requires : child.requires) || {};
           var named = (reqs.talents || []).concat(reqs.anyTalents || []);
@@ -1358,38 +1450,23 @@
       }
     }
 
-    var talentDomainLinks = {};
-    allTalents.forEach(function (t) {
-      var reqs = t.requires || {};
+    // One set of links per TREE, talents and spells together: they share a grid,
+    // so a talent's arrow and a spell's arrow can cross each other and the pair
+    // is only visible when both kinds are measured in the same coordinates.
+    var treeLinks = {};
+    gridEntries.forEach(function (g) {
+      var reqs = g.entry.requires || {};
       (reqs.talents || []).concat(reqs.anyTalents || []).forEach(function (pid) {
-        var pre = byId[pid];
-        if (!pre || pre.domain !== t.domain) return;   // only same-tree links are ever drawn
-        (talentDomainLinks[t.domain] = talentDomainLinks[t.domain] || []).push({
-          fromId: pre.id, toId: t.id,
-          from: { x: pre.col, y: pre.row }, to: { x: t.col, y: t.row }
+        var pre = entryById(pid);
+        if (!pre || entryTreeId(pre) !== g.tree.id) return;   // only same-tree links are ever drawn
+        (treeLinks[g.tree.id] = treeLinks[g.tree.id] || []).push({
+          fromId: pre.id, toId: g.entry.id,
+          from: { x: pre.col, y: pre.row }, to: { x: g.entry.col, y: g.entry.row }
         });
       });
     });
-    Object.keys(talentDomainLinks).forEach(function (domainId) {
-      checkCrossings("tree '" + domainId + "'", talentDomainLinks[domainId]);
-    });
-
-    var spellDomainLinks = {};
-    Object.keys(window.SPELLS || {}).forEach(function (domainId) {
-      (window.SPELLS[domainId] || []).forEach(function (sp) {
-        var reqs = sp.requires || {};
-        (reqs.talents || []).concat(reqs.anyTalents || []).forEach(function (pid) {
-          var pre = spellsById[pid];
-          if (!pre || spellDomainById[pid] !== domainId) return;   // only same-domain spell links are drawn
-          (spellDomainLinks[domainId] = spellDomainLinks[domainId] || []).push({
-            fromId: pre.id, toId: sp.id,
-            from: { x: pre.col, y: pre.row }, to: { x: sp.col, y: sp.row }
-          });
-        });
-      });
-    });
-    Object.keys(spellDomainLinks).forEach(function (domainId) {
-      checkCrossings("spells '" + domainId + "'", spellDomainLinks[domainId]);
+    Object.keys(treeLinks).forEach(function (treeId) {
+      checkCrossings("tree '" + treeId + "'", treeLinks[treeId]);
     });
 
     return problems;
@@ -2251,6 +2328,11 @@
     // talents
     talentById: talentById, talentsForDomain: talentsForDomain,
     allTalents: function () { return allTalents; },
+    // tree entries — talents and spells in one grid (§4.6)
+    treeEntries: treeEntries, entryById: entryById, entryTreeId: entryTreeId,
+    entryKind: entryKind, entryKindMark: entryKindMark, entryKindName: entryKindName,
+    isSpellEntry: isSpellEntry, entryOwned: entryOwned,
+    entryRequirementStatus: entryRequirementStatus,
     // talent groups (§6b)
     treeGroups: treeGroups, groupOf: groupOf, requirementsCover: requirementsCover,
     treeAnchors: treeAnchors, anchorFor: anchorFor,

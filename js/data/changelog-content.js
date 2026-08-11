@@ -15,6 +15,12 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-08-11",
     entries: [
+      "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / creation points).",
+    ],
+  },
+  {
+    date: "2026-08-11",
+    entries: [
       "Changed talent \"Whirlwind\" (tier 2) in the Arms domain: it now has its rules text, and turns Cleave's arc into a circle around you.",
       "Changed talent \"Cleave\" (tier 1) in the Arms domain: its text now accounts for Greater Cleave and Whirlwind.",
     ],

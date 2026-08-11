@@ -152,7 +152,7 @@ window.SPELLS = {
       tier: 1,
       pool: "combat",
       cost: 1,
-      row: 2,
+      row: 0,
       col: 0,
       castingTime: "minor_action",
       range: "self",
