@@ -33,18 +33,6 @@ window.CHANGELOG_CONTENT = [
     ],
   },
   {
-    date: "2026-08-11",
-    entries: [
-      "Added talent \"Smash\" (tier 1) to the Arms domain.",
-      "Added talent \"Pulverize\" (tier 1) to the Arms domain.",
-      "Added talent \"Effective Volley\" (tier 1) to the Arms domain.",
-      "Added talent \"Lined Up Shot\" (tier 2) to the Arms domain.",
-      "Changed spell \"Ethereal Ward\" (tier 2) in the Aether domain: description: \"An ethereal shield ohever around you, aiding in your defense...\" -> \"An ethereal shield hovers around you, aiding in your defense...\"; tier: 1 -> 2.",
-      "Changed talent \"Whirlwind\" (tier 2) in the Arms domain: it now has its rules text, and turns Cleave's arc into a circle around you.",
-      "Changed talent \"Cleave\" (tier 1) in the Arms domain: its text now accounts for Greater Cleave and Whirlwind.",
-    ],
-  },
-  {
     date: "2026-08-10",
     entries: [
       "Added talent \"More Preparations\" (tier 1) to the Invention domain.",
