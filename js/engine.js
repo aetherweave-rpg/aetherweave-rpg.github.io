@@ -1051,13 +1051,15 @@
           var opNames = Object.keys(ops);
           if (!opNames.length)
             problems.push(t.id + ": '" + field + "' names no operation (" + Object.keys(MODIFIER_OPS).join(", ") + ")");
+          var allowedOps = allowedOpsFor(field);
           opNames.forEach(function (op) {
             if (!MODIFIER_OPS[op]) {
               problems.push(t.id + ": unknown operation '" + op + "' on '" + field + "'");
+            } else if (!allowedOps[op]) {
+              problems.push(t.id + ": '" + field + "' may only be changed with " +
+                Object.keys(allowedOps).map(function (o) { return "'" + o + "'"; }).join(" or "));
             } else if (op !== "set" && typeof ops[op] !== "number") {
               problems.push(t.id + ": '" + op + "' on '" + field + "' needs a number");
-            } else if (field === "aoe.shape" && op !== "set") {
-              problems.push(t.id + ": 'aoe.shape' may only be changed with 'set'");
             } else if (field === "aoe.shape" && AOE_SHAPES.indexOf(ops[op]) < 0) {
               problems.push(t.id + ": 'aoe.shape' set to an unknown shape '" + ops[op] +
                 "' (must be " + AOE_SHAPES.join(", ") + ")");
@@ -2076,7 +2078,7 @@
   var MODIFIABLE_FIELDS = {
     name: 1, icon: 1, flavour: 1, description: 1,
     uses: 1, usesPer: 1, castingTime: 1, range: 1, target: 1, numTargets: 1, duration: 1, aoe: 1,
-    "aoe.shape": 1,
+    "aoe.shape": 1, "aoe.size": 1,
   };
   // Deliberately NOT modifiable, and each for a specific reason:
   //   id/row/col   — identity and layout; a moving node breaks the drawn lines
@@ -2088,6 +2090,21 @@
   //   ability      — reclassifying a maneuver as a passive moves it between
   //                  sheet sections mid-render
   var MODIFIER_OPS = { set: 1, add: 1, mul: 1, min: 1, max: 1 };
+
+  // Arithmetic (add/mul/min/max) only makes sense where the field holds a
+  // genuine quantity. Everything else — names, categorical keywords, arrays,
+  // whole objects — can only sensibly be replaced outright, so those fields
+  // are restricted to `set`. `numOr0` would otherwise silently coerce a
+  // non-number to 0 and quietly zero the field out (the bug this fixes: an
+  // `aoe: { mul: 2 }` modifier used to replace the whole shape with the
+  // number 0 — see "aoe.size" below, the fix for that specific case).
+  var ARITHMETIC_FIELDS = { uses: 1, numTargets: 1, range: 1, "aoe.size": 1 };
+  function allowedOpsFor(field) { return ARITHMETIC_FIELDS[field] ? MODIFIER_OPS : { set: 1 }; }
+  // A field → [allowed op, ...] lookup for the editor's op dropdown, computed
+  // once so both sides of the app read the exact same source of truth.
+  var MODIFIABLE_FIELD_OPS = Object.keys(MODIFIABLE_FIELDS).reduce(function (m, f) {
+    m[f] = Object.keys(allowedOpsFor(f)); return m;
+  }, {});
 
   function isModifier(t) { return !!t && t.ability === "modifier"; }
 
@@ -2364,6 +2381,7 @@
     resolveText: resolveText, scanHooks: scanHooks,
     effective: effective, isModifier: isModifier, modifiersFor: modifiersFor,
     MODIFIABLE_FIELDS: MODIFIABLE_FIELDS, MODIFIER_OPS: MODIFIER_OPS, AOE_SHAPES: AOE_SHAPES,
+    MODIFIABLE_FIELD_OPS: MODIFIABLE_FIELD_OPS,
     // grants
     grantsOf: grantsOf, grantNeedsChoice: grantNeedsChoice, grantOptions: grantOptions,
     grantOptionKey: grantOptionKey, optionTierRange: optionTierRange,

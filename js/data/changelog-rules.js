@@ -11,9 +11,7 @@ window.CHANGELOG_RULES = [
   {
     date: "2026-08-11",
     entries: [
-      "Changed: Level Caps",
-      "Changed: Tiers of Play",
-      "Changed: Skills",
+      "Changed: Rules regarding max proficiency, which is now capped at tier of play +1
     ],
   },
   {

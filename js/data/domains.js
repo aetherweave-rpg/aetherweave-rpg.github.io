@@ -417,7 +417,7 @@ window.DOMAINS = [
         ability: "modifier",
         modifies: {
           inve_arsenal: {
-            aoe: {
+            "aoe.size": {
               mul: 2
             }
           }
@@ -563,6 +563,42 @@ window.DOMAINS = [
           ]
         }
       }
+    ],
+    anchors: [
+      {
+        from: "inve_arsenal",
+        to: "advanced_material_knowledge",
+        via: [
+          {
+            col: 2,
+            row: 2
+          }
+        ]
+      },
+      {
+        from: "inve_arsenal",
+        to: "improved_contraptions",
+        via: [
+          {
+            col: 7,
+            row: 3
+          }
+        ]
+      },
+      {
+        from: "inve_arsenal",
+        to: "inve_material_hoarder",
+        via: [
+          {
+            col: 7,
+            row: 1
+          },
+          {
+            col: 5.5,
+            row: 2.5
+          }
+        ]
+      }
     ]
   },
   {
@@ -570,7 +606,7 @@ window.DOMAINS = [
     name: "Arms",
     icon: "⚔️",
     accent: "#8a6d3b",
-    cols: 9,
+    cols: 11,
     kind: "core",
     talents: [
       {
@@ -600,7 +636,7 @@ window.DOMAINS = [
         cost: 2,
         tier: 1,
         row: 0,
-        col: 1,
+        col: 9,
         ability: "maneuver",
         uses: 2,
         castingTime: "action",
@@ -611,7 +647,7 @@ window.DOMAINS = [
         duration: "instantaneous",
         requires: {
           proficiencies: {
-            "Heavy Throwing Weapons": 2
+            "Heavy Throwing Weapons": 1
           }
         }
       },
@@ -623,7 +659,7 @@ window.DOMAINS = [
         cost: 1,
         tier: 1,
         row: 1,
-        col: 1,
+        col: 9,
         ability: "modifier",
         modifies: {
           arms_ricochet: {}
@@ -631,7 +667,10 @@ window.DOMAINS = [
         requires: {
           talents: [
             "arms_ricochet"
-          ]
+          ],
+          proficiencies: {
+            "Heavy Throwing Weapons": 2
+          }
         }
       },
       {
@@ -662,7 +701,7 @@ window.DOMAINS = [
         cost: 2,
         tier: 1,
         row: 0,
-        col: 5,
+        col: 7,
         ability: "maneuver",
         uses: 2,
         castingTime: "action",
@@ -686,7 +725,7 @@ window.DOMAINS = [
         cost: 2,
         tier: 1,
         row: 0,
-        col: 8,
+        col: 5,
         ability: "maneuver",
         castingTime: "reaction",
         range: "touch",
@@ -722,12 +761,12 @@ window.DOMAINS = [
         requires: {
           anyProficiencies: [
             {
-              name: "Blades",
-              tier: 2
+              name: "Heavy Blades",
+              tier: 1
             },
             {
               name: "Axes",
-              tier: 2
+              tier: 1
             }
           ]
         }
@@ -753,6 +792,16 @@ window.DOMAINS = [
         requires: {
           talents: [
             "arms_cleave"
+          ],
+          anyProficiencies: [
+            {
+              name: "Axes",
+              tier: 2
+            },
+            {
+              name: "Heavy Blades",
+              tier: 2
+            }
           ]
         }
       },
@@ -771,12 +820,25 @@ window.DOMAINS = [
           arms_cleave: {
             "aoe.shape": {
               set: "circle"
+            },
+            name: {
+              set: "Whirlwind"
             }
           }
         },
         requires: {
           talents: [
             "arms_greater_cleave"
+          ],
+          anyProficiencies: [
+            {
+              name: "Heavy Blades",
+              tier: 3
+            },
+            {
+              name: "Axes",
+              tier: 3
+            }
           ]
         }
       },
@@ -789,7 +851,7 @@ window.DOMAINS = [
         cost: 2,
         tier: 1,
         row: 0,
-        col: 6,
+        col: 8,
         ability: "maneuver",
         uses: 2,
         castingTime: "action",
@@ -813,7 +875,7 @@ window.DOMAINS = [
         cost: 2,
         tier: 1,
         row: 1,
-        col: 6,
+        col: 8,
         ability: "modifier",
         modifies: {
           arms_piercing_bolt: {}
@@ -823,22 +885,239 @@ window.DOMAINS = [
             "arms_piercing_bolt"
           ]
         }
-      }
-    ],
-    anchors: [
+      },
       {
-        from: "arms_greater_cleave",
-        to: "arms_whirlwind",
-        via: [
-          {
-            col: 2,
-            row: 3
-          },
-          {
-            col: 2,
-            row: 1.5
+        id: "arms_effective_volley",
+        name: "Effective Volley",
+        flavour: "You are especially apt at dealing with groups of enemies using a volley of arrows.",
+        description: "When targeting a swarm or group of enemies, armor is subtracted only once, instead of per enemy.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 7,
+        ability: "modifier",
+        modifies: {
+          arms_hail_of_arrows: {}
+        },
+        requires: {
+          talents: [
+            "arms_hail_of_arrows"
+          ]
+        }
+      },
+      {
+        id: "arms_lined_up_shot",
+        name: "Lined Up Shot",
+        flavour: "Your perfect shot hits multiple targets in a row, piercing each one.",
+        description: "Make a ranged weapon attack against all enemies in a 20y long, 2y wide line.",
+        pool: "combat",
+        cost: 1,
+        tier: 2,
+        row: 4,
+        col: 8,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "weapon",
+        duration: "instantaneous",
+        aoe: {
+          shape: "line",
+          origin: "self",
+          size: 1,
+          width: 2
+        },
+        requires: {
+          talents: [
+            "arms_penetrating_bolt"
+          ]
+        }
+      },
+      {
+        id: "arms_smash",
+        name: "Smash",
+        flavour: "You can crush multiple smaller enemies with but a single stroke of your mace.",
+        description: "Requires wielding a mace:\nMake an attack with the mace, this attack deals {arms_pulverize:\"triple\">arms_smash:\"double\"} damage to non-flying swarms.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 1,
+        ability: "maneuver",
+        uses: 3,
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        requires: {
+          proficiencies: {
+            Maces: 1
           }
-        ]
+        }
+      },
+      {
+        id: "arms_pulverize",
+        name: "Pulverize",
+        flavour: "You have become more adapt at crushing groups of enemies",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 1,
+        ability: "modifier",
+        modifies: {
+          arms_smash: {}
+        },
+        requires: {
+          talents: [
+            "arms_smash"
+          ],
+          proficiencies: {
+            Maces: 2
+          }
+        }
+      },
+      {
+        id: "arms_knock_back",
+        name: "Knock Back",
+        flavour: "You use the blunt force of your weapon to knock back an enemy.",
+        description: "Requires wielding a bludgeoning weapon.\nMake an attack with your bludgeoning weapon. In addition to its normal effects it gains the following:\n1+ successes: Push the target 2y\n3+ successes: Push the target up to 4y",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 0,
+        ability: "maneuver",
+        uses: 1,
+        usesPer: "scene",
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "arms_weapon_expertise",
+        name: "Weapon Expertise",
+        flavour: "You are adapt at using a large number of different weapons.",
+        description: "Gain basic proficiency in all weapons (excluding unarmed). Any previously spent exp is refunded.",
+        pool: "combat",
+        cost: 3,
+        tier: 1,
+        row: 0,
+        col: 4,
+        grants: {
+          mode: "all",
+          options: [
+            {
+              proficiency: "Heavy Blades",
+              kind: "weapon",
+              tier: 1
+            },
+            {
+              proficiency: "Axes",
+              kind: "weapon",
+              tier: 1
+            },
+            {
+              proficiency: "Maces",
+              kind: "weapon",
+              tier: 1
+            },
+            {
+              proficiency: "Whips",
+              kind: "weapon",
+              tier: 1
+            },
+            {
+              proficiency: "Polearms",
+              kind: "weapon",
+              tier: 1
+            },
+            {
+              proficiency: "Staves",
+              kind: "weapon",
+              tier: 1
+            },
+            {
+              proficiency: "Bows",
+              kind: "weapon",
+              tier: 1
+            },
+            {
+              proficiency: "Crossbows",
+              kind: "weapon",
+              tier: 1
+            },
+            {
+              proficiency: "Light Throwing Weapons",
+              kind: "weapon",
+              tier: 1
+            }
+          ]
+        },
+        requires: {
+          anyProficiencies: [
+            {
+              name: "Axes",
+              tier: 2
+            },
+            {
+              name: "Maces",
+              tier: 2
+            },
+            {
+              name: "Whips",
+              tier: 2
+            },
+            {
+              name: "Polearms",
+              tier: 2
+            },
+            {
+              name: "Staves",
+              tier: 2
+            },
+            {
+              name: "Bows",
+              tier: 2
+            },
+            {
+              name: "Crossbows",
+              tier: 2
+            },
+            {
+              name: "Light Blades",
+              tier: 2
+            },
+            {
+              name: "Heavy Blades",
+              tier: 2
+            },
+            {
+              name: "Light Throwing Weapons",
+              tier: 2
+            },
+            {
+              name: "Heavy Throwing Weapons",
+              tier: 2
+            }
+          ]
+        }
+      },
+      {
+        id: "arms_quick_switch",
+        name: "Quick Switch",
+        flavour: "You can quickly swap out weapons.",
+        description: "Changing between weapons is now a free action.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 6
       }
     ]
   },
@@ -889,14 +1168,70 @@ window.DOMAINS = [
         duration: "indefinite"
       },
       {
-        id: "guil_poke_holes",
-        name: "Poke holes",
-        description: "When flanking an enemy: every Reward you roll adds 1 damage to attack tests against the flanked enemy",
+        id: "guil_exploit_weakness",
+        name: "Exploit Weakness",
+        description: "When flanking an enemy and using Cunning as attack characteristic: \nevery Reward you roll adds {gui1 damage to attack tests against the flanked enemy",
         pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
         col: 2
+      },
+      {
+        id: "guil_greater_exploit_weakness",
+        name: "Greater Exploit Weakness",
+        description: "Exploit Weaknesses damage is increased to 3",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 2,
+        col: 2,
+        ability: "modifier",
+        modifies: {
+          guil_exploit_weakness: {}
+        },
+        requires: {
+          talents: [
+            "guil_improved_exploit_weakness"
+          ]
+        }
+      },
+      {
+        id: "guil_improved_exploit_weakness",
+        name: "Improved Exploit Weakness",
+        description: "Increase the damage from Exploit Weakness to 2.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 1,
+        col: 2,
+        ability: "modifier",
+        modifies: {
+          guil_exploit_weakness: {}
+        },
+        requires: {
+          talents: [
+            "guil_exploit_weakness"
+          ]
+        }
+      },
+      {
+        id: "guil_sidestep",
+        name: "Sidestep",
+        description: "After Dodging:\n1+ successes, move up to 2y",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 3,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "reaction",
+        range: "self",
+        target: [
+          "self"
+        ],
+        duration: "instantaneous"
       }
     ]
   },
