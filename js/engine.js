@@ -674,6 +674,10 @@
   // Target kinds a `numTargets` count applies to — "self" is always exactly one.
   var countableTargets = { ally: true, enemy: true, object: true, point: true };
   var validDurationUnits = { minutes: true, hours: true, days: true, weeks: true, rounds: true };
+  // The only legal aoe.shape values — shared by the raw-entry check below and
+  // the modifier validation for "aoe.shape" (§4.8), so the editor's dropdown
+  // and both validators can never drift apart.
+  var AOE_SHAPES = ["cone", "arc", "line", "circle"];
 
   // Shared by spells and maneuver talents — both carry the same "castable"
   // fields describing what they affect, for how long, and where. `label` is
@@ -702,7 +706,7 @@
       problems.push(label + ": duration must be 'instantaneous', 'indefinite', or { value, unit: minutes|hours|days|weeks|rounds } (got " + JSON.stringify(dur) + ")");
     if (obj.aoe) {
       var aoe = obj.aoe;
-      if (aoe.shape !== "cone" && aoe.shape !== "arc" && aoe.shape !== "line" && aoe.shape !== "circle")
+      if (AOE_SHAPES.indexOf(aoe.shape) < 0)
         problems.push(label + ": aoe.shape must be 'cone', 'arc', 'line', or 'circle' (got " + JSON.stringify(aoe.shape) + ")");
       if (aoe.origin !== "self" && aoe.origin !== "point")
         problems.push(label + ": aoe.origin must be 'self' or 'point' (got " + JSON.stringify(aoe.origin) + ")");
@@ -999,6 +1003,11 @@
               problems.push(t.id + ": unknown operation '" + op + "' on '" + field + "'");
             } else if (op !== "set" && typeof ops[op] !== "number") {
               problems.push(t.id + ": '" + op + "' on '" + field + "' needs a number");
+            } else if (field === "aoe.shape" && op !== "set") {
+              problems.push(t.id + ": 'aoe.shape' may only be changed with 'set'");
+            } else if (field === "aoe.shape" && AOE_SHAPES.indexOf(ops[op]) < 0) {
+              problems.push(t.id + ": 'aoe.shape' set to an unknown shape '" + ops[op] +
+                "' (must be " + AOE_SHAPES.join(", ") + ")");
             }
           });
         });
@@ -2272,7 +2281,7 @@
     // text hooks & modifiers
     resolveText: resolveText, scanHooks: scanHooks,
     effective: effective, isModifier: isModifier, modifiersFor: modifiersFor,
-    MODIFIABLE_FIELDS: MODIFIABLE_FIELDS, MODIFIER_OPS: MODIFIER_OPS,
+    MODIFIABLE_FIELDS: MODIFIABLE_FIELDS, MODIFIER_OPS: MODIFIER_OPS, AOE_SHAPES: AOE_SHAPES,
     // grants
     grantsOf: grantsOf, grantNeedsChoice: grantNeedsChoice, grantOptions: grantOptions,
     grantOptionKey: grantOptionKey, optionTierRange: optionTierRange,

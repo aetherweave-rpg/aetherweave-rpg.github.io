@@ -699,7 +699,7 @@ window.DOMAINS = [
         id: "arms_cleave",
         name: "Cleave",
         flavour: "You can hit multiple enemies with your sweeping attacks.",
-        description: "Requires a two-handed blade or axe:\nRoll an attack with your weapon against up to {arms_cleave:\"2\">arms_greater_cleave:\"3\"} enemies within a 180° arc.",
+        description: "Requires a two-handed blade or axe:\nRoll an attack with your weapon against {arms_whirlwind:\"all\">arms_cleave:\"up to {arms_greater_cleave:\"3\">arms_cleave:\"2\"}\"} enemies within {arms_whirlwind:\"a circle\">arms_cleave:\"an arc\"}.",
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -721,8 +721,14 @@ window.DOMAINS = [
         },
         requires: {
           anyProficiencies: [
-            { name: "Blades", tier: 2 },
-            { name: "Axes", tier: 2 }
+            {
+              name: "Blades",
+              tier: 2
+            },
+            {
+              name: "Axes",
+              tier: 2
+            }
           ]
         }
       },
@@ -754,7 +760,7 @@ window.DOMAINS = [
         id: "arms_whirlwind",
         name: "Whirlwind",
         flavour: "You become a whirlwind of steel attacking al enemies around you.",
-        description: "You bec",
+        description: "Your cleave attack hits all enemies in a circle around you instead of an arc.",
         pool: "combat",
         cost: 2,
         tier: 2,
@@ -763,8 +769,8 @@ window.DOMAINS = [
         ability: "modifier",
         modifies: {
           arms_cleave: {
-            aoe: {
-              set: ""
+            "aoe.shape": {
+              set: "circle"
             }
           }
         },
@@ -817,6 +823,22 @@ window.DOMAINS = [
             "arms_piercing_bolt"
           ]
         }
+      }
+    ],
+    anchors: [
+      {
+        from: "arms_greater_cleave",
+        to: "arms_whirlwind",
+        via: [
+          {
+            col: 2,
+            row: 3
+          },
+          {
+            col: 2,
+            row: 1.5
+          }
+        ]
       }
     ]
   },
