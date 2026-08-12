@@ -15,6 +15,13 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-08-12",
     entries: [
+      "Added talent \"Charge\" (tier 1) to the Arms domain.",
+      "Added talent \"Complex Charge\" (tier 3) to the Arms domain.",
+    ],
+  },
+  {
+    date: "2026-08-12",
+    entries: [
       "Changed talent \"Battle cry\" (tier 1) in the Leadership domain: description: \"Minor action: Target up to 5 enemies in a radius of 10m. Mak...\" -> \"Make a Presence + Intimidation test against all targeted ene...\"; duration: (none) -> \"instantaneous\".",
       "Changed ancestral talent \"Self-repair systems\" (tier 1) in the Automaton ancestry: description: \"You can perform quick field repairs on yourself. You heal yo...\" -> \"You heal yourself a number of hitpoints up to your Clockwork...\"; castingTime: \"minor_action\" -> \"action\".",
       "Changed source talent \"Total Recall\" (tier 1) in the Old Veteran source of power: description: \"In a critical moment, you tap into your experiences of the p...\" -> \"Add 3 dice to any test.\"; ability: (none) -> \"maneuver\"; uses: (none) -> 1; castingTime: (none) -> \"free\"; range: (none) -> \"self\"; duration: (none) -> \"instantaneous\".",

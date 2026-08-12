@@ -1118,6 +1118,44 @@ window.DOMAINS = [
         tier: 1,
         row: 0,
         col: 6
+      },
+      {
+        id: "arms_charge",
+        name: "Charge",
+        flavour: "You can rush in and attack",
+        description: "Move up to your movement speed and make a melee attack{arms_complex_charge:\"or use a 2 action melee maneuver\"}.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 2,
+        col: 5,
+        ability: "maneuver",
+        uses: 1,
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "arms_complex_charge",
+        name: "Complex Charge",
+        description: "While charging: Instead of a melee attack, you can also use a 2 action melee maneuver.",
+        pool: "combat",
+        cost: 1,
+        tier: 3,
+        row: 5,
+        col: 5,
+        ability: "modifier",
+        modifies: {
+          arms_charge: {}
+        },
+        requires: {
+          talents: [
+            "arms_charge"
+          ]
+        }
       }
     ]
   },
