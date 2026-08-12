@@ -1284,6 +1284,57 @@ window.DOMAINS = [
             Intimidation: 2
           }
         }
+      },
+      {
+        id: "lead_challenge",
+        name: "Challenge",
+        flavour: "You challenge any sapient foe, attracting their attention.",
+        description: "Make a presence + intimidation test against {lead_two_on_one:\"each\">lead_challenge:\"the\"} enemies Mental stat.\n2+ successes: for every two successes, damage dealt by the target against any target other than you is reduced by 1 for every 2 successes. This effect lasts until the end of the target's turn.\n4+ successes: Instead: this effect last until the end of the target's second turn.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 3,
+        ability: "maneuver",
+        uses: 3,
+        castingTime: "minor_action",
+        range: 10,
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        requires: {
+          skills: {
+            Intimidation: 1
+          }
+        }
+      },
+      {
+        id: "lead_two_on_one",
+        name: "Two on One",
+        flavour: "You can challenge multiple enemies at the same time.",
+        description: "Challenge can target one additional enemy.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 3,
+        ability: "modifier",
+        modifies: {
+          lead_challenge: {
+            numTargets: {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "lead_challenge"
+          ],
+          skills: {
+            Intimidation: 2
+          }
+        }
       }
     ]
   },
