@@ -1335,6 +1335,51 @@ window.DOMAINS = [
             Intimidation: 2
           }
         }
+      },
+      {
+        id: "lead_alert_ally",
+        name: "Alert Ally",
+        description: "When an ally is about to take damage from an enemy:\nMake an Awareness + Observe check.\n2+ successes: The target ally adds 1 die to their defense roll.\n{lead_insightful_alert:\"4+ successes: The target ally adds 2 dice to their defense roll.\"}",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 0,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "reaction",
+        range: 10,
+        target: [
+          "ally"
+        ],
+        duration: "instantaneous",
+        requires: {
+          skills: {
+            Observe: 1
+          }
+        }
+      },
+      {
+        id: "lead_insightful_alert",
+        name: "Insightful Alert",
+        description: "Alert gains the following effect:\n4+ successes: The target ally adds 2 dice to their defense roll.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 0,
+        ability: "modifier",
+        modifies: {
+          lead_alert_ally: {}
+        },
+        requires: {
+          talents: [
+            "lead_alert_ally"
+          ],
+          skills: {
+            Observe: 2
+          }
+        }
       }
     ]
   },
