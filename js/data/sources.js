@@ -15,7 +15,16 @@ window.SOURCES = [
         tier: 1,
         name: "Total Recall",
         icon: "",
-        description: "In a critical moment, you tap into your experiences of the past, feeling the rust disappear under the mounting pressure of the task at hand. \nOnce per session: add 3 dice to any test."
+        flavour: "In a critical moment, you tap into your experiences of the past, feeling the rust disappear under the mounting pressure of the task at hand.",
+        description: "Add 3 dice to any test.",
+        ability: "maneuver",
+        uses: 1,
+        castingTime: "free",
+        range: "self",
+        target: [
+          "self"
+        ],
+        duration: "instantaneous"
       }
     ]
   },

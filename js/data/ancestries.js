@@ -387,7 +387,8 @@ window.ANCESTRIES = [
       {
         id: "anca_self_repair_systems",
         name: "Self-repair systems",
-        description: "You can perform quick field repairs on yourself. You heal yourself a number of hitpoints up to your Clockwork proficiency.",
+        flavour: "You can perform quick field repairs on yourself.",
+        description: "You heal yourself a number of hitpoints up to your Clockwork proficiency.",
         pool: "combat",
         cost: 1,
         tier: 1,
@@ -395,7 +396,7 @@ window.ANCESTRIES = [
         col: 1,
         ability: "maneuver",
         uses: 1,
-        castingTime: "minor_action",
+        castingTime: "action",
         range: "self",
         target: [
           "self"

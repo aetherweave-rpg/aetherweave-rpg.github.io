@@ -1256,7 +1256,7 @@ window.DOMAINS = [
       {
         id: "lead_battle_cry",
         name: "Battle cry",
-        description: "Minor action:\nTarget up to 5 enemies in a radius of 10m. Make an Intimidation test against their. Roll the check once for each distinct threshold amongst the enemies. Every succesful check demoralizes the enemy, reducing the next damage they would deal in their next turn by 1.",
+        description: "Make a Presence + Intimidation test against all targeted enemies. \n\n2+ Reduce the next damage dealt by each enemy by 1.",
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -1270,10 +1270,7 @@ window.DOMAINS = [
           "enemy"
         ],
         numTargets: 5,
-        duration: {
-          value: 1,
-          unit: "rounds"
-        },
+        duration: "instantaneous",
         aoe: {
           shape: "circle",
           origin: "self",
