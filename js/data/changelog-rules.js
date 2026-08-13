@@ -11,14 +11,13 @@ window.CHANGELOG_RULES = [
   {
     date: "2026-08-13",
     entries: [
-      "Changed: Attacking",
-      "Changed: Combined Actions",
+      "Changed: Rules for Rewards in combat"
     ],
   },
   {
     date: "2026-08-11",
     entries: [
-      "Changed: Rules regarding max proficiency, which is now capped at tier of play +1
+      "Changed: Rules regarding max proficiency, which is now capped at tier of play +1"
     ],
   },
   {
