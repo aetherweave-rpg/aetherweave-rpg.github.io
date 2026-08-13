@@ -13,6 +13,14 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-13",
+    entries: [
+      "Changed spell \"Levitate\" (tier 2) in the Aether domain: description: wording changed (both start \"Target ally can levitate 20 centimeters...\").",
+      "Changed spell \"Shockwave\" (tier 2) in the Aether domain: description: \"Make a spellcasting check against the Physical defense of al...\" -> \"Make a Aether spellcasting check: 1+ successes: Deal 1 damag...\".",
+      "Changed spell \"Speed\" (tier 2) in the Aether domain: description: \"An ally of your choice gains an additional major action on t...\" -> \"An ally of your choice or self gains an additional 2 actions...\".",
+    ],
+  },
+  {
     date: "2026-08-12",
     entries: [
       "Added talent \"Charge\" (tier 1) to the Arms domain.",

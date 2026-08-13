@@ -7,6 +7,11 @@
 (function () {
   var Engine = window.Engine, State = window.State, UI = window.UI, el = UI.el, CONFIG = window.CONFIG;
 
+  // Weapon and Spellcasting proficiency names are drawn from a fixed, exhaustive
+  // set (weapon categories; magical domain names) — a dropdown, never free text.
+  // Crafting and Instrument stay open-ended (autocomplete over suggestions).
+  var EXHAUSTIVE_PROF_KINDS = ["weapon", "spellcasting"];
+
   function init() {
     UI.renderHeader("sheet");
     UI.renderFooter();
@@ -488,18 +493,34 @@
         var suggestions = kind.id === "spellcasting"
           ? Engine.magicalDomains().map(function (d) { return d.name; })
           : (kind.suggestions || []);
-        var dl = el("datalist"); dl.id = "prof-suggest-" + kind.id;
-        suggestions.forEach(function (name) { var o = el("option"); o.value = name; dl.appendChild(o); });
-        col.appendChild(dl);
+        var exhaustive = EXHAUSTIVE_PROF_KINDS.indexOf(kind.id) >= 0;
+        var dl = null;
+        if (!exhaustive) {
+          dl = el("datalist"); dl.id = "prof-suggest-" + kind.id;
+          suggestions.forEach(function (name) { var o = el("option"); o.value = name; dl.appendChild(o); });
+          col.appendChild(dl);
+        }
 
         state.proficiencies.forEach(function (p, idx) {
           if (p.kind !== kind.id) return;
           var free = Engine.grantedProfTier(state, p.name);
           var row = el("div", "prof-row");
-          var nameInput = textInput(p.name, function (v) {
-            State.update(function (s2) { s2.proficiencies[idx].name = v; }, true);
-          }, { cls: "prof-name", placeholder: "name…", list: "prof-suggest-" + kind.id });
-          if (free) { nameInput.readOnly = true; nameInput.title = grantedBy(state, "proficiency", p.name); }
+          var nameInput;
+          if (exhaustive) {
+            nameInput = selectInput(suggestions.map(function (n) { return { value: n, label: n }; }), p.name, function (v) {
+              State.update(function (s2) { s2.proficiencies[idx].name = v; }, true);
+            });
+            nameInput.className = "prof-name";
+            if (!suggestions.length) { nameInput.disabled = true; nameInput.title = "No " + kind.label.toLowerCase() + " options defined"; }
+          } else {
+            nameInput = textInput(p.name, function (v) {
+              State.update(function (s2) { s2.proficiencies[idx].name = v; }, true);
+            }, { cls: "prof-name", placeholder: "name…", list: "prof-suggest-" + kind.id });
+          }
+          if (free) {
+            if (exhaustive) nameInput.disabled = true; else nameInput.readOnly = true;
+            nameInput.title = grantedBy(state, "proficiency", p.name);
+          }
           row.appendChild(nameInput);
           row.appendChild(dots(p.tier || 0, CONFIG.MAX_SKILL_TIER, function (v) {
             State.update(function (s2) { s2.proficiencies[idx].tier = v; });
@@ -515,7 +536,13 @@
 
         var add = el("button", "prof-add", "+ Add " + kind.label);
         add.type = "button";
-        add.onclick = function () { State.update(function (s2) { s2.proficiencies.push({ name: "", kind: kind.id, tier: 0 }); }); };
+        if (exhaustive && !suggestions.length) {
+          add.disabled = true;
+          add.title = "No " + kind.label.toLowerCase() + " options defined";
+        }
+        add.onclick = function () {
+          State.update(function (s2) { s2.proficiencies.push({ name: exhaustive ? (suggestions[0] || "") : "", kind: kind.id, tier: 0 }); });
+        };
         col.appendChild(add);
         side.appendChild(col);
       });

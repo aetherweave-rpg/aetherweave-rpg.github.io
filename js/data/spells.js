@@ -23,7 +23,7 @@ window.SPELLS = {
     {
       id: "aeth_spell_speed",
       name: "Speed",
-      description: "An ally of your choice gains an additional major action on their next turn.\nRisk 1: on 1+ Risk You lose your next minor action\nReward 1: target gains an additional minor action for every Reward",
+      description: "An ally of your choice or self gains an additional 2 actions on their next turn.\nRisk 1: on 1+ Risk You lose one action this turn if available, otherwise lose one action next turn.",
       tier: 2,
       pool: "combat",
       cost: 1,
@@ -32,6 +32,7 @@ window.SPELLS = {
       castingTime: "action",
       range: 10,
       target: [
+        "self",
         "ally"
       ],
       duration: "instantaneous"
@@ -39,7 +40,7 @@ window.SPELLS = {
     {
       id: "aeth_spell_shockwave",
       name: "Shockwave",
-      description: "Make a spellcasting check against the Physical defense of all enemies within 6m. If succesful deal 1 damage and push that enemy up to 2m for every success beyond the threshold.\n\nRisk: For every rolled Risk, this spell also targets a random ally within range.",
+      description: "Make a Aether spellcasting check:\n1+ successes: Deal 1 damage to all enemies in range. For every two successes, push them 2y.\n\nRisk: For every rolled Risk, this spell also targets a random ally within range.",
       tier: 2,
       pool: "combat",
       cost: 1,
@@ -124,7 +125,7 @@ window.SPELLS = {
     {
       id: "aeth_spell_levitate",
       name: "Levitate",
-      description: "Target ally can levitate 20 centimeters above ground. When they do so, they move at half speed. Range: touch. Duration: 1m",
+      description: "Target ally can levitate 20 centimeters above ground. When they do so, they move at half speed.",
       tier: 2,
       pool: "noncombat",
       cost: 1,

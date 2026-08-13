@@ -10,6 +10,27 @@
   var Engine = window.Engine, State = window.State, UI = window.UI, el = UI.el;
   var CONFIG = window.CONFIG, CREATION = window.CREATION;
 
+  // Weapon and Spellcasting proficiency names are drawn from a fixed, exhaustive
+  // set (weapon categories; magical domain names) — a dropdown, never free text.
+  // Crafting and Instrument stay open-ended (autocomplete over suggestions).
+  var EXHAUSTIVE_PROF_KINDS = ["weapon", "spellcasting"];
+  function profOptionsForKind(kind) {
+    if (kind.id === "spellcasting")
+      return Engine.magicalDomains().map(function (d) { return d.name; });
+    return kind.suggestions || [];
+  }
+  function selectInput(options, val, onChange) {
+    var s = el("select", "prof-name");
+    options.forEach(function (name) {
+      var op = el("option", null, name);
+      op.value = name;
+      if (name === val) op.selected = true;
+      s.appendChild(op);
+    });
+    s.onchange = function () { onChange(s.value); };
+    return s;
+  }
+
   // Working copy — nothing touches the saved character until Finish.
   var draft = null;
 
@@ -499,8 +520,6 @@
         if (v > 0) opts.skillStore[sk.name] = v; else delete opts.skillStore[sk.name];
         render();
       }, cap));
-      row.appendChild(el("div", "skill-hint",
-        tier >= cap ? (tier >= CONFIG.MAX_SKILL_TIER ? "max" : "tier cap") : "next " + costs[tier]));
       grid.appendChild(row);
     });
     wrap.appendChild(grid);
@@ -508,22 +527,33 @@
     // Proficiencies
     opts.kinds.forEach(function (kind) {
       var pcosts = CONFIG.SKILL_COSTS[kind.costKey];
+      var exhaustive = EXHAUSTIVE_PROF_KINDS.indexOf(kind.id) >= 0;
+      var kindOptions = profOptionsForKind(kind);
       var sec = el("div", "sub-section");
       var h = el("h3", "sub-title", kind.label + " proficiencies");
       sec.appendChild(h);
 
-      var dl = el("datalist"); dl.id = "cw-suggest-" + kind.id;
-      (kind.suggestions || []).forEach(function (n) { var o = el("option"); o.value = n; dl.appendChild(o); });
-      sec.appendChild(dl);
+      var dl = null;
+      if (!exhaustive) {
+        dl = el("datalist"); dl.id = "cw-suggest-" + kind.id;
+        kindOptions.forEach(function (n) { var o = el("option"); o.value = n; dl.appendChild(o); });
+        sec.appendChild(dl);
+      }
 
       opts.profStore.forEach(function (p, idx) {
         if (p.kind !== kind.id) return;
         var row = el("div", "prof-row");
-        var input = el("input", "prof-name");
-        input.value = p.name; input.placeholder = "name…";
-        input.setAttribute("list", "cw-suggest-" + kind.id);
-        input.oninput = function () { opts.profStore[idx].name = input.value; };
-        input.onchange = function () { render(); };
+        var input;
+        if (exhaustive) {
+          input = selectInput(kindOptions, p.name, function (v) { opts.profStore[idx].name = v; render(); });
+          if (!kindOptions.length) { input.disabled = true; input.title = "No " + kind.label.toLowerCase() + " options defined"; }
+        } else {
+          input = el("input", "prof-name");
+          input.value = p.name; input.placeholder = "name…";
+          input.setAttribute("list", "cw-suggest-" + kind.id);
+          input.oninput = function () { opts.profStore[idx].name = input.value; };
+          input.onchange = function () { render(); };
+        }
         row.appendChild(input);
         row.appendChild(dots(p.tier || 0, CONFIG.MAX_SKILL_TIER, pcosts, left, function (v) {
           opts.profStore[idx].tier = v; render();
@@ -535,7 +565,14 @@
       });
 
       var add = el("button", "prof-add", "+ Add " + kind.label); add.type = "button";
-      add.onclick = function () { opts.profStore.push({ name: "", kind: kind.id, tier: 1 }); render(); };
+      if (exhaustive && !kindOptions.length) {
+        add.disabled = true;
+        add.title = "No " + kind.label.toLowerCase() + " options defined";
+      }
+      add.onclick = function () {
+        opts.profStore.push({ name: exhaustive ? (kindOptions[0] || "") : "", kind: kind.id, tier: 1 });
+        render();
+      };
       sec.appendChild(add);
       wrap.appendChild(sec);
     });
@@ -682,9 +719,10 @@
   // Pick a proficiency name this list isn't already using.
   function freshProfName(kind, store) {
     var taken = store.map(function (p) { return (p.name || "").toLowerCase(); });
-    var free = (kind.suggestions || []).filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; });
+    var options = profOptionsForKind(kind);
+    var free = options.filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; });
     if (free.length) return pick(free);
-    return (kind.suggestions && kind.suggestions.length) ? pick(kind.suggestions) : "Unnamed";
+    return options.length ? pick(options) : "Unnamed";
   }
 
   // Spend exactly `budget` by repeatedly applying a random affordable advance.
