@@ -932,6 +932,11 @@
     if (t.flavour) tip.appendChild(el("div", "tt-flavour", Engine.resolveText(t.flavour, tipState)));
     if (t.description) tip.appendChild(el("div", "tt-desc", Engine.resolveText(t.description, tipState)));
 
+    // The roll and its success ladder (§4.10), against the same owned set the
+    // description resolved against, so a modifier's extra rung shows here too.
+    var testBlock = UI.renderTest(t, tipState, { cls: "tt-test" });
+    if (testBlock) tip.appendChild(testBlock);
+
     // A modifier never gets its own row on the sheet, so the tree is the only
     // place naming what it changes.
     if (Engine.isModifier(t) && t.modifies) {

@@ -40,7 +40,12 @@ window.SPELLS = {
     {
       id: "aeth_spell_shockwave",
       name: "Shockwave",
-      description: "Make a Aether spellcasting check:\n1+ successes: Deal 1 damage to all enemies in range. For every two successes, push them 2y.\n\nRisk: For every rolled Risk, this spell also targets a random ally within range.",
+      description: "Risk: For every rolled Risk, this spell also targets a random ally within range.",
+      test: {
+        tiers: [
+          { successes: 1, effect: "Deal 1 damage to all enemies in range. For every two successes, push them 2y." }
+        ]
+      },
       tier: 2,
       pool: "combat",
       cost: 1,

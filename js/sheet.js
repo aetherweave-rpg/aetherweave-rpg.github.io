@@ -748,7 +748,8 @@
     var domainTag = t.fromSource ? t.sourceName : ((Engine.treeById(t.domain) || {}).name || t.domain);
     nameLine.appendChild(el("span", "talent-domain-tag", domainTag));
     if (t.ability === "maneuver" && t.uses) nameLine.appendChild(el("span", "talent-uses-tag", "⟳ " + t.uses + " / " + (t.usesPer || "session")));
-    if (t.description || t.flavour) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
+    if (t.description || t.flavour || Engine.hasTest(t, state))
+      nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
     info.appendChild(nameLine);
     var grantSrc = !t.fromSource && status.granted ? Engine.grantSource(state, "talent", t.id) : null;
     info.appendChild(el("span", "talent-meta", t.fromSource
@@ -767,10 +768,13 @@
         .map(function (r) { return r.label; }).join(", ");
       info.appendChild(el("span", "talent-invalid-note", "⚠ requirements no longer met: " + why));
     }
-    if (isOpen && (t.flavour || t.description)) {
+    var tTest = Engine.hasTest(t, state);
+    if (isOpen && (t.flavour || t.description || tTest)) {
       var descBlock = el("div", "talent-desc");
       if (t.flavour) descBlock.appendChild(el("div", "talent-flavour", Engine.resolveText(t.flavour, state)));
       if (t.description) descBlock.appendChild(el("div", "talent-desc-text", Engine.resolveText(t.description, state)));
+      var tTestBlock = UI.renderTest(t, state);
+      if (tTestBlock) descBlock.appendChild(tTestBlock);
       info.appendChild(descBlock);
     }
     row.appendChild(info);
@@ -837,7 +841,8 @@
           var info = el("div", "talent-info");
           var nameLine = el("span", "talent-name", sp.name);
           nameLine.appendChild(el("span", "spell-tier-tag", "T" + (sp.tier || 1)));
-          if (sp.description || sp.flavour) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
+          if (sp.description || sp.flavour || Engine.hasTest(sp, state))
+            nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
           info.appendChild(nameLine);
           var manaCost = Engine.spellManaCost(sp);
           info.appendChild(el("span", "talent-meta", [
@@ -854,10 +859,12 @@
               .map(function (r) { return r.label; }).join(", ");
             info.appendChild(el("span", "talent-invalid-note", "⚠ requirements no longer met: " + why));
           }
-          if (isOpen && (sp.flavour || sp.description)) {
+          if (isOpen && (sp.flavour || sp.description || Engine.hasTest(sp, state))) {
             var spDescBlock = el("div", "talent-desc");
             if (sp.flavour) spDescBlock.appendChild(el("div", "talent-flavour", sp.flavour));
             if (sp.description) spDescBlock.appendChild(el("div", "talent-desc-text", Engine.resolveText(sp.description, state)));
+            var spTestBlock = UI.renderTest(sp, state);
+            if (spTestBlock) spDescBlock.appendChild(spTestBlock);
             info.appendChild(spDescBlock);
           }
           row.appendChild(info);

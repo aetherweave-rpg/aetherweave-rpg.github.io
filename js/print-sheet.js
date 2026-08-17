@@ -370,6 +370,16 @@
       .map(function (r) { return r.label; }).join(", ");
   }
 
+  // The roll and its success ladder (§4.10), flattened for the paper document.
+  // Same Engine data the screen renders; only the markup differs.
+  function testOf(entry, state) {
+    var roll = Engine.testLabel(entry, state);
+    var tiers = Engine.testTiers(entry, state);
+    if (!roll && !tiers.length) return null;
+    var d = Engine.testDescriptor(entry, state);
+    return { roll: roll, pool: d && d.pool != null ? d.pool : null, tiers: tiers };
+  }
+
   function talentEntry(raw, state) {
     var t = Engine.effective(raw, state);
     var status = t.fromSource ? { met: true, granted: true, reasons: [] } : Engine.requirementStatus(t, state);
@@ -386,12 +396,17 @@
          Engine.durationLabel(t), Engine.aoeLabel(t)].forEach(function (v) { if (v) tags.push(v); });
       }
     }
+    // The dice pool is a mid-roll number, so it earns a place in the index;
+    // the ladder it is read against lives in the appendix with the rules text.
+    var test = testOf(t, state);
+    if (test && test.pool != null) tags.push(test.pool + " dice");
     return {
       id: t.id, icon: t.icon || t.name.charAt(0), name: t.name,
       // Resolved here, so the index and the appendix can't disagree and the
       // paper sheet carries the same modified text the screen does (§4.7).
       flavour: Engine.resolveText(t.flavour || "", state),
       description: Engine.resolveText(t.description || "", state),
+      test: test,
       source: source, tags: tags, meta: cost + " · " + tierName(t.tier), warn: unmetNote(status),
     };
   }
@@ -399,13 +414,19 @@
   function spellEntry(rawSpell, state) {
     var sp = Engine.effective(rawSpell, state);
     var mana = Engine.spellManaCost(sp);
+    // A spell's pool is already in its group heading, so only an overridden
+    // roll (one that isn't the domain's own) is worth repeating per spell.
+    var test = testOf(sp, state);
+    var ownRoll = test && !(Engine.testDescriptor(sp, state) || {}).implicit;
     return {
       id: sp.id, icon: sp.icon || sp.name.charAt(0), name: sp.name,
       flavour: Engine.resolveText(sp.flavour || "", state),
       description: Engine.resolveText(sp.description || "", state),
+      test: test,
       source: "T" + (sp.tier || 1),
       tags: [mana ? mana + " mana" : "cantrip", Engine.castingTimeLabel(sp),
-        Engine.rangeLabel(sp), Engine.targetLabel(sp), Engine.durationLabel(sp), Engine.aoeLabel(sp)].filter(Boolean),
+        Engine.rangeLabel(sp), Engine.targetLabel(sp), Engine.durationLabel(sp), Engine.aoeLabel(sp),
+        ownRoll && test.pool != null ? test.pool + " dice" : null].filter(Boolean),
       meta: (sp.cost || 0) + (sp.pool === "combat" ? " combat" : " non-combat") + " exp",
       warn: unmetNote(Engine.spellRequirementStatus(sp, state)),
     };
@@ -488,6 +509,20 @@
     return h;
   }
 
+  function testBlock(test) {
+    var wrap = el("div", "ps-test");
+    var head = el("div", "ps-test-roll", test.roll || "Successes");
+    if (test.roll && test.pool != null) head.appendChild(el("span", "ps-tag", test.pool + " dice"));
+    wrap.appendChild(head);
+    test.tiers.forEach(function (row) {
+      var r = el("div", "ps-test-tier");
+      r.appendChild(el("span", "ps-test-n", row.successes + "+"));
+      r.appendChild(el("span", "ps-test-effect", row.effect));
+      wrap.appendChild(r);
+    });
+    return wrap;
+  }
+
   // The appendix: the same entries with their rules text, starting on its own
   // page. This is the half the old print output dropped entirely.
   function appendix(groups, state) {
@@ -510,6 +545,7 @@
         card.appendChild(head);
         if (e.flavour) card.appendChild(el("div", "ps-entry-flavour", e.flavour));
         if (e.description) card.appendChild(el("div", "ps-entry-desc", e.description));
+        if (e.test) card.appendChild(testBlock(e.test));
         if (e.warn) card.appendChild(el("div", "ps-entry-warn", "⚠ " + e.warn));
         b.appendChild(card);
       });

@@ -780,6 +780,94 @@
     }
   }
 
+  // Success-tier rows, shared by the `test` block check and the modifier ops
+  // that write one (`test.tiers` set/merge, §4.8) — a ladder authored through a
+  // modifier has to hold up exactly as well as one authored on the entry.
+  function validateTierRows(problems, label, rows) {
+    if (!Array.isArray(rows)) {
+      problems.push(label + ": success tiers must be a list of { successes, effect }");
+      return;
+    }
+    var seenSuccesses = {};
+    rows.forEach(function (row, i) {
+      var at = label + " tier " + (i + 1);
+      if (!row || typeof row !== "object" || Array.isArray(row)) {
+        problems.push(at + ": must be { successes, effect }");
+        return;
+      }
+      if (typeof row.successes !== "number" || row.successes < 1 || Math.floor(row.successes) !== row.successes)
+        problems.push(at + ": successes must be a whole number of 1 or more (got " + JSON.stringify(row.successes) + ")");
+      else if (seenSuccesses[row.successes])
+        problems.push(at + ": a second effect at " + row.successes + "+ successes (one rung per threshold)");
+      else seenSuccesses[row.successes] = true;
+      if (typeof row.effect !== "string" || !row.effect.trim())
+        problems.push(at + ": needs an 'effect' describing what that many successes gets you");
+    });
+  }
+
+  // A tested ability (§4.10): the roll, and the ladder read off it. The three
+  // roll fields travel together — a characteristic with no skill would render
+  // as half a test — and each specific name has to be one the category really
+  // offers, so the authored value can never be something the editor's picker
+  // would not have produced. Instrument is the one category that keeps a
+  // fillable name, exactly as a proficiency requirement does (§4.1).
+  function validateTestBlock(problems, label, obj) {
+    if (obj.test === undefined) return;
+    var test = obj.test;
+    if (!test || typeof test !== "object" || Array.isArray(test)) {
+      problems.push(label + ": test must be an object ({ characteristic, kind, skills, tiers })");
+      return;
+    }
+    var charKeys = (CONFIG.CHARACTERISTICS || []).reduce(function (m, c) { m[c.key] = true; return m; }, {});
+    var namesRoll = test.characteristic !== undefined || test.kind !== undefined || test.skills !== undefined;
+    if (namesRoll) {
+      if (!charKeys[test.characteristic])
+        problems.push(label + ": test.characteristic must be one of " + Object.keys(charKeys).join(", ") +
+          " (got " + JSON.stringify(test.characteristic) + ")");
+      if (testKinds().indexOf(test.kind) < 0) {
+        problems.push(label + ": test.kind must be one of " + testKinds().join(", ") +
+          " (got " + JSON.stringify(test.kind) + ")");
+      } else if (!Array.isArray(test.skills) || !test.skills.length) {
+        problems.push(label + ": a test needs at least one skill or proficiency in test.skills");
+      } else {
+        var options = testSkillOptions(test.kind);
+        test.skills.forEach(function (name) {
+          if (typeof name !== "string" || !name.trim()) {
+            problems.push(label + ": test.skills entry must be a name (got " + JSON.stringify(name) + ")");
+            return;
+          }
+          // Instrument names are open-ended by design; every other category is
+          // a fixed set, and a name outside it would never match a sheet.
+          if (test.kind !== "instrument" && options.indexOf(name) < 0)
+            problems.push(label + ": test names '" + name + "', which is not a " + testKindLabel(test.kind) +
+              " (expected one of " + options.join(", ") + ")");
+        });
+      }
+    }
+    if (test.tiers !== undefined) validateTierRows(problems, label + ": test", test.tiers);
+    if (!namesRoll && !(test.tiers && test.tiers.length))
+      problems.push(label + ": test block is empty — give it a roll, success tiers, or drop it");
+  }
+
+  // One `modifies` operation whose field is part of the test block. Reuses the
+  // authored-block checks so a ladder written by a modifier can't be shaped
+  // differently from one written on the entry.
+  function validateTestFieldOp(problems, label, field, op, value) {
+    if (field === "test.tiers") {
+      validateTierRows(problems, label + ": '" + op + "' on test.tiers", value);
+    } else if (field === "test.characteristic") {
+      var known = (CONFIG.CHARACTERISTICS || []).some(function (c) { return c.key === value; });
+      if (!known) problems.push(label + ": 'test.characteristic' set to unknown characteristic " + JSON.stringify(value));
+    } else if (field === "test.kind") {
+      if (testKinds().indexOf(value) < 0)
+        problems.push(label + ": 'test.kind' set to unknown category " + JSON.stringify(value) +
+          " (must be " + testKinds().join(", ") + ")");
+    } else if (field === "test.skills") {
+      if (!Array.isArray(value) || !value.length || value.some(function (n) { return typeof n !== "string" || !n.trim(); }))
+        problems.push(label + ": 'test.skills' must be set to a non-empty list of skill/proficiency names");
+    }
+  }
+
   function validateDB() {
     var problems = [];
     var seen = {};
@@ -823,6 +911,7 @@
       if (typeof t.tier !== "number" || t.tier < 1 || t.tier > CONFIG.TIERS.length)
         problems.push(t.id + ": tier " + t.tier + " out of range 1.." + CONFIG.TIERS.length);
       if (t.ability === "maneuver") validateCastableFields(problems, t.id, t);
+      validateTestBlock(problems, t.id, t);
 
       var reqs = t.requires || {};
       var prereqs = (reqs.talents || []).concat(reqs.anyTalents || []);
@@ -1058,11 +1147,16 @@
             } else if (!allowedOps[op]) {
               problems.push(t.id + ": '" + field + "' may only be changed with " +
                 Object.keys(allowedOps).map(function (o) { return "'" + o + "'"; }).join(" or "));
-            } else if (op !== "set" && typeof ops[op] !== "number") {
+            } else if (op !== "set" && op !== "merge" && typeof ops[op] !== "number") {
               problems.push(t.id + ": '" + op + "' on '" + field + "' needs a number");
             } else if (field === "aoe.shape" && AOE_SHAPES.indexOf(ops[op]) < 0) {
               problems.push(t.id + ": 'aoe.shape' set to an unknown shape '" + ops[op] +
                 "' (must be " + AOE_SHAPES.join(", ") + ")");
+            } else {
+              // A modifier can write the whole test block or any one of its
+              // parts, so each of those values gets the same check it would
+              // have got had it been authored on the entry itself.
+              validateTestFieldOp(problems, t.id, field, op, ops[op]);
             }
           });
         });
@@ -1204,6 +1298,7 @@
           problems.push("source '" + src.id + "': a tier-" + tier + " talent is missing a name");
         if (st.ability === "maneuver")
           validateCastableFields(problems, "source '" + src.id + "' tier-" + tier + " talent", st);
+        validateTestBlock(problems, "source '" + src.id + "' tier-" + tier + " talent", st);
       });
     });
     (window.ANCESTRIES || []).forEach(function (a) {
@@ -1234,6 +1329,7 @@
         if (typeof sp.cost !== "number" || sp.cost < 0)
           problems.push("spell '" + sp.id + "': cost must be a non-negative number");
         validateCastableFields(problems, "spell '" + sp.id + "'", sp);
+        validateTestBlock(problems, "spell '" + sp.id + "'", sp);
 
         // Spells are placed in their domain's TALENT grid, sharing the row/col
         // space with its talents (§4.6) — the collision, single-tier-per-row
@@ -1282,17 +1378,29 @@
         });
       });
     }
+    function checkHookField(label, fieldName, text) {
+      scanHooks(text).forEach(function (h) {
+        if (!h.groups) {
+          problems.push(label + ": malformed text hook {" + h.body + "} in " + fieldName +
+            " (expected {id:\"text\"}, ids optionally combined with &, groups joined with | or >)");
+          return;
+        }
+        checkHookGroups(label, fieldName, h.groups);
+      });
+    }
     function checkHooks(label, obj) {
       ["description", "flavour"].forEach(function (fieldName) {
-        scanHooks(obj[fieldName]).forEach(function (h) {
-          if (!h.groups) {
-            problems.push(label + ": malformed text hook {" + h.body + "} in " + fieldName +
-              " (expected {id:\"text\"}, ids optionally combined with &, groups joined with | or >)");
-            return;
-          }
-          checkHookGroups(label, fieldName, h.groups);
-        });
+        checkHookField(label, fieldName, obj[fieldName]);
       });
+      // A success tier's effect is rules text like any other, so it may carry
+      // hooks — and a typo in one is just as invisible on screen (§4.10).
+      var test = testOf(obj);
+      if (test && Array.isArray(test.tiers)) {
+        test.tiers.forEach(function (row) {
+          if (row && typeof row.effect === "string")
+            checkHookField(label, "the " + (row.successes || 0) + "+ success tier", row.effect);
+        });
+      }
     }
     allTalents.forEach(function (t) { checkHooks("talent '" + t.id + "'", t); });
     Object.keys(window.SPELLS || {}).forEach(function (domainId) {
@@ -2079,6 +2187,10 @@
     name: 1, icon: 1, flavour: 1, description: 1,
     uses: 1, usesPer: 1, castingTime: 1, range: 1, target: 1, numTargets: 1, duration: 1, aoe: 1,
     "aoe.shape": 1, "aoe.size": 1,
+    // The test block is reachable a part at a time, never as a whole (§4.10):
+    // a plain `test: { set: … }` would silently drop the ladder every time an
+    // author only meant to change which characteristic is rolled.
+    "test.characteristic": 1, "test.kind": 1, "test.skills": 1, "test.tiers": 1,
   };
   // Deliberately NOT modifiable, and each for a specific reason:
   //   id/row/col   — identity and layout; a moving node breaks the drawn lines
@@ -2089,7 +2201,7 @@
   //                  unreadable (and could invalidate an owned talent)
   //   ability      — reclassifying a maneuver as a passive moves it between
   //                  sheet sections mid-render
-  var MODIFIER_OPS = { set: 1, add: 1, mul: 1, min: 1, max: 1 };
+  var MODIFIER_OPS = { set: 1, merge: 1, add: 1, mul: 1, min: 1, max: 1 };
 
   // Arithmetic (add/mul/min/max) only makes sense where the field holds a
   // genuine quantity. Everything else — names, categorical keywords, arrays,
@@ -2099,7 +2211,16 @@
   // `aoe: { mul: 2 }` modifier used to replace the whole shape with the
   // number 0 — see "aoe.size" below, the fix for that specific case).
   var ARITHMETIC_FIELDS = { uses: 1, numTargets: 1, range: 1, "aoe.size": 1 };
-  function allowedOpsFor(field) { return ARITHMETIC_FIELDS[field] ? MODIFIER_OPS : { set: 1 }; }
+  var ARITHMETIC_OPS = { set: 1, add: 1, mul: 1, min: 1, max: 1 };
+  // A success ladder is the one field where "replace it" and "change a number"
+  // are both the wrong operation: Insightful Alert adds a 4+ rung to Alert's
+  // existing 2+ rung and touches nothing else. `merge` upserts rows by their
+  // `successes` threshold, which is the only op that can say that.
+  var MERGE_FIELDS = { "test.tiers": 1 };
+  function allowedOpsFor(field) {
+    if (MERGE_FIELDS[field]) return { set: 1, merge: 1 };
+    return ARITHMETIC_FIELDS[field] ? ARITHMETIC_OPS : { set: 1 };
+  }
   // A field → [allowed op, ...] lookup for the editor's op dropdown, computed
   // once so both sides of the app read the exact same source of truth.
   var MODIFIABLE_FIELD_OPS = Object.keys(MODIFIABLE_FIELDS).reduce(function (m, f) {
@@ -2110,11 +2231,29 @@
 
   function numOr0(v) { return typeof v === "number" ? v : 0; }
 
+  // Upserts success-tier rows by their `successes` threshold: a rung the base
+  // ladder already has is replaced, a new one is inserted. Sorted on the way
+  // out, so the order rungs were authored in never shows.
+  function mergeTiers(base, incoming) {
+    var out = (Array.isArray(base) ? base : []).map(function (r) {
+      return { successes: r.successes, effect: r.effect };
+    });
+    (Array.isArray(incoming) ? incoming : []).forEach(function (row) {
+      if (!row || typeof row !== "object") return;
+      var next = { successes: row.successes, effect: row.effect };
+      var at = -1;
+      for (var i = 0; i < out.length; i++) if (out[i].successes === next.successes) { at = i; break; }
+      if (at >= 0) out[at] = next; else out.push(next);
+    });
+    return out.sort(function (a, b) { return (a.successes || 0) - (b.successes || 0); });
+  }
+
   // Applied in a fixed order so that one modifier's ops are order-independent:
-  // replace, then scale, then offset, then clamp.
+  // replace, then merge, then scale, then offset, then clamp.
   function applyFieldOps(value, ops) {
     var v = value;
     if (ops.set !== undefined) v = ops.set;
+    if (ops.merge !== undefined) v = mergeTiers(v, ops.merge);
     if (ops.mul !== undefined) v = numOr0(v) * ops.mul;
     if (ops.add !== undefined) v = numOr0(v) + ops.add;
     if (ops.min !== undefined && numOr0(v) < ops.min) v = ops.min;
@@ -2312,6 +2451,142 @@
     return a.size + "y Circle (" + originLabel + ")";
   }
 
+  // ---- Ability tests (§4.10) ----------------------------------------------
+  // Most abilities are used by rolling a pool and reading the result off a
+  // ladder of success tiers. Both halves live in one optional block:
+  //
+  //   test: {
+  //     characteristic: "body",         // omit → the entry's default roll
+  //     kind: "weapon",                 // "combat" | "noncombat" | a PROFICIENCY_KINDS id
+  //     skills: ["Maces", "Staves"],    // any-of: the best of them counts
+  //     tiers: [{ successes: 1, effect: "…" }, …],
+  //   }
+  //
+  // `skills` is a list because content genuinely needs one — "your throwing
+  // weapon" is either throwing category, "a bludgeoning weapon" is Maces or
+  // Staves — and a character rolls whichever of them they are best at.
+  //
+  // An omitted `characteristic` means the ability names no roll of its own. On
+  // a SPELL that resolves to the domain's spellcasting pool, which the engine
+  // already derives (so a spell can never quote a pool that disagrees with the
+  // one the Spells page and the sheet print). On a talent it means the tiers
+  // hang off whatever roll the text refers to: Riposte reads the successes
+  // left over from the parry it followed, and a modifier's tiers describe the
+  // roll of the ability it modifies.
+  var TEST_SKILL_POOLS = { combat: 1, noncombat: 1 };
+
+  function testOf(entry) {
+    var t = entry && entry.test;
+    return (t && typeof t === "object" && !Array.isArray(t)) ? t : null;
+  }
+  // Every category the third box can offer. Skills come first because most
+  // tests are skill tests; the proficiency kinds follow in database order.
+  function testKinds() {
+    return ["combat", "noncombat"].concat((window.PROFICIENCY_KINDS || []).map(function (k) { return k.id; }));
+  }
+  function testKindLabel(kind) {
+    if (kind === "combat") return "Combat skill";
+    if (kind === "noncombat") return "Non-combat skill";
+    var k = findKind(kind);
+    return k ? k.label : kind;
+  }
+  // The specific skills/proficiencies a category offers. One list, read by the
+  // editor's picker AND by the validator, so an authored name can never be
+  // something the picker would not have offered in the first place.
+  function testSkillOptions(kind) {
+    if (TEST_SKILL_POOLS[kind]) return ((window.SKILLS || {})[kind] || []).map(function (s) { return s.name; });
+    if (kind === "spellcasting") return magicalDomains().map(function (d) { return d.name; });
+    var k = findKind(kind);
+    return k ? (k.suggestions || []).slice() : [];
+  }
+  // The character's rank in the best of the test's skills — the list is an
+  // any-of, so being good at one of them is what counts.
+  function testSkillTier(state, test) {
+    var isSkill = !!TEST_SKILL_POOLS[test.kind];
+    var best = 0;
+    (test.skills || []).forEach(function (name) {
+      var have = isSkill ? ((state.skills || {})[name] || 0) : profTier(state, name);
+      if (have > best) best = have;
+    });
+    return best;
+  }
+  // What this entry actually rolls, for a given character. `pool` is null when
+  // no pool can be worked out (a talent with no roll of its own, or a caster
+  // whose source of power has no characteristic assigned yet).
+  function testDescriptor(entry, state) {
+    var test = testOf(entry);
+    if (!test) return null;
+    state = state || {};
+    var out = {
+      implicit: false, charKey: null, charVal: 0,
+      kind: test.kind || null, skills: (test.skills || []).slice(),
+      skillTier: 0, pool: null,
+    };
+    if (test.characteristic) {
+      out.charKey = test.characteristic;
+      out.charVal = (state.characteristics || {})[out.charKey] || 0;
+      out.skillTier = testSkillTier(state, test);
+      out.pool = out.charVal + out.skillTier;
+      return out;
+    }
+    if (isSpellEntry(entry)) {
+      var domainId = spellDomain(entry.id);
+      var domain = treeById(domainId);
+      var p = spellPool(state, domainId);
+      out.implicit = true;
+      out.kind = "spellcasting";
+      out.skills = domain ? [domain.name] : [];
+      out.charKey = p.charKey;
+      out.charVal = p.charVal;
+      out.skillTier = p.ladder;
+      out.pool = p.charKey ? p.total : null;
+    }
+    return out;
+  }
+  // "Body + Maces or Staves" · "Intelligence + Ember Spellcasting" · "" when
+  // the entry names no roll at all.
+  //
+  // A list covering every option its category has says "any of them", and is
+  // authored that way — ticking all ten crafting proficiencies is how "a
+  // chosen crafting proficiency" is expressed. Printing all ten back would
+  // bury the sentence, so a complete category collapses to its own name.
+  function testLabel(entry, state) {
+    var d = testDescriptor(entry, state);
+    if (!d) return "";
+    var names = d.skills.slice();
+    if (names.length) {
+      var options = testSkillOptions(d.kind);
+      if (options.length > 1 && names.length >= options.length &&
+          options.every(function (o) { return names.indexOf(o) >= 0; }))
+        names = ["any " + testKindLabel(d.kind)];
+      else if (d.kind === "spellcasting")
+        names = names.map(function (n) { return n + " Spellcasting"; });
+    }
+    var parts = [];
+    if (d.charKey) parts.push(charLabel(d.charKey));
+    if (names.length) parts.push(joinAlternatives(names));
+    return parts.join(" + ");
+  }
+  // The success ladder as it should be read: sorted by threshold, hooks
+  // resolved (§4.7). A tier whose text resolves to nothing is dropped, which is
+  // how a modifier blanks a rung it supersedes.
+  function testTiers(entry, state) {
+    var test = testOf(entry);
+    if (!test || !Array.isArray(test.tiers)) return [];
+    return test.tiers
+      .filter(function (row) { return row && typeof row === "object"; })
+      .map(function (row) {
+        return { successes: row.successes || 0, effect: resolveText(String(row.effect || ""), state) };
+      })
+      .filter(function (row) { return row.effect.trim() !== ""; })
+      .sort(function (a, b) { return a.successes - b.successes; });
+  }
+  // Is there anything for a renderer to draw? Cheap enough to ask before
+  // building a block that would come out empty.
+  function hasTest(entry, state) {
+    return !!testLabel(entry, state) || testTiers(entry, state).length > 0;
+  }
+
   // ---- Max HP / Max Mana ---------------------------------------------------
   // Max HP: 5 + Body at creation, +1 per 10 combat exp spent (any pool use),
   // and +Body again each time the tier of play advances past tier 1.
@@ -2382,6 +2657,10 @@
     effective: effective, isModifier: isModifier, modifiersFor: modifiersFor,
     MODIFIABLE_FIELDS: MODIFIABLE_FIELDS, MODIFIER_OPS: MODIFIER_OPS, AOE_SHAPES: AOE_SHAPES,
     MODIFIABLE_FIELD_OPS: MODIFIABLE_FIELD_OPS,
+    // ability tests (§4.10)
+    testOf: testOf, testKinds: testKinds, testKindLabel: testKindLabel,
+    testSkillOptions: testSkillOptions, testSkillTier: testSkillTier,
+    testDescriptor: testDescriptor, testLabel: testLabel, testTiers: testTiers, hasTest: hasTest,
     // grants
     grantsOf: grantsOf, grantNeedsChoice: grantNeedsChoice, grantOptions: grantOptions,
     grantOptionKey: grantOptionKey, optionTierRange: optionTierRange,

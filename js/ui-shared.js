@@ -376,8 +376,48 @@
   // dialog — they would still rather have a stale sheet than none.
   function safely(fn) { try { fn(); } catch (e) { console.warn("Aetherweave print prepare failed:", e); } }
 
+  // The roll an ability is used with, and the ladder of effects read off it
+  // (§4.10). One renderer for all five screen surfaces — the tree tooltip, the
+  // sheet's expanded rows, the Spells page and the creation cards — so a tier
+  // can never read one way in the tooltip and another on the sheet. The paper
+  // sheet builds its own markup from the same Engine data.
+  // Returns null when the entry has nothing to show.
+  function renderTest(entry, state, opts) {
+    opts = opts || {};
+    var label = Engine.testLabel(entry, state);
+    var tiers = Engine.testTiers(entry, state);
+    if (!label && !tiers.length) return null;
+
+    var wrap = el("div", "ability-test" + (opts.cls ? " " + opts.cls : ""));
+    if (label) {
+      var line = el("div", "ability-test-roll");
+      line.appendChild(el("span", "att-lede", "Test"));
+      line.appendChild(el("span", "att-roll", label));
+      var d = Engine.testDescriptor(entry, state);
+      if (d && d.pool != null) line.appendChild(el("span", "att-pool", d.pool + " dice"));
+      wrap.appendChild(line);
+    } else {
+      // A ladder with no roll of its own (a modifier's, or a talent reading the
+      // successes of a roll its text names) still needs saying what the numbers
+      // in the left column are.
+      wrap.appendChild(el("div", "ability-test-roll", "Successes"));
+    }
+    if (tiers.length) {
+      var list = el("div", "ability-test-tiers");
+      tiers.forEach(function (row) {
+        var r = el("div", "ability-test-tier");
+        r.appendChild(el("span", "att-n", row.successes + "+"));
+        r.appendChild(el("span", "att-effect", row.effect));
+        list.appendChild(r);
+      });
+      wrap.appendChild(list);
+    }
+    return wrap;
+  }
+
   window.UI = {
     el: el,
+    renderTest: renderTest,
     bindPrint: bindPrint,
     renderHeader: renderHeader,
     renderFooter: renderFooter,

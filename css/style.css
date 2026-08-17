@@ -600,6 +600,31 @@ text.talent-group-label {
 .talent-desc-text { font-size: 12px; color: var(--ink-soft); white-space: pre-line; }
 .talent-invalid-note { font-size: 12px; color: var(--unmet); font-weight: 600; margin-top: 2px; }
 
+/* ---------- Ability test: the roll, and the ladder read off it ----------- */
+/* One component on four surfaces (tooltip, sheet, Spells page, creation
+   cards), so a success tier reads the same wherever it is met. */
+.ability-test { margin-top: 6px; border-left: 2px solid var(--line-strong); padding-left: 9px; }
+.ability-test-roll {
+  display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap;
+  font-size: 12px; font-weight: 700; color: var(--ink-soft);
+}
+.att-lede { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-faint); font-weight: 700; }
+.att-pool {
+  font-size: 10.5px; font-weight: 700; color: var(--ink-soft);
+  padding: 1px 7px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line);
+}
+.ability-test-tiers { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+.ability-test-tier { display: flex; align-items: baseline; gap: 8px; font-size: 12px; color: var(--ink-soft); }
+.att-n {
+  flex: none; min-width: 26px; text-align: right;
+  font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.att-effect { white-space: pre-line; }
+
+/* In the tooltip it sits between the description and the requirements. */
+.tt-test { margin-bottom: 10px; font-size: 13px; }
+.tt-test .ability-test-tier, .tt-test .ability-test-roll { font-size: 12.5px; }
+
 /* Save data */
 .data-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn {
@@ -1277,6 +1302,13 @@ text.talent-group-label {
   .ps-entry-flavour { font-size: 8pt; font-style: italic; color: #444; margin: 1.5pt 0 0 18pt; white-space: pre-line; }
   .ps-entry-desc { font-size: 8pt; color: #111; margin: 1.5pt 0 0 18pt; white-space: pre-line; }
   .ps-entry-warn { font-size: 7.4pt; color: #b3261e; margin: 1.5pt 0 0 18pt; }
+
+  /* -- ability test (§4.10) -- */
+  .ps-test { margin: 2.5pt 0 0 18pt; border-left: 0.7pt solid #999; padding-left: 5pt; }
+  .ps-test-roll { font-size: 7.6pt; font-weight: 700; color: #111; display: flex; align-items: baseline; gap: 4pt; }
+  .ps-test-tier { display: flex; align-items: baseline; gap: 5pt; font-size: 8pt; color: #111; margin-top: 0.8pt; }
+  .ps-test-n { flex: none; min-width: 14pt; text-align: right; font-weight: 700; }
+  .ps-test-effect { white-space: pre-line; }
 
   a { color: inherit; text-decoration: none; }
 }

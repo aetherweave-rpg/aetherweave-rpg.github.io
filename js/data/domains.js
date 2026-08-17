@@ -91,7 +91,15 @@ window.DOMAINS = [
         id: "inve_arsenal",
         name: "Arsenal",
         flavour: "You are an expert at crafting improvised technological weaponry to deal with the dangers at hand. You can combine different materials at hand in order to come up with lethal contraptions.\n\nWhen you select this talent, pick two Material Knowledge talents for which you qualify.",
-        description: "You throw an improvised contraption at a point in range. It there deploys itself, affecting a {inve_arsenal:\"4y\"} circle around it. Roll Intelligence + a chosen crafting proficiency to determine the effectiveness.\n\nYou can add up to {inve_arsenal:\"2\">inve_complicated_contraption:\"3\"} of the below effects based on your Material Knowledge to this maneuver. The contraption affects all creatures and objects within range.\n\n{inve_material_knowledge_bouncy:\"Bouncy: When added to a contraption: the target point no longer needs to be in line of sight as long it can be reached from where it is {inve_arsenal:\"thrown\"}.\"}\n\n{inve_material_knowledge_sticky:\"Sticky: When added to a contraption, this material ensures the contraption moves around with whatever it is stuck on.\"}\n\n{inve_material_knowledge_explosive:\"Explosive: Deal 1 bludgeoning damage per success.\"}\n\n{inve_material_knowledge_sharp:\"Sharp: Deal 1 slashing damage per success.\"}\n\n{inve_material_knowledge_piercing:\"Piercing: Your contraption deals 1 piercing damage per success.\"}\n\n{inve_material_knowledge_incendiary:\"Incendiary: \nOn 1 success: deal 1 fire damage to all creatures and objects in range.\nOn 3+ successes: Deal 1 fire damage and inflict Burning #successes to all creatures and objects in range.\"}\n\n{inve_material_knowledge_electrifying:\"Electrifying: \nOn 1+ successes: Deal 1 lightning damage.\nOn 3+ successes: Deal 2 lightning damage.\nOn 4+ successes: Deal 2 lightning damage and inflict Stunned 1.\"}\n\n{inve_material_knowledge_smoking:\"Smoke: A blanket of smoke covers the affected area, blocking sight and obscuring everything within.\"}\n\n{cmba_alchemical_material_knowledge_acid:\"On 1 success: Deal 1 acid damage.\nOn 3+ successes: Deal 2 acid damage and inflict Corroded 1. \"}\n\n{inve_material_knowledge_cluster: \"When you use this material, halve the area of effect range of your contraption. You choose 3 distinct location in range to target with your contraption, and resolve each of them with a single roll.\"}\n\n{inve_material_knowledge_seeking:\"You choose which creatures and targets in range of your contraptions are affected.\"}",
+        description: "You throw an improvised contraption at a point in range. It there deploys itself, affecting a {inve_arsenal:\"4y\"} circle around it.\n\nYou can add up to {inve_arsenal:\"2\">inve_complicated_contraption:\"3\"} of the below effects based on your Material Knowledge to this maneuver. The contraption affects all creatures and objects within range.\n\n{inve_material_knowledge_bouncy:\"Bouncy: When added to a contraption: the target point no longer needs to be in line of sight as long it can be reached from where it is {inve_arsenal:\"thrown\"}.\"}\n\n{inve_material_knowledge_sticky:\"Sticky: When added to a contraption, this material ensures the contraption moves around with whatever it is stuck on.\"}\n\n{inve_material_knowledge_explosive:\"Explosive: Deal 1 bludgeoning damage per success.\"}\n\n{inve_material_knowledge_sharp:\"Sharp: Deal 1 slashing damage per success.\"}\n\n{inve_material_knowledge_piercing:\"Piercing: Your contraption deals 1 piercing damage per success.\"}\n\n{inve_material_knowledge_incendiary:\"Incendiary: \nOn 1 success: deal 1 fire damage to all creatures and objects in range.\nOn 3+ successes: Deal 1 fire damage and inflict Burning #successes to all creatures and objects in range.\"}\n\n{inve_material_knowledge_electrifying:\"Electrifying: \nOn 1+ successes: Deal 1 lightning damage.\nOn 3+ successes: Deal 2 lightning damage.\nOn 4+ successes: Deal 2 lightning damage and inflict Stunned 1.\"}\n\n{inve_material_knowledge_smoking:\"Smoke: A blanket of smoke covers the affected area, blocking sight and obscuring everything within.\"}\n\n{cmba_alchemical_material_knowledge_acid:\"On 1 success: Deal 1 acid damage.\nOn 3+ successes: Deal 2 acid damage and inflict Corroded 1. \"}\n\n{inve_material_knowledge_cluster: \"When you use this material, halve the area of effect range of your contraption. You choose 3 distinct location in range to target with your contraption, and resolve each of them with a single roll.\"}\n\n{inve_material_knowledge_seeking:\"You choose which creatures and targets in range of your contraptions are affected.\"}",
+        test: {
+          characteristic: "intelligence",
+          kind: "crafting",
+          skills: [
+            "Smithing", "Jewelcrafting", "Tailoring", "Leatherworking", "Fletching",
+            "Carpentry", "Clockwork", "Engineering", "Shipwright", "Alchemy"
+          ]
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -497,7 +505,13 @@ window.DOMAINS = [
         id: "inve_flamethrower",
         name: "Flamethrower",
         flavour: "You have constructed a simple flamethrower.",
-        description: "1+ successes: Deal fire damage equal to the number of successes\n3+ successes: Deal fire damage equal to the number of successes and inflict Burning 1\n5+ successes: Deal fire damage equal to the number of successes and inflict Burning 2",
+        test: {
+          tiers: [
+            { successes: 1, effect: "Deal fire damage equal to the number of successes" },
+            { successes: 3, effect: "Deal fire damage equal to the number of successes and inflict Burning 1" },
+            { successes: 5, effect: "Deal fire damage equal to the number of successes and inflict Burning 2" }
+          ]
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -983,7 +997,13 @@ window.DOMAINS = [
         id: "arms_knock_back",
         name: "Knock Back",
         flavour: "You use the blunt force of your weapon to knock back an enemy.",
-        description: "Requires wielding a bludgeoning weapon.\nMake an attack with your bludgeoning weapon. In addition to its normal effects it gains the following:\n1+ successes: Push the target 2y\n3+ successes: Push the target up to 4y",
+        description: "Requires wielding a bludgeoning weapon.\nMake an attack with your bludgeoning weapon. In addition to its normal effects it gains the following:",
+        test: {
+          tiers: [
+            { successes: 1, effect: "Push the target 2y" },
+            { successes: 3, effect: "Push the target up to 4y" }
+          ]
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -1256,7 +1276,12 @@ window.DOMAINS = [
       {
         id: "guil_sidestep",
         name: "Sidestep",
-        description: "After Dodging:\n1+ successes, move up to 2y",
+        description: "After Dodging:",
+        test: {
+          tiers: [
+            { successes: 1, effect: "Move up to 2y" }
+          ]
+        },
         pool: "combat",
         cost: 1,
         tier: 1,
@@ -1294,7 +1319,15 @@ window.DOMAINS = [
       {
         id: "lead_battle_cry",
         name: "Battle cry",
-        description: "Make a Presence + Intimidation test against all targeted enemies. \n\n2+ Reduce the next damage dealt by each enemy by 1.",
+        description: "Against all targeted enemies.",
+        test: {
+          characteristic: "presence",
+          kind: "noncombat",
+          skills: ["Intimidation"],
+          tiers: [
+            { successes: 2, effect: "Reduce the next damage dealt by each enemy by 1." }
+          ]
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -1324,7 +1357,16 @@ window.DOMAINS = [
         id: "lead_challenge",
         name: "Challenge",
         flavour: "You challenge any sapient foe, attracting their attention.",
-        description: "Make a presence + intimidation test against {lead_two_on_one:\"each\">lead_challenge:\"the\"} enemies Mental stat.\n2+ successes: for every two successes, damage dealt by the target against any target other than you is reduced by 1 for every 2 successes. This effect lasts until the end of the target's turn.\n4+ successes: Instead: this effect last until the end of the target's second turn.",
+        description: "Against {lead_two_on_one:\"each\">lead_challenge:\"the\"} enemies Mental stat.",
+        test: {
+          characteristic: "presence",
+          kind: "noncombat",
+          skills: ["Intimidation"],
+          tiers: [
+            { successes: 2, effect: "For every two successes, damage dealt by the target against any target other than you is reduced by 1. This effect lasts until the end of the target's turn." },
+            { successes: 4, effect: "Instead: this effect lasts until the end of the target's second turn." }
+          ]
+        },
         pool: "combat",
         cost: 1,
         tier: 1,
@@ -1374,7 +1416,15 @@ window.DOMAINS = [
       {
         id: "lead_alert_ally",
         name: "Alert Ally",
-        description: "When an ally is about to take damage from an enemy:\nMake an Awareness + Observe check.\n2+ successes: The target ally adds 1 die to their defense roll.\n{lead_insightful_alert:\"4+ successes: The target ally adds 2 dice to their defense roll.\"}",
+        description: "When an ally is about to take damage from an enemy.",
+        test: {
+          characteristic: "awareness",
+          kind: "noncombat",
+          skills: ["Observe"],
+          tiers: [
+            { successes: 2, effect: "The target ally adds 1 die to their defense roll." }
+          ]
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -1397,7 +1447,7 @@ window.DOMAINS = [
       {
         id: "lead_insightful_alert",
         name: "Insightful Alert",
-        description: "Alert gains the following effect:\n4+ successes: The target ally adds 2 dice to their defense roll.",
+        description: "Alert Ally gains a further success tier.",
         pool: "combat",
         cost: 1,
         tier: 1,
@@ -1405,7 +1455,13 @@ window.DOMAINS = [
         col: 0,
         ability: "modifier",
         modifies: {
-          lead_alert_ally: {}
+          lead_alert_ally: {
+            "test.tiers": {
+              merge: [
+                { successes: 4, effect: "The target ally adds 2 dice to their defense roll." }
+              ]
+            }
+          }
         },
         requires: {
           talents: [

@@ -13,6 +13,20 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-17",
+    entries: [
+      "Changed talent \"Challenge\" (tier 1) in the Leadership domain: description: \"Make a presence + intimidation test against {lead_two_on_one...\" -> \"Against {lead_two_on_one:\"each\">lead_challenge:\"the\"} enemie...\".",
+      "Changed talent \"Flamethrower\" (tier 1) in the Invention domain: description: \"1+ successes: Deal fire damage equal to the number of succes...\" -> (none).",
+      "Changed talent \"Battle cry\" (tier 1) in the Leadership domain: description: \"Make a Presence + Intimidation test against all targeted ene...\" -> \"Against all targeted enemies.\".",
+      "Changed talent \"Knock Back\" (tier 1) in the Arms domain: description: wording changed (both start \"Requires wielding a bludgeoning weapon....\").",
+      "Changed talent \"Sidestep\" (tier 1) in the Guile domain: description: \"After Dodging: 1+ successes, move up to 2y\" -> \"After Dodging:\".",
+      "Changed talent \"Alert Ally\" (tier 1) in the Leadership domain: description: \"When an ally is about to take damage from an enemy: Make an...\" -> \"When an ally is about to take damage from an enemy.\".",
+      "Changed talent \"Arsenal\" (tier 1) in the Invention domain: description: wording changed (both start \"You throw an improvised contraption at a...\").",
+      "Changed talent \"Insightful Alert\" (tier 1) in the Leadership domain: description: \"Alert gains the following effect: 4+ successes: The target a...\" -> \"Alert Ally gains a further success tier.\".",
+      "Changed spell \"Shockwave\" (tier 2) in the Aether domain: description: \"Make a Aether spellcasting check: 1+ successes: Deal 1 damag...\" -> \"Risk: For every rolled Risk, this spell also targets a rando...\".",
+    ],
+  },
+  {
     date: "2026-08-13",
     entries: [
       "Changed spell \"Levitate\" (tier 2) in the Aether domain: description: wording changed (both start \"Target ally can levitate 20 centimeters...\").",

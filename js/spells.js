@@ -163,7 +163,8 @@
     nameLine.appendChild(el("span", "spell-mana-tag" + (mana ? "" : " cantrip"), mana ? mana + " mana" : "cantrip"));
     nameLine.appendChild(el("span", "spell-status-tag " + (known ? "known" : status.met ? "learnable" : "locked"),
       known ? "Known" : status.met ? "Can learn" : "Locked"));
-    if (sp.description || sp.flavour) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
+    if (sp.description || sp.flavour || Engine.hasTest(sp, state))
+      nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
     info.appendChild(nameLine);
 
     info.appendChild(el("span", "talent-meta", [
@@ -184,10 +185,12 @@
         (known ? "⚠ requirements no longer met: " : "Needs ") + why));
     }
 
-    if (isOpen && (sp.flavour || sp.description)) {
+    if (isOpen && (sp.flavour || sp.description || Engine.hasTest(sp, state))) {
       var desc = el("div", "talent-desc");
       if (sp.flavour) desc.appendChild(el("div", "talent-flavour", Engine.resolveText(sp.flavour, state)));
       if (sp.description) desc.appendChild(el("div", "talent-desc-text", Engine.resolveText(sp.description, state)));
+      var testBlock = UI.renderTest(sp, state);
+      if (testBlock) desc.appendChild(testBlock);
       info.appendChild(desc);
     }
     row.appendChild(info);

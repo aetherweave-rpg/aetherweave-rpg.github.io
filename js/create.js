@@ -320,8 +320,10 @@
         card.appendChild(head);
         // Hooks resolve against the picks made so far — nothing is owned yet,
         // so a card normally reads as its un-modified base text (§4.7).
-        card.appendChild(el("span", "pick-desc",
-          Engine.resolveText(t.description, { talents: draft.ancestralTalents || [] })));
+        var cardState = { talents: draft.ancestralTalents || [] };
+        card.appendChild(el("span", "pick-desc", Engine.resolveText(t.description, cardState)));
+        var cardTest = UI.renderTest(t, cardState, { cls: "pick-test" });
+        if (cardTest) card.appendChild(cardTest);
         card.onclick = function () {
           var i = draft.ancestralTalents.indexOf(t.id);
           if (i >= 0) draft.ancestralTalents.splice(i, 1);
@@ -430,8 +432,10 @@
           head.appendChild(el("span", "pick-icon", t.icon || t.name.charAt(0)));
           head.appendChild(el("span", "pick-name", "Tier " + (t.tier || 1) + ": " + t.name));
           card2.appendChild(head);
-          card2.appendChild(el("span", "pick-desc",
-            Engine.resolveText(t.description, { talents: draft.ancestralTalents || [] })));
+          var card2State = { talents: draft.ancestralTalents || [] };
+          card2.appendChild(el("span", "pick-desc", Engine.resolveText(t.description, card2State)));
+          var card2Test = UI.renderTest(t, card2State, { cls: "pick-test" });
+          if (card2Test) card2.appendChild(card2Test);
           list.appendChild(card2);
         });
       sub.appendChild(list);
