@@ -9,6 +9,17 @@
 
 window.CHANGELOG_RULES = [
   {
+    date: "2026-08-18",
+    entries: [
+      "Changed: Test rolls",
+      "Changed: Skills",
+      "Changed: Combat",
+      "Changed: Attacking",
+      "Changed: NPC Defenses",
+      "Changed: Weapons",
+    ],
+  },
+  {
     date: "2026-08-13",
     entries: [
       "Changed: Rules for Rewards in combat"

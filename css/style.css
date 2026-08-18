@@ -548,7 +548,7 @@ text.talent-group-label {
    row's cells. Properties gets its own column (rather than stacking under
    the type select) so it has room to lay out instead of wrapping awkwardly. */
 .inv-weapon-head, .inv-weapon-cells {
-  display: grid; grid-template-columns: 158px 130px 1fr 130px 160px 110px; gap: 10px; align-items: center;
+  display: grid; grid-template-columns: 158px 130px 1fr 130px 160px 150px; gap: 10px; align-items: center;
 }
 .inv-weapon-head {
   font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-faint); font-weight: 600;
@@ -569,7 +569,11 @@ text.talent-group-label {
 }
 .inv-wtype-props { font-size: 11px; color: var(--ink-faint); }
 .inv-wield-fixed { font-size: 12.5px; color: var(--ink-faint); padding: 0 4px; }
-.inv-wdmg { font-size: 13px; white-space: nowrap; }
+/* Damage column: the type (a select where the category offers a choice), then
+   the formula for how much. Stacked, because both are the same answer. */
+.inv-wdmg-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.inv-wdmg-type { font-size: 13px; font-weight: 600; }
+.inv-wdmg { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
 /* Dice pool as pips, sized down to fit ten (the theoretical max: max
    characteristic + max proficiency tier) in a compact column. */
 .inv-dots { display: flex; flex-wrap: wrap; gap: 3px; }
@@ -613,6 +617,19 @@ text.talent-group-label {
   font-size: 10.5px; font-weight: 700; color: var(--ink-soft);
   padding: 1px 7px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line);
 }
+/* The defense the roll is aimed at. Read as an opponent's number rather than
+   the character's own, so it is tinted rather than sharing the pool's chip. */
+.att-vs {
+  font-size: 10.5px; font-weight: 700; color: var(--unmet);
+  padding: 1px 7px; border-radius: 999px;
+  background: color-mix(in srgb, var(--unmet) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--unmet) 35%, transparent);
+}
+/* A weapon attack: one row per matching weapon on the sheet, each with its own
+   pool, because the characteristic depends on which one is in hand. */
+.ability-test-weapons { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; }
+.ability-test-weapon { display: flex; align-items: baseline; gap: 7px; font-size: 12px; color: var(--ink-soft); }
+.atw-name { font-weight: 600; }
 .ability-test-tiers { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
 .ability-test-tier { display: flex; align-items: baseline; gap: 8px; font-size: 12px; color: var(--ink-soft); }
 .att-n {
@@ -1171,14 +1188,83 @@ text.talent-group-label {
   .ps-empty { color: #777; font-size: 8pt; }
 
   /* -- dots -- */
-  .ps-dots { display: inline-flex; gap: 2pt; flex: none; }
-  .ps-dot {
-    width: 5.2pt; height: 5.2pt; border-radius: 50%;
-    border: 0.6pt solid #000; background: #fff; display: inline-block;
+  /* One size for every dot on the sheet — characteristics, skills,
+     proficiencies, weapon dice pools. They read as one scale of measurement,
+     so they have to be one glyph; a context that can't fit them gets a wider
+     column, not smaller pips. Hence the derived column width below: it is
+     stated in terms of the dot rather than as a number that has to be
+     remembered when the dot changes.
+     ------------------------------------------------------------------------
+     These three numbers are chosen for the *rasteriser*, not by eye, and they
+     are why the exported PDF's dots stopped looking like a mix of sizes.
+     1pt = 4/3 CSS px, so at the 96dpi a viewer draws a PDF page at:
+         6pt dot = 8px · 2.25pt gap = 3px · 0.75pt ring = 1px
+     all whole pixels, which matters twice over. The 8px+3px advance puts every
+     dot in a row at the same sub-pixel phase, so they all round identically
+     instead of each landing differently (the old 5.2pt/2pt advance was 6.93px
+     + 2.67px, a different phase per dot — measurably 4px to 7px wide on the
+     same row). And a 1px ring survives rounding, where the old 0.6pt = 0.8px
+     ring dropped below a pixel: its top and bottom arcs antialiased away and
+     the dot printed as "( )" next to a solid neighbour. A ring also needs
+     diameter to stay open: at 7px a 1px ring reads lopsided and a 2px one
+     closes up, so 8px is the smallest that renders as a clean circle.
+     Verified by rendering the sheet to PDF and measuring the pixels at 96,
+     120, 150 and 200dpi — keep it whole-pixel if you change it. */
+  .ps-doc {
+    --ps-dot: 6pt;
+    --ps-dot-gap: 2.25pt;
+    /* Ten pips wide, plus slack — the longest row on the sheet is a weapon's
+       dice pool at MAX_CHARACTERISTIC + MAX_SKILL_TIER (print-sheet.js). */
+    --ps-dice-col: calc(10 * var(--ps-dot) + 9 * var(--ps-dot-gap) + 2pt);
   }
-  .ps-dot.on { background: #000; }
+  .ps-dots { display: inline-flex; gap: var(--ps-dot-gap); flex: none; }
 
-  /* -- vitals -- */
+  /* The dot is a *glyph*, not a CSS circle, and that is the fix for the thing
+     that made exported dots look like a mix of sizes. A small border-radius box
+     goes into the PDF as a vector path, and PDF readers rasterise those paths
+     without hinting: measured off the real sheet at 96dpi, one row of supposedly
+     identical dots came out as ink runs of 5px, then 4px, each with a 1px hole
+     punched through it, so a filled dot could read as half empty next to a solid
+     one. It is not the border, the fill, or the flex row — a lone dot with no
+     siblings does it too, and so does a plain square, and so does an <svg>
+     <circle>. A glyph goes down a different path entirely: the font rasteriser
+     grid-fits it, and the same measurement gives a 6px run, ten times out of
+     ten, at every sub-pixel offset. Confirmed against two renderers.
+     The span keeps a fixed box so the row geometry above still holds exactly;
+     only the drawing changes hands. ● and ○ are Geometric Shapes, present in
+     the symbol fonts every desktop platform ships. */
+  .ps-dot {
+    width: var(--ps-dot); height: var(--ps-dot);
+    display: inline-flex; align-items: center; justify-content: center;
+    overflow: visible; color: #000;
+    font-family: "Segoe UI Symbol", "Apple Symbols", "Noto Sans Symbols 2", sans-serif;
+    /* ● is drawn at about 3/4 of the em in those faces, so this lands the disc
+       at exactly --ps-dot across. */
+    font-size: calc(var(--ps-dot) * 4 / 3);
+    line-height: 1;
+  }
+  .ps-dot::before { content: "\25CB"; }       /* ○ empty */
+  .ps-dot.on::before { content: "\25CF"; }    /* ● filled */
+
+  /* -- vitals & characteristics -- */
+  /* Two headed sections on one row rather than one heading over all of it:
+     Vitals takes only the width its two pools need, the rule marks where it
+     ends, and Characteristics spreads across the rest. */
+  .ps-toprow {
+    display: flex; align-items: stretch; gap: 10pt;
+    margin-bottom: 7pt; break-inside: avoid; page-break-inside: avoid;
+  }
+  .ps-toprow > .ps-block { margin-bottom: 0; display: flex; flex-direction: column; }
+  /* Pools and characteristic boxes sit on one line, so they have to be one
+     height. Splitting them into two sections took away the shared flex row
+     that used to do that, so each section's body claims the leftover height
+     instead and its boxes stretch into it. */
+  .ps-toprow > .ps-block > :last-child { flex: 1; }
+  .ps-vitals-block { flex: none; }
+  .ps-chars-block {
+    flex: 1; min-width: 0;
+    border-left: 0.6pt solid #999; padding-left: 10pt;
+  }
   .ps-vitals { display: flex; align-items: stretch; gap: 7pt; }
   .ps-pool, .ps-char {
     border: 0.6pt solid #666; border-radius: 2pt; padding: 3pt 6pt;
@@ -1189,7 +1275,7 @@ text.talent-group-label {
   }
   .ps-pool-value { font-size: 11pt; font-weight: 700; font-variant-numeric: tabular-nums; }
   .ps-pool-sep, .ps-pool-max { color: #555; font-weight: 400; }
-  .ps-chars { display: flex; gap: 7pt; flex: 1; }
+  .ps-chars { display: flex; gap: 7pt; }
   .ps-char { flex: 1; }
   .ps-char-value { font-size: 9pt; font-weight: 700; }
 
@@ -1258,7 +1344,8 @@ text.talent-group-label {
      and every row. Properties gets its own column (rather than stacking
      under the type label) so it has room to lay out on its own. */
   .ps-inv-whead, .ps-inv-wrow {
-    display: grid; grid-template-columns: 48pt 58pt 1fr 56pt 70pt 58pt;
+    display: grid;
+    grid-template-columns: 48pt 58pt 1fr 56pt var(--ps-dice-col) 58pt;
     column-gap: 6pt; align-items: center;
   }
   .ps-inv-whead {
@@ -1274,11 +1361,6 @@ text.talent-group-label {
   .ps-inv-wname { font-size: 7.6pt; }
   .ps-inv-wwield { font-size: 7pt; color: #444; }
   .ps-inv-wdmg { font-size: 7pt; }
-  /* Dice pool as pips (same language as characteristics/skills), sized down
-     to fit ten of them — the theoretical max characteristic + proficiency —
-     in one row of a compact column. */
-  .ps-inv-wdice .ps-dot { width: 4.6pt; height: 4.6pt; }
-  .ps-inv-wdice .ps-dots { gap: 1.3pt; }
 
   .ps-inv-blank-row .ps-inv-wtype, .ps-inv-blank-row .ps-inv-wname,
   .ps-inv-blank-row .ps-inv-wwield, .ps-inv-blank-row .ps-inv-wdmg {
@@ -1306,6 +1388,9 @@ text.talent-group-label {
   /* -- ability test (§4.10) -- */
   .ps-test { margin: 2.5pt 0 0 18pt; border-left: 0.7pt solid #999; padding-left: 5pt; }
   .ps-test-roll { font-size: 7.6pt; font-weight: 700; color: #111; display: flex; align-items: baseline; gap: 4pt; }
+  .ps-vs { border-color: #b3261e; color: #b3261e; }
+  .ps-test-weapon { display: flex; align-items: baseline; gap: 4pt; font-size: 7.6pt; color: #111; margin-top: 0.8pt; }
+  .ps-test-weapon-name { font-weight: 600; }
   .ps-test-tier { display: flex; align-items: baseline; gap: 5pt; font-size: 8pt; color: #111; margin-top: 0.8pt; }
   .ps-test-n { flex: none; min-width: 14pt; text-align: right; font-weight: 700; }
   .ps-test-effect { white-space: pre-line; }

@@ -19,7 +19,7 @@ window.COMBINATIONS = [
         name: "Elemental shot",
         icon: "🔆",
         flavour: "You charge an arrow with elemental energy before firing it.",
-        description: "Your next basic attack using an arrow now deals {arel_flaming_arrow:\"fire\"|arel_frost_arrow:\"ice\"|arel_lightning_arrow:\"lightning\"} damage.",
+        description: "Your next basic attack using an arrow now deals {arel_flaming_arrow:\"fire\"|arel_frost_arrow:\"ice\"|arel_lightning_arrow:\"lightning\"} damage. It targets the corresponding defense.",
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -30,7 +30,7 @@ window.COMBINATIONS = [
         castingTime: "minor_action",
         range: "weapon",
         target: [
-          "enemy"
+          "object"
         ],
         duration: "instantaneous",
         grants: {

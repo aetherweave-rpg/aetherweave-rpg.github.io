@@ -72,7 +72,30 @@ window.DOMAINS = [
       {
         id: "inve_improvised_gadget",
         name: "Improvised gadget",
-        description: "Make a crafting check threshold 1: relevant to the gadget you make: if succesful, add a die to the next test for which you use the gadget.",
+        flavour: "You spent some time crafting the perfect gadget for the challenge ahead of you.",
+        test: {
+          characteristic: "intelligence",
+          kind: "crafting",
+          skills: [
+            "Jewelcrafting",
+            "Tailoring",
+            "Leatherworking",
+            "Fletching",
+            "Carpentry",
+            "Clockwork",
+            "Engineering",
+            "Shipwright",
+            "Alchemy",
+            "Smithing"
+          ],
+          vs: "none",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Add a die to the next test for which you use the gadget."
+            }
+          ]
+        },
         pool: "noncombat",
         cost: 2,
         tier: 1,
@@ -96,8 +119,16 @@ window.DOMAINS = [
           characteristic: "intelligence",
           kind: "crafting",
           skills: [
-            "Smithing", "Jewelcrafting", "Tailoring", "Leatherworking", "Fletching",
-            "Carpentry", "Clockwork", "Engineering", "Shipwright", "Alchemy"
+            "Smithing",
+            "Jewelcrafting",
+            "Tailoring",
+            "Leatherworking",
+            "Fletching",
+            "Carpentry",
+            "Clockwork",
+            "Engineering",
+            "Shipwright",
+            "Alchemy"
           ]
         },
         pool: "combat",
@@ -507,9 +538,18 @@ window.DOMAINS = [
         flavour: "You have constructed a simple flamethrower.",
         test: {
           tiers: [
-            { successes: 1, effect: "Deal fire damage equal to the number of successes" },
-            { successes: 3, effect: "Deal fire damage equal to the number of successes and inflict Burning 1" },
-            { successes: 5, effect: "Deal fire damage equal to the number of successes and inflict Burning 2" }
+            {
+              successes: 1,
+              effect: "Deal fire damage equal to the number of successes"
+            },
+            {
+              successes: 3,
+              effect: "Deal fire damage equal to the number of successes and inflict Burning 1"
+            },
+            {
+              successes: 5,
+              effect: "Deal fire damage equal to the number of successes and inflict Burning 2"
+            }
           ]
         },
         pool: "combat",
@@ -627,6 +667,18 @@ window.DOMAINS = [
         id: "arms_flurry",
         name: "Flurry",
         description: "Requires dual wielding weapons:\nMake 2 single-handed attacks. {arms_coordinated_flurry: \"Combine the damage of both attacks\" > arms_flurry:\"Each attack deals damage separately\"}",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Light Blades",
+            "Heavy Blades",
+            "Axes",
+            "Maces",
+            "Whips"
+          ],
+          vs: "weapon"
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -645,7 +697,22 @@ window.DOMAINS = [
         id: "arms_ricochet",
         name: "Ricochet",
         flavour: "You can hit multiple enemies with a single throw of your weapon.",
-        description: "Make an attack with your throwing weapon against an enemy in weapon range. If successful, you can make another attack against an enemy in range. {arms_advanced_ricochet:\"If this additional attack is successful, make another attack against a third enemy in range.\">arms_ricochet:\"\"}\n\nRisk: If a Risk is rolled, no further attacks are made.\nReward: If least 1 Reward is rolled the next risk effect is cancelled.",
+        description: "Risk: If a Risk is rolled, no further attacks are made.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Light Throwing Weapons",
+            "Heavy Throwing Weapons"
+          ],
+          vs: "weapon",
+          tiers: [
+            {
+              successes: 1,
+              effect: "make another attack against an enemy in range. {arms_advanced_ricochet:\"If this additional attack has at least 1 success, make another attack against a third enemy in range.\">arms_ricochet:\"\"}"
+            }
+          ]
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -710,7 +777,15 @@ window.DOMAINS = [
       {
         id: "arms_hail_of_arrows",
         name: "Hail of Arrows",
-        description: "Make an attack with a bow, rolling 2 extra dice. Split the however you wish among as many enemies as desired.",
+        description: "Roll 2 extra dice. Split the successes however you wish among as many enemies as desired.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Bows"
+          ],
+          vs: "piercing"
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -734,7 +809,10 @@ window.DOMAINS = [
         id: "arms_riposte",
         name: "Riposte",
         flavour: "You can exploit the openings an opponent leaves when they attack.",
-        description: "When fully parrying an attack: deal damage to the attacking enemy equal to the number of successes that are left after damage is reduced to 0.",
+        description: "When fully deflecting an attack: deal damage to the attacking enemy equal to the number of successes that are left after damage is reduced to 0.",
+        test: {
+          vs: "weapon"
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -752,7 +830,16 @@ window.DOMAINS = [
         id: "arms_cleave",
         name: "Cleave",
         flavour: "You can hit multiple enemies with your sweeping attacks.",
-        description: "Requires a two-handed blade or axe:\nRoll an attack with your weapon against {arms_whirlwind:\"all\">arms_cleave:\"up to {arms_greater_cleave:\"3\">arms_cleave:\"2\"}\"} enemies within {arms_whirlwind:\"a circle\">arms_cleave:\"an arc\"}.",
+        description: "Requires a two-handed blade or axe:\nAgainst {arms_whirlwind:\"all\">arms_cleave:\"up to {arms_greater_cleave:\"3\">arms_cleave:\"2\"}\"} enemies within {arms_whirlwind:\"a circle\">arms_cleave:\"an arc\"}.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Heavy Blades",
+            "Axes"
+          ],
+          vs: "slashing"
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -860,7 +947,15 @@ window.DOMAINS = [
         id: "arms_piercing_bolt",
         name: "Piercing Bolt",
         flavour: "Your bolts can pierce even the toughest of scales and the hardest armor.",
-        description: "Make an attack with your crossbow: Ignore {arms_penetrating_bolt:\"all\">arms_piercing_bolt:\"up to 2\"} physical armor during this attack.",
+        description: "Ignore {arms_penetrating_bolt:\"all\">arms_piercing_bolt:\"up to 2\"} physical armor during this attack.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Crossbows"
+          ],
+          vs: "piercing"
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -924,7 +1019,15 @@ window.DOMAINS = [
         id: "arms_lined_up_shot",
         name: "Lined Up Shot",
         flavour: "Your perfect shot hits multiple targets in a row, piercing each one.",
-        description: "Make a ranged weapon attack against all enemies in a 20y long, 2y wide line.",
+        description: "Perform an attack against each enemy within the line of effect",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Crossbows"
+          ],
+          vs: "piercing"
+        },
         pool: "combat",
         cost: 1,
         tier: 2,
@@ -934,11 +1037,14 @@ window.DOMAINS = [
         uses: 2,
         castingTime: "action",
         range: "weapon",
+        target: [
+          "enemy"
+        ],
         duration: "instantaneous",
         aoe: {
           shape: "line",
           origin: "self",
-          size: 1,
+          size: 20,
           width: 2
         },
         requires: {
@@ -951,7 +1057,15 @@ window.DOMAINS = [
         id: "arms_smash",
         name: "Smash",
         flavour: "You can crush multiple smaller enemies with but a single stroke of your mace.",
-        description: "Requires wielding a mace:\nMake an attack with the mace, this attack deals {arms_pulverize:\"triple\">arms_smash:\"double\"} damage to non-flying swarms.",
+        description: "The attack deals {arms_pulverize:\"triple\">arms_smash:\"double\"} damage to non-flying swarms.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Maces"
+          ],
+          vs: "bludgeoning"
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -997,11 +1111,24 @@ window.DOMAINS = [
         id: "arms_knock_back",
         name: "Knock Back",
         flavour: "You use the blunt force of your weapon to knock back an enemy.",
-        description: "Requires wielding a bludgeoning weapon.\nMake an attack with your bludgeoning weapon. In addition to its normal effects it gains the following:",
+        description: "In addition to the attack's normal effects it gains the following:",
         test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Maces",
+            "Staves"
+          ],
+          vs: "bludgeoning",
           tiers: [
-            { successes: 1, effect: "Push the target 2y" },
-            { successes: 3, effect: "Push the target up to 4y" }
+            {
+              successes: 1,
+              effect: "Push the target 2y"
+            },
+            {
+              successes: 3,
+              effect: "Push the target up to 4y"
+            }
           ]
         },
         pool: "combat",
@@ -1142,8 +1269,8 @@ window.DOMAINS = [
       {
         id: "arms_charge",
         name: "Charge",
-        flavour: "You can rush in and attack",
-        description: "Move up to your movement speed and make a melee attack{arms_complex_charge:\"or use a 2 action melee maneuver\"}.",
+        flavour: "You can rush in and attack.",
+        description: "Move up to your movement speed, then make an attack.{arms_complex_charge:\", or use a 2 action melee maneuver\"}.",
         pool: "combat",
         cost: 1,
         tier: 1,
@@ -1153,9 +1280,6 @@ window.DOMAINS = [
         uses: 1,
         castingTime: "action",
         range: "touch",
-        target: [
-          "enemy"
-        ],
         duration: "instantaneous"
       },
       {
@@ -1210,7 +1334,20 @@ window.DOMAINS = [
       {
         id: "guil_pocket_sand",
         name: "Pocket sand",
-        description: "Make a throwing weapon cunning test. If successful add 2 dice to your next dodge or evade test against this enemy",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Light Throwing Weapons"
+          ],
+          vs: "fortitude",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Add 2 dice to your next deflect, dodge, or evade test against this enemy"
+            }
+          ]
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -1223,7 +1360,10 @@ window.DOMAINS = [
         target: [
           "enemy"
         ],
-        duration: "indefinite"
+        duration: {
+          value: 2,
+          unit: "rounds"
+        }
       },
       {
         id: "guil_exploit_weakness",
@@ -1279,7 +1419,10 @@ window.DOMAINS = [
         description: "After Dodging:",
         test: {
           tiers: [
-            { successes: 1, effect: "Move up to 2y" }
+            {
+              successes: 1,
+              effect: "Move up to 2y"
+            }
           ]
         },
         pool: "combat",
@@ -1323,9 +1466,15 @@ window.DOMAINS = [
         test: {
           characteristic: "presence",
           kind: "noncombat",
-          skills: ["Intimidation"],
+          skills: [
+            "Intimidation"
+          ],
+          vs: "mental",
           tiers: [
-            { successes: 2, effect: "Reduce the next damage dealt by each enemy by 1." }
+            {
+              successes: 2,
+              effect: "Reduce the next damage dealt by each enemy by 1."
+            }
           ]
         },
         pool: "combat",
@@ -1361,10 +1510,19 @@ window.DOMAINS = [
         test: {
           characteristic: "presence",
           kind: "noncombat",
-          skills: ["Intimidation"],
+          skills: [
+            "Intimidation"
+          ],
+          vs: "mental",
           tiers: [
-            { successes: 2, effect: "For every two successes, damage dealt by the target against any target other than you is reduced by 1. This effect lasts until the end of the target's turn." },
-            { successes: 4, effect: "Instead: this effect lasts until the end of the target's second turn." }
+            {
+              successes: 2,
+              effect: "For every two successes, damage dealt by the target against any target other than you is reduced by 1. This effect lasts until the end of the target's turn."
+            },
+            {
+              successes: 4,
+              effect: "Instead: this effect lasts until the end of the target's second turn."
+            }
           ]
         },
         pool: "combat",
@@ -1420,9 +1578,14 @@ window.DOMAINS = [
         test: {
           characteristic: "awareness",
           kind: "noncombat",
-          skills: ["Observe"],
+          skills: [
+            "Observe"
+          ],
           tiers: [
-            { successes: 2, effect: "The target ally adds 1 die to their defense roll." }
+            {
+              successes: 2,
+              effect: "The target ally adds 1 die to their defense roll."
+            }
           ]
         },
         pool: "combat",
@@ -1458,7 +1621,10 @@ window.DOMAINS = [
           lead_alert_ally: {
             "test.tiers": {
               merge: [
-                { successes: 4, effect: "The target ally adds 2 dice to their defense roll." }
+                {
+                  successes: 4,
+                  effect: "The target ally adds 2 dice to their defense roll."
+                }
               ]
             }
           }
@@ -1485,7 +1651,21 @@ window.DOMAINS = [
       {
         id: "alch_fire_bomb",
         name: "Fire bomb",
-        description: "Choose a point within 10m: Make a throwing weapon test against all enemies' unique Fire thresholds. Deal fire damage equal to the number of succes past the threshold and inflict Burning 2.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Light Throwing Weapons",
+            "Heavy Throwing Weapons"
+          ],
+          vs: "fire",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal fire damage equal to the successes and inflict Burning 2 to all enemies in the area of effect."
+            }
+          ]
+        },
         pool: "combat",
         cost: 2,
         tier: 1,
@@ -1496,7 +1676,7 @@ window.DOMAINS = [
         castingTime: "action",
         range: 10,
         target: [
-          "enemy"
+          "point"
         ],
         duration: "instantaneous",
         aoe: {

@@ -109,7 +109,31 @@ window.SOURCES = [
         tier: 1,
         name: "Musical Weaving",
         icon: "",
-        description: "As a minor action you can use your music to manipulate the working of the world around you. Choose one of the following each time you use this ability:\n- Heal an ally for 1 hitpoints\n- Give an ally 2 dice on their next test\n- Deal 1 damage to an enemy\nPerform a Presence + Musical Instrument test of difficulty 2, the ability succeeds if you pass.",
+        flavour: "You can use your music to manipulate the working of the world around you.",
+        description: "",
+        test: {
+          characteristic: "presence",
+          kind: "instrument",
+          skills: [
+            "Lute",
+            "Flute",
+            "Drums",
+            "Fiddle",
+            "Harp",
+            "Horn",
+            "Lyre",
+            "Bagpipes",
+            "Hurdy-gurdy",
+            "Voice"
+          ],
+          vs: "mental",
+          tiers: [
+            {
+              successes: 2,
+              effect: "Choose one: \nheal an ally for 1 hitpoint, \ngive an ally 2 dice on their next test, \ndeal 1 damage to an enemy."
+            }
+          ]
+        },
         ability: "maneuver",
         uses: 4,
         castingTime: "minor_action",
@@ -152,7 +176,7 @@ window.SOURCES = [
     name: "Freak accident",
     icon: "",
     accent: "#5b6fa5",
-    flavour: "Due to some weird happenstance you've been granted unstable,  but useful powers. Some aspects you've skillfully managed to master, but others remain unpredictable. ",
+    flavour: "Due to some weird happenstance you've been granted unstable,  but useful powers. Some aspects you've skillfully managed to master, but others remain unpredictable.",
     benefit: "—",
     characteristic: "presence",
     talents: [
@@ -160,16 +184,14 @@ window.SOURCES = [
         tier: 1,
         name: "Unstable ability",
         icon: "",
-        description: "At the start of each scene, roll a d6. For that scene,  you can use the ability associated with that roll once. For spell tests you add a profiency equal to the tier of play\n1: You gain 2 dice on your next Body test\n2: You can cast the Flame Tier 1 elemental spell\n3: You can cast the Chill Tier 1 elemental spell\n4: You can cast the Darken Tier 1 Shadow spell\n5: You can cast the Alight Tier 1 Light spell\n6: You can heal target ally for 1 hp in touch range",
+        description: "At the start of each scene, roll a d6. For that scene, you can use the ability associated with that roll once. For spell tests you add a profiency equal to the tier of play.\n1: You gain 2 dice on your next Body test\n2: You can cast the Flame Tier 1 elemental spell\n3: You can cast the Chill Tier 1 elemental spell\n4: You can cast the Darken Tier 1 Shadow spell\n5: You can cast the Alight Tier 1 Light spell\n6: You can heal target ally for 1 hp in touch range",
         ability: "maneuver",
         uses: 1,
         usesPer: "scene",
-        castingTime: "action",
-        range: 10,
+        castingTime: "reaction",
+        range: "touch",
         target: [
-          "self",
-          "ally",
-          "enemy"
+          "self"
         ],
         duration: "instantaneous"
       }

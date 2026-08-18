@@ -259,6 +259,22 @@
   // Dice pool for a weapon's attack test: its characteristic score + the
   // character's trained tier in that category (0 if untrained) — talent and
   // circumstantial bonuses are situational and not shown on the static sheet.
+  // The defenses a category's weapons can be aimed at. Several categories offer
+  // more than one (a light blade cuts or thrusts), so the specific weapon on the
+  // sheet carries the choice — see weaponDamageType.
+  function weaponDamageTypes(categoryId) {
+    var cat = weaponCategoryById(categoryId);
+    return (cat && cat.damage && cat.damage.length) ? cat.damage.slice() : [];
+  }
+  // What one carried weapon actually deals. Falls back to the category's first
+  // option, so a weapon saved before the field existed still answers, and a
+  // choice that stops being legal (the category was changed under it) does not
+  // linger as a defense the weapon cannot deal.
+  function weaponDamageType(weapon) {
+    var options = weaponDamageTypes(weapon && weapon.category);
+    if (!options.length) return null;
+    return options.indexOf(weapon.damage) >= 0 ? weapon.damage : options[0];
+  }
   function weaponDicePool(state, categoryId) {
     var cat = weaponCategoryById(categoryId);
     if (!cat) return 0;
@@ -266,11 +282,12 @@
     return charScore + profTier(state, cat.label);
   }
   // Damage note for a chosen wielding: two-handed or dual-wielding adds +1 to
-  // the number of successes rolled (main.tex "Attacking"). Spelled out with a
-  // literal "#" rather than a filled-in number: the actual count depends on
-  // the roll, so this is a formula to read at the table, not a precomputed value.
+  // the successes LEFT once the target's defense has been subtracted (main.tex
+  // "Attacking"), not to the number rolled. Spelled out with a literal "#"
+  // rather than a filled-in number: the count depends on the roll and on a
+  // defense only the GM knows, so this is a formula to read at the table.
   function weaponDamageNote(wielding) {
-    return (wielding === "2h" || wielding === "dual") ? "1 + # successes" : "# successes";
+    return (wielding === "2h" || wielding === "dual") ? "1 + # successes left" : "# successes left";
   }
 
   // ---- Tree-access surcharge ---------------------------------------------
@@ -819,11 +836,27 @@
       return;
     }
     var charKeys = (CONFIG.CHARACTERISTICS || []).reduce(function (m, c) { m[c.key] = true; return m; }, {});
-    var namesRoll = test.characteristic !== undefined || test.kind !== undefined || test.skills !== undefined;
-    if (namesRoll) {
-      if (!charKeys[test.characteristic])
+    // `kind` and `skills` normally exist to describe a roll, so they travel with
+    // a characteristic. The one exception is a `vs: "weapon"` ability that makes
+    // no roll of its own: there they scope which weapons the defense could come
+    // from, and demanding a characteristic would force a roll that isn't real.
+    // A bare `vs: "weapon"` with neither is legal and means "any weapon in
+    // hand", so it triggers none of the roll checks below.
+    var scopesWeapons = test.vs === WEAPON_ROLL &&
+      (test.kind !== undefined || test.skills !== undefined);
+    var namesRoll = test.characteristic !== undefined ||
+      (!scopesWeapons && test.vs !== WEAPON_ROLL && (test.kind !== undefined || test.skills !== undefined));
+    if (namesRoll || scopesWeapons) {
+      var wielded = test.characteristic === WEAPON_ROLL;
+      if (namesRoll && !wielded && !charKeys[test.characteristic])
         problems.push(label + ": test.characteristic must be one of " + Object.keys(charKeys).join(", ") +
-          " (got " + JSON.stringify(test.characteristic) + ")");
+          ", or '" + WEAPON_ROLL + "' for a wielded-weapon attack (got " + JSON.stringify(test.characteristic) + ")");
+      // The sentinel resolves through WEAPON_CATEGORIES, so the names under it
+      // have to be weapon categories — any other category would never match a
+      // carried weapon, and the roll would silently show no pool forever.
+      if (wielded && test.kind !== "weapon")
+        problems.push(label + ": test.characteristic '" + WEAPON_ROLL + "' needs test.kind 'weapon' (got " +
+          JSON.stringify(test.kind) + ")");
       if (testKinds().indexOf(test.kind) < 0) {
         problems.push(label + ": test.kind must be one of " + testKinds().join(", ") +
           " (got " + JSON.stringify(test.kind) + ")");
@@ -844,9 +877,35 @@
         });
       }
     }
+    if (test.vs !== undefined && test.vs !== NO_DEFENSE && test.vs !== WEAPON_ROLL && !defenseById(test.vs))
+      problems.push(label + ": test.vs must be a defense id (" +
+        defenses().map(function (x) { return x.id; }).join(", ") + "), '" + WEAPON_ROLL +
+        "' for whatever the wielded weapon deals, or '" + NO_DEFENSE +
+        "' (got " + JSON.stringify(test.vs) + ")");
+    // `vs: "weapon"` may stand alone. A skills list narrows which weapons the
+    // defense could come from ("your throwing weapon"); leaving it off means
+    // any weapon in hand, which is what Riposte needs — you deflect with
+    // whatever you are holding, and enumerating every category to say so would
+    // be bureaucracy rather than content. Only the *category* has to agree when
+    // a list is given at all.
+    if (test.vs === WEAPON_ROLL && test.kind !== undefined && test.kind !== "weapon")
+      problems.push(label + ": test.vs '" + WEAPON_ROLL + "' needs test.kind 'weapon' when a skills list is given (got " +
+        JSON.stringify(test.kind) + ")");
     if (test.tiers !== undefined) validateTierRows(problems, label + ": test", test.tiers);
-    if (!namesRoll && !(test.tiers && test.tiers.length))
-      problems.push(label + ": test block is empty — give it a roll, success tiers, or drop it");
+    if (!namesRoll && !(test.tiers && test.tiers.length) && test.vs === undefined)
+      problems.push(label + ": test block is empty — give it a roll, success tiers, a targeted defense, or drop it");
+  }
+
+  // Anything aimed at an enemy has to say which defense it is aimed at, because
+  // that value is what the GM subtracts from the successes (§4.10). "none" is a
+  // legitimate answer for an effect with nothing to beat; leaving the field out
+  // is not an answer at all, so the two are reported differently.
+  function validateTargetedDefense(problems, label, obj) {
+    if (((obj.target || []).indexOf("enemy")) < 0) return;
+    var test = testOf(obj);
+    if (!test || test.vs === undefined)
+      problems.push(label + ": targets an enemy but names no defense — set test.vs (or '" +
+        NO_DEFENSE + "' if the effect has none)");
   }
 
   // One `modifies` operation whose field is part of the test block. Reuses the
@@ -856,7 +915,8 @@
     if (field === "test.tiers") {
       validateTierRows(problems, label + ": '" + op + "' on test.tiers", value);
     } else if (field === "test.characteristic") {
-      var known = (CONFIG.CHARACTERISTICS || []).some(function (c) { return c.key === value; });
+      var known = value === WEAPON_ROLL ||
+        (CONFIG.CHARACTERISTICS || []).some(function (c) { return c.key === value; });
       if (!known) problems.push(label + ": 'test.characteristic' set to unknown characteristic " + JSON.stringify(value));
     } else if (field === "test.kind") {
       if (testKinds().indexOf(value) < 0)
@@ -865,6 +925,9 @@
     } else if (field === "test.skills") {
       if (!Array.isArray(value) || !value.length || value.some(function (n) { return typeof n !== "string" || !n.trim(); }))
         problems.push(label + ": 'test.skills' must be set to a non-empty list of skill/proficiency names");
+    } else if (field === "test.vs") {
+      if (value !== NO_DEFENSE && value !== WEAPON_ROLL && !defenseById(value))
+        problems.push(label + ": 'test.vs' set to unknown defense " + JSON.stringify(value));
     }
   }
 
@@ -912,6 +975,7 @@
         problems.push(t.id + ": tier " + t.tier + " out of range 1.." + CONFIG.TIERS.length);
       if (t.ability === "maneuver") validateCastableFields(problems, t.id, t);
       validateTestBlock(problems, t.id, t);
+      validateTargetedDefense(problems, t.id, t);
 
       var reqs = t.requires || {};
       var prereqs = (reqs.talents || []).concat(reqs.anyTalents || []);
@@ -1232,6 +1296,20 @@
       });
     });
 
+    // Every weapon category has to name the damage it can deal, or a `test.vs`
+    // that defers to the wielded weapon has nothing to resolve to and the
+    // inventory's damage picker comes up empty.
+    weaponCategories().forEach(function (cat) {
+      if (!Array.isArray(cat.damage) || !cat.damage.length) {
+        problems.push("weapon category '" + cat.id + "': needs a non-empty `damage` list of defense ids");
+        return;
+      }
+      cat.damage.forEach(function (d) {
+        if (!defenseById(d))
+          problems.push("weapon category '" + cat.id + "': unknown damage type '" + d + "' (must be a defense id)");
+      });
+    });
+
     // A tree's width has no upper bound — a wide tree scrolls sideways rather
     // than squeezing its nodes — but it still has to be a whole number of
     // columns, or every `col` in it is checked against nonsense.
@@ -1299,6 +1377,7 @@
         if (st.ability === "maneuver")
           validateCastableFields(problems, "source '" + src.id + "' tier-" + tier + " talent", st);
         validateTestBlock(problems, "source '" + src.id + "' tier-" + tier + " talent", st);
+        validateTargetedDefense(problems, "source '" + src.id + "' tier-" + tier + " talent", st);
       });
     });
     (window.ANCESTRIES || []).forEach(function (a) {
@@ -1330,6 +1409,7 @@
           problems.push("spell '" + sp.id + "': cost must be a non-negative number");
         validateCastableFields(problems, "spell '" + sp.id + "'", sp);
         validateTestBlock(problems, "spell '" + sp.id + "'", sp);
+        validateTargetedDefense(problems, "spell '" + sp.id + "'", sp);
 
         // Spells are placed in their domain's TALENT grid, sharing the row/col
         // space with its talents (§4.6) — the collision, single-tier-per-row
@@ -2190,7 +2270,7 @@
     // The test block is reachable a part at a time, never as a whole (§4.10):
     // a plain `test: { set: … }` would silently drop the ladder every time an
     // author only meant to change which characteristic is rolled.
-    "test.characteristic": 1, "test.kind": 1, "test.skills": 1, "test.tiers": 1,
+    "test.characteristic": 1, "test.kind": 1, "test.skills": 1, "test.tiers": 1, "test.vs": 1,
   };
   // Deliberately NOT modifiable, and each for a specific reason:
   //   id/row/col   — identity and layout; a moving node breaks the drawn lines
@@ -2473,7 +2553,41 @@
   // hang off whatever roll the text refers to: Riposte reads the successes
   // left over from the parry it followed, and a modifier's tiers describe the
   // roll of the ability it modifies.
+  //
+  // `characteristic: "weapon"` is the one value that is not a characteristic
+  // key: an attack maneuver names a CLASS of weapon, and which characteristic
+  // it rolls falls out of whichever one the character is wielding — Light
+  // Throwing rolls Cunning where Heavy Throwing rolls Body, so no single
+  // authored key is right for "your throwing weapon". It resolves against the
+  // sheet's inventory through `WEAPON_CATEGORIES`, reusing exactly the
+  // arithmetic `weaponDicePool` already does for a carried weapon.
+  // `vs` names the defense the roll is aimed at: the GM subtracts that value
+  // from the successes the player states, and the ladder is read against what
+  // is left. "none" is an authored value meaning the effect genuinely has no
+  // defense to beat, and is deliberately different from the field being absent
+  // (which the validator treats as unanswered on anything targeting an enemy).
+  //
+  // `vs: "weapon"` is the same deferral one level along: a category can deal
+  // more than one kind of damage (a light blade cuts or thrusts, a heavy
+  // throwing weapon may be a javelin, a hand axe or a hammer), so the defense
+  // follows the specific weapon on the sheet rather than the category. It needs
+  // `kind: "weapon"` and a `skills` list to know which weapons could be meant —
+  // and those two may then appear WITHOUT a characteristic, which is how
+  // Riposte says "damage follows the weapon I parried with" while still making
+  // no roll of its own.
   var TEST_SKILL_POOLS = { combat: 1, noncombat: 1 };
+  var WEAPON_ROLL = "weapon";
+  var NO_DEFENSE = "none";
+
+  function defenses() { return window.DEFENSES || []; }
+  function defenseById(id) {
+    return defenses().filter(function (d) { return d.id === id; })[0] || null;
+  }
+  function defenseLabel(id) {
+    if (!id || id === NO_DEFENSE) return "";
+    var d = defenseById(id);
+    return d ? d.label : id;
+  }
 
   function testOf(entry) {
     var t = entry && entry.test;
@@ -2510,18 +2624,72 @@
     });
     return best;
   }
+  // Every weapon the character is carrying that this test accepts, each with
+  // its own pool. A category listed but not carried is absent: the point of the
+  // list is to show what you could actually pick up and roll right now.
+  // Two of the same category are two entries, because they are two weapons.
+  function wieldedTestWeapons(state, accepted) {
+    var wanted = {};
+    (accepted || []).forEach(function (n) { wanted[String(n).toLowerCase()] = true; });
+    var any = !accepted || !accepted.length;
+    var out = [];
+    (((state || {}).inventory || {}).weapons || []).forEach(function (w) {
+      var cat = weaponCategoryById(w.category);
+      if (!cat) return;
+      if (!any && !wanted[cat.label.toLowerCase()]) return;
+      var charVal = ((state.characteristics || {})[cat.characteristic]) || 0;
+      var tier = profTier(state, cat.label);
+      var dmg = weaponDamageType(w);
+      out.push({
+        category: cat.id, label: cat.label, name: String(w.name || "").trim(),
+        wielding: w.wielding || cat.hands,
+        charKey: cat.characteristic, charVal: charVal, profTier: tier,
+        pool: charVal + tier,
+        // Which defense THIS weapon is aimed at, for an ability whose `vs`
+        // defers to the weapon rather than naming one damage type itself.
+        damage: dmg, damageLabel: defenseLabel(dmg),
+      });
+    });
+    return out;
+  }
+
   // What this entry actually rolls, for a given character. `pool` is null when
-  // no pool can be worked out (a talent with no roll of its own, or a caster
-  // whose source of power has no characteristic assigned yet).
+  // no pool can be worked out (a talent with no roll of its own, a caster whose
+  // source of power has no characteristic assigned yet, or a weapon attack with
+  // no matching weapon on the sheet).
   function testDescriptor(entry, state) {
     var test = testOf(entry);
     if (!test) return null;
     state = state || {};
     var out = {
-      implicit: false, charKey: null, charVal: 0,
+      implicit: false, wielded: false, charKey: null, charVal: 0,
       kind: test.kind || null, skills: (test.skills || []).slice(),
-      skillTier: 0, pool: null,
+      skillTier: 0, pool: null, weapons: [],
+      vs: test.vs || null, vsLabel: defenseLabel(test.vs),
+      // `vs: "weapon"` means "whatever the weapon in hand deals", so there is
+      // no single defense to name here — each weapon row carries its own.
+      vsWielded: test.vs === WEAPON_ROLL,
     };
+    if (out.vsWielded) {
+      out.vsLabel = "weapon damage";
+      // The weapon list is needed to resolve the defense even when the ability
+      // makes no roll of its own, so it is gathered here rather than only on
+      // the characteristic branch below.
+      out.weapons = wieldedTestWeapons(state, out.skills);
+    }
+    // A weapon attack: resolved per carried weapon, not once for the ability.
+    // `pool` is the best of them, the same "best of an any-of list" rule a
+    // plain skill list already follows.
+    if (test.characteristic === WEAPON_ROLL) {
+      out.wielded = true;
+      out.kind = "weapon";
+      out.weapons = wieldedTestWeapons(state, out.skills);
+      out.weapons.forEach(function (w) {
+        if (out.pool !== null && w.pool <= out.pool) return;
+        out.pool = w.pool; out.charKey = w.charKey; out.charVal = w.charVal; out.skillTier = w.profTier;
+      });
+      return out;
+    }
     if (test.characteristic) {
       out.charKey = test.characteristic;
       out.charVal = (state.characteristics || {})[out.charKey] || 0;
@@ -2554,18 +2722,51 @@
     var d = testDescriptor(entry, state);
     if (!d) return "";
     var names = d.skills.slice();
+    var whole = coversWholeCategory(d.kind, names);
+    // A weapon attack reads as what it is, and then which weapons it accepts.
+    // Naming a characteristic here would be a lie for half the categories, and
+    // the per-weapon rows carry the real numbers anyway.
+    if (d.wielded) {
+      if (whole || !names.length) return "Weapon attack";
+      var reach = weaponReachName(names);
+      if (reach) return reach + " weapon attack";
+      return "Weapon attack (" + joinAlternatives(names) + ")";
+    }
     if (names.length) {
-      var options = testSkillOptions(d.kind);
-      if (options.length > 1 && names.length >= options.length &&
-          options.every(function (o) { return names.indexOf(o) >= 0; }))
-        names = ["any " + testKindLabel(d.kind)];
-      else if (d.kind === "spellcasting")
-        names = names.map(function (n) { return n + " Spellcasting"; });
+      if (whole) names = ["any " + testKindLabel(d.kind)];
+      else if (d.kind === "spellcasting") names = names.map(function (n) { return n + " Spellcasting"; });
     }
     var parts = [];
     if (d.charKey) parts.push(charLabel(d.charKey));
-    if (names.length) parts.push(joinAlternatives(names));
+    // Skills describe a roll only when there is one. A `vs: "weapon"` ability
+    // with no characteristic lists weapon categories purely to scope which
+    // weapon's damage type applies, and printing them as a roll would claim a
+    // test the ability never makes. (An implicit spell is the exception: its
+    // roll is real even when no source characteristic has been assigned yet.)
+    if (names.length && (d.charKey || d.implicit)) parts.push(joinAlternatives(names));
     return parts.join(" + ");
+  }
+  function coversWholeCategory(kind, names) {
+    var options = testSkillOptions(kind);
+    return options.length > 1 && names.length >= options.length &&
+      options.every(function (o) { return names.indexOf(o) >= 0; });
+  }
+  // "make a melee attack" is authored as the seven melee categories, and
+  // printing all seven back is the long way of saying one word. `ranged` on
+  // WEAPON_CATEGORIES already draws the line, so the name is derived rather
+  // than a second list to keep in step. Only collapses a set of more than one:
+  // a lone category is more informative spelled out than generalised.
+  function weaponReachName(names) {
+    var cats = weaponCategories();
+    var reaches = [["Melee", false], ["Ranged", true]];
+    for (var i = 0; i < reaches.length; i++) {
+      var want = cats.filter(function (c) { return !!c.ranged === reaches[i][1]; })
+                     .map(function (c) { return c.label; });
+      if (want.length > 1 && want.length === names.length &&
+          want.every(function (l) { return names.indexOf(l) >= 0; }))
+        return reaches[i][0];
+    }
+    return null;
   }
   // The success ladder as it should be read: sorted by threshold, hooks
   // resolved (§4.7). A tier whose text resolves to nothing is dropped, which is
@@ -2582,9 +2783,12 @@
       .sort(function (a, b) { return a.successes - b.successes; });
   }
   // Is there anything for a renderer to draw? Cheap enough to ask before
-  // building a block that would come out empty.
+  // building a block that would come out empty. A named defense counts on its
+  // own: "vs Mental" is worth saying even for an ability with no ladder.
   function hasTest(entry, state) {
-    return !!testLabel(entry, state) || testTiers(entry, state).length > 0;
+    var d = testDescriptor(entry, state);
+    if (!d) return false;
+    return !!testLabel(entry, state) || testTiers(entry, state).length > 0 || !!d.vsLabel;
   }
 
   // ---- Max HP / Max Mana ---------------------------------------------------
@@ -2661,6 +2865,9 @@
     testOf: testOf, testKinds: testKinds, testKindLabel: testKindLabel,
     testSkillOptions: testSkillOptions, testSkillTier: testSkillTier,
     testDescriptor: testDescriptor, testLabel: testLabel, testTiers: testTiers, hasTest: hasTest,
+    wieldedTestWeapons: wieldedTestWeapons, WEAPON_ROLL: WEAPON_ROLL,
+    // defenses (main.tex "NPC Defenses") — subtracted from the stated successes
+    defenses: defenses, defenseById: defenseById, defenseLabel: defenseLabel, NO_DEFENSE: NO_DEFENSE,
     // grants
     grantsOf: grantsOf, grantNeedsChoice: grantNeedsChoice, grantOptions: grantOptions,
     grantOptionKey: grantOptionKey, optionTierRange: optionTierRange,
@@ -2675,5 +2882,6 @@
     // weapon categories (inventory section)
     weaponCategories: weaponCategories, weaponCategoryById: weaponCategoryById,
     weaponDicePool: weaponDicePool, weaponDamageNote: weaponDamageNote,
+    weaponDamageTypes: weaponDamageTypes, weaponDamageType: weaponDamageType,
   };
 })();

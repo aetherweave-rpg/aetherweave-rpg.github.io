@@ -369,7 +369,22 @@ window.ANCESTRIES = [
       {
         id: "anca_shock_prod",
         name: "Shock Prod",
-        description: "You have a built in electrical weapon. You can use it to shock enemies. \nMake an unarmed attack roll against an enemy. If it hits, it deal 2 additional damage and all damage is considered lightning damage.",
+        flavour: "You have a built in electrical weapon. You can use it to shock enemies.",
+        description: "Make an unarmed attack.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "lightning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal 2 extra damage. All damage from this attack is lightning damage."
+            }
+          ]
+        },
         pool: "combat",
         cost: 1,
         tier: 1,

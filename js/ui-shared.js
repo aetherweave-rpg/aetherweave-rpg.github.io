@@ -386,21 +386,51 @@
     opts = opts || {};
     var label = Engine.testLabel(entry, state);
     var tiers = Engine.testTiers(entry, state);
-    if (!label && !tiers.length) return null;
+    var desc = Engine.testDescriptor(entry, state);
+    var vsLabel = desc ? desc.vsLabel : "";
+    if (!label && !tiers.length && !vsLabel) return null;
 
     var wrap = el("div", "ability-test" + (opts.cls ? " " + opts.cls : ""));
+    var d = desc;
+    // A weapon attack lists the weapons on the sheet it works with, each with
+    // its own pool, so one summary number next to the roll would be a fourth
+    // number nobody asked for. Everything else has exactly one pool.
+    // An ability that only defers its DEFENSE to the weapon lists them too, but
+    // without dice: it makes no roll of its own, so a pool would be a number
+    // the player never actually rolls.
+    var perWeapon = !!(d && (d.wielded || d.vsWielded) && d.weapons.length);
+    var perWeaponPool = !!(d && d.wielded);
+    var line = el("div", "ability-test-roll");
     if (label) {
-      var line = el("div", "ability-test-roll");
       line.appendChild(el("span", "att-lede", "Test"));
       line.appendChild(el("span", "att-roll", label));
-      var d = Engine.testDescriptor(entry, state);
-      if (d && d.pool != null) line.appendChild(el("span", "att-pool", d.pool + " dice"));
-      wrap.appendChild(line);
-    } else {
+    } else if (tiers.length) {
       // A ladder with no roll of its own (a modifier's, or a talent reading the
       // successes of a roll its text names) still needs saying what the numbers
       // in the left column are.
-      wrap.appendChild(el("div", "ability-test-roll", "Successes"));
+      line.appendChild(el("span", "att-roll", "Successes"));
+    } else {
+      // Neither a roll nor a ladder, just a defense: there is no column of
+      // numbers to head, so heading one would name something that isn't there.
+      line.appendChild(el("span", "att-lede", "Test"));
+    }
+    // The defense is subtracted from the successes rolled, so it belongs next
+    // to the roll and ahead of the ladder those successes are read against.
+    if (vsLabel) line.appendChild(el("span", "att-vs", "vs " + vsLabel));
+    if (label && !perWeapon && d && d.pool != null) line.appendChild(el("span", "att-pool", d.pool + " dice"));
+    wrap.appendChild(line);
+    if (perWeapon) {
+      var wl = el("div", "ability-test-weapons");
+      d.weapons.forEach(function (w) {
+        var row = el("div", "ability-test-weapon");
+        row.appendChild(el("span", "atw-name", w.name ? w.name + " (" + w.label + ")" : w.label));
+        // Only when the ability defers to the weapon: otherwise the defense is
+        // the same for every row and already sits on the roll line above.
+        if (d.vsWielded && w.damageLabel) row.appendChild(el("span", "att-vs", "vs " + w.damageLabel));
+        if (perWeaponPool) row.appendChild(el("span", "att-pool", w.pool + " dice"));
+        wl.appendChild(row);
+      });
+      wrap.appendChild(wl);
     }
     if (tiers.length) {
       var list = el("div", "ability-test-tiers");

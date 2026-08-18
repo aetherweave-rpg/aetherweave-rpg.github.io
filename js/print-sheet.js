@@ -84,15 +84,31 @@
     return head;
   }
 
-  // ---- vitals: HP, mana, characteristics -----------------------------------
+  // ---- vitals & characteristics --------------------------------------------
+  // Two sections sharing one row, ruled apart. They belong at the same height —
+  // both are the numbers you read before anything else — but not under one
+  // heading: HP and Mana move during play, characteristics are the fixed
+  // figures every dice pool is built from, and a single "Vitals" over all seven
+  // boxes said they were the same kind of thing.
+
+  function vitalsRow(state) {
+    var row = el("div", "ps-toprow");
+    row.appendChild(vitals(state));
+    row.appendChild(characteristics(state));
+    return row;
+  }
 
   function vitals(state) {
-    var b = block("Vitals");
+    var b = block("Vitals", null, "ps-vitals-block");
     var row = el("div", "ps-vitals");
-
     row.appendChild(pool("HP", Engine.maxHP(state), state.hp.current));
     row.appendChild(pool("Mana", Engine.maxMana(state), state.mana.current));
+    b.appendChild(row);
+    return b;
+  }
 
+  function characteristics(state) {
+    var b = block("Characteristics", null, "ps-chars-block");
     var chars = el("div", "ps-chars");
     CONFIG.CHARACTERISTICS.forEach(function (c) {
       var box = el("div", "ps-char");
@@ -101,9 +117,7 @@
       box.appendChild(el("span", "ps-char-value", String(state.characteristics[c.key] || 0)));
       chars.appendChild(box);
     });
-    row.appendChild(chars);
-
-    b.appendChild(row);
+    b.appendChild(chars);
     return b;
   }
 
@@ -309,7 +323,9 @@
     diceCell.appendChild(dots(Engine.weaponDicePool(state, cat.id), MAX_DICE_POOL));
     row.appendChild(diceCell);
 
-    row.appendChild(el("div", "ps-inv-wdmg", Engine.weaponDamageNote(w.wielding)));
+    var dmgType = Engine.weaponDamageType(w);
+    row.appendChild(el("div", "ps-inv-wdmg",
+      (dmgType ? Engine.defenseLabel(dmgType) + ", " : "") + Engine.weaponDamageNote(w.wielding)));
     return row;
   }
 
@@ -375,9 +391,18 @@
   function testOf(entry, state) {
     var roll = Engine.testLabel(entry, state);
     var tiers = Engine.testTiers(entry, state);
-    if (!roll && !tiers.length) return null;
     var d = Engine.testDescriptor(entry, state);
-    return { roll: roll, pool: d && d.pool != null ? d.pool : null, tiers: tiers };
+    var vs = d ? d.vsLabel : "";
+    if (!roll && !tiers.length && !vs) return null;
+    return {
+      roll: roll, vs: vs, vsWielded: !!(d && d.vsWielded), wielded: !!(d && d.wielded),
+      pool: d && d.pool != null ? d.pool : null, tiers: tiers,
+      // A weapon attack's pool depends on what is in hand, so the appendix
+      // lists every matching weapon; the index keeps the single best of them,
+      // which is the number you reach for mid-roll. An ability that only
+      // defers its defense lists them without dice.
+      weapons: d && (d.wielded || d.vsWielded) ? d.weapons : [],
+    };
   }
 
   function talentEntry(raw, state) {
@@ -512,8 +537,17 @@
   function testBlock(test) {
     var wrap = el("div", "ps-test");
     var head = el("div", "ps-test-roll", test.roll || "Successes");
-    if (test.roll && test.pool != null) head.appendChild(el("span", "ps-tag", test.pool + " dice"));
+    if (test.vs) head.appendChild(el("span", "ps-tag ps-vs", "vs " + test.vs));
+    if (test.roll && test.pool != null && !test.weapons.length)
+      head.appendChild(el("span", "ps-tag", test.pool + " dice"));
     wrap.appendChild(head);
+    test.weapons.forEach(function (w) {
+      var row = el("div", "ps-test-weapon");
+      row.appendChild(el("span", "ps-test-weapon-name", w.name ? w.name + " (" + w.label + ")" : w.label));
+      if (test.vsWielded && w.damageLabel) row.appendChild(el("span", "ps-tag ps-vs", "vs " + w.damageLabel));
+      if (test.wielded) row.appendChild(el("span", "ps-tag", w.pool + " dice"));
+      wrap.appendChild(row);
+    });
     test.tiers.forEach(function (row) {
       var r = el("div", "ps-test-tier");
       r.appendChild(el("span", "ps-test-n", row.successes + "+"));
@@ -560,7 +594,7 @@
     doc.appendChild(masthead(state));
 
     var sheet = el("div", "ps-play");
-    sheet.appendChild(vitals(state));
+    sheet.appendChild(vitalsRow(state));
     sheet.appendChild(experience(state));
     sheet.appendChild(skills(state, opts));
     sheet.appendChild(proficiencies(state));

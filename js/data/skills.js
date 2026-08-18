@@ -58,11 +58,11 @@ window.PROFICIENCY_KINDS = [
   {
     // A weapon proficiency is bought per category (main.tex "Weapons"), not
     // per individual weapon — the specific weapon within a category is a
-    // cosmetic choice, not a mechanical one. These 11 are the full set.
+    // cosmetic choice, not a mechanical one. These 12 are the full set.
     id: "weapon", label: "Weapon", costKey: "weapon", pool: "combat",
     suggestions: ["Light Blades", "Heavy Blades", "Axes", "Maces", "Polearms",
       "Whips", "Staves", "Bows", "Crossbows", "Light Throwing Weapons",
-      "Heavy Throwing Weapons"],
+      "Heavy Throwing Weapons", "Unarmed"],
   },
   {
     // Named after a magical domain (e.g. "Elemental"); its tier drives that
@@ -75,7 +75,35 @@ window.PROFICIENCY_KINDS = [
   },
 ];
 
-// The 11 weapon categories (main.tex "Weapons"), with the mechanics fixed per
+// Defenses (main.tex "NPC Defenses"). A player character defends by rolling one
+// of their own skills reactively; an NPC does not roll at all. Its statblock
+// carries one blanket defense value, plus a separate entry for any defense that
+// is exceptional, and the GM SUBTRACTS that value from the successes the player
+// states. Whatever is left is what the ability's success tiers are read against
+// (site/DESIGN.md §4.10), so a defense is a number taken off a roll, not a
+// threshold the roll has to beat.
+//
+// `replaces` names the player skill each one stands in for, straight from the
+// rulebook table. Physical is deliberately three entries rather than one: the
+// damage types the content already deals (bludgeoning / slashing / piercing)
+// are exactly the distinctions armour and hide make, so one "Physical" number
+// could not express a creature that shrugs off a mace but not a blade.
+window.DEFENSES = [
+  { id: "bludgeoning", label: "Bludgeoning", replaces: ["Deflect", "Dodge", "Evade"], covers: "Maces, staves, falls, crushing blows" },
+  { id: "slashing",    label: "Slashing",    replaces: ["Deflect", "Dodge", "Evade"], covers: "Blades, axes, claws" },
+  { id: "piercing",    label: "Piercing",    replaces: ["Deflect", "Dodge", "Evade"], covers: "Arrows, bolts, spears, bites" },
+  { id: "fortitude",   label: "Fortitude",   replaces: ["Endure"],  covers: "Poison, disease, suffocation, exhaustion" },
+  { id: "mental",      label: "Mental",      replaces: ["Resist"],  covers: "Fear, charm, domination, mind-affecting" },
+  { id: "fire",        label: "Fire",        replaces: ["Ward"],    covers: "Elemental domain: flame" },
+  { id: "cold",        label: "Cold",        replaces: ["Ward"],    covers: "Elemental domain: frost" },
+  { id: "lightning",   label: "Lightning",   replaces: ["Ward"],    covers: "Elemental domain: storm" },
+  { id: "acid",        label: "Acid",        replaces: ["Ward"],    covers: "Corrosives, alchemical burns" },
+  { id: "arcane",      label: "Arcane",      replaces: ["Ward"],    covers: "Aether and force effects, non-elemental conjuration" },
+  { id: "blight",      label: "Blight",      replaces: [],          covers: "Death domain: decay and drain" },
+  { id: "radiant",     label: "Radiant",     replaces: [],          covers: "Life and Light domains: holy and vital energy" },
+];
+
+// The 12 weapon categories (main.tex "Weapons"), with the mechanics fixed per
 // category: `characteristic` drives the attack roll and damage bonus,
 // `hands` is "1h" | "2h" | "either" (a per-weapon choice on the inventory
 // section for "either" categories). `range` is "melee" or a number of yards;
@@ -84,16 +112,28 @@ window.PROFICIENCY_KINDS = [
 // just from further away). Label must match a PROFICIENCY_KINDS "weapon"
 // suggestion exactly, since that's how a carried weapon on the inventory
 // section looks up the character's trained tier.
+//
+// `damage` lists the DEFENSES a weapon of this category can be aimed at. It is
+// a list rather than a value because a category is not one weapon: a light
+// blade may thrust or cut, and a heavy throwing weapon may be a javelin, a
+// hand axe or a hammer. Where a category offers several, the choice belongs to
+// the specific weapon on the character's sheet, exactly as `hands: "either"`
+// already puts the one/two-handed choice there. The first entry is the default
+// for a newly added weapon.
 window.WEAPON_CATEGORIES = [
-  { id: "light_blades",   label: "Light Blades",           characteristic: "cunning", hands: "1h",    range: "melee", ranged: false },
-  { id: "heavy_blades",   label: "Heavy Blades",           characteristic: "body",    hands: "either", range: "melee", ranged: false },
-  { id: "axes",           label: "Axes",                   characteristic: "body",    hands: "either", range: "melee", ranged: false },
-  { id: "maces",          label: "Maces",                  characteristic: "body",    hands: "either", range: "melee", ranged: false },
-  { id: "polearms",       label: "Polearms",               characteristic: "body",    hands: "2h",    range: 4,       ranged: false },
-  { id: "whips",          label: "Whips",                  characteristic: "cunning", hands: "1h",    range: 6,       ranged: false },
-  { id: "staves",         label: "Staves",                 characteristic: "body",    hands: "2h",    range: "melee", ranged: false },
-  { id: "bows",           label: "Bows",                   characteristic: "cunning", hands: "2h",    range: 30,      ranged: true },
-  { id: "crossbows",      label: "Crossbows",              characteristic: "cunning", hands: "either", range: 30,      ranged: true },
-  { id: "light_throwing", label: "Light Throwing Weapons", characteristic: "cunning", hands: "1h",    range: 20,      ranged: true },
-  { id: "heavy_throwing", label: "Heavy Throwing Weapons", characteristic: "body",    hands: "1h",    range: 20,      ranged: true },
+  { id: "light_blades",   label: "Light Blades",           characteristic: "cunning", hands: "1h",    range: "melee", ranged: false, damage: ["slashing", "piercing"] },
+  { id: "heavy_blades",   label: "Heavy Blades",           characteristic: "body",    hands: "either", range: "melee", ranged: false, damage: ["slashing"] },
+  { id: "axes",           label: "Axes",                   characteristic: "body",    hands: "either", range: "melee", ranged: false, damage: ["slashing"] },
+  { id: "maces",          label: "Maces",                  characteristic: "body",    hands: "either", range: "melee", ranged: false, damage: ["bludgeoning"] },
+  { id: "polearms",       label: "Polearms",               characteristic: "body",    hands: "2h",    range: 4,       ranged: false, damage: ["piercing", "slashing", "bludgeoning"] },
+  { id: "whips",          label: "Whips",                  characteristic: "cunning", hands: "1h",    range: 6,       ranged: false, damage: ["slashing"] },
+  { id: "staves",         label: "Staves",                 characteristic: "body",    hands: "2h",    range: "melee", ranged: false, damage: ["bludgeoning"] },
+  { id: "bows",           label: "Bows",                   characteristic: "cunning", hands: "2h",    range: 30,      ranged: true,  damage: ["piercing"] },
+  { id: "crossbows",      label: "Crossbows",              characteristic: "cunning", hands: "either", range: 30,      ranged: true,  damage: ["piercing"] },
+  { id: "light_throwing", label: "Light Throwing Weapons", characteristic: "cunning", hands: "1h",    range: 20,      ranged: true,  damage: ["piercing", "slashing", "bludgeoning"] },
+  { id: "heavy_throwing", label: "Heavy Throwing Weapons", characteristic: "body",    hands: "1h",    range: 20,      ranged: true,  damage: ["piercing", "slashing", "bludgeoning"] },
+  // Everyone has fists. Unarmed is a category like any other so that it can be
+  // trained, priced and rolled the same way — and so an ability that says "make an
+  // unarmed attack" has a proficiency to name.
+  { id: "unarmed",        label: "Unarmed",                characteristic: "body",    hands: "1h",    range: "melee", ranged: false, damage: ["bludgeoning"] },
 ];

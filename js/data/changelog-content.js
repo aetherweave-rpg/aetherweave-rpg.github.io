@@ -13,6 +13,29 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-18",
+    entries: [
+      "Changed talent \"Smash\" (tier 1) in the Arms domain: description: \"Requires wielding a mace: Make an attack with the mace, this...\" -> \"The attack deals {arms_pulverize:\"triple\">arms_smash:\"double...\".",
+      "Changed talent \"Charge\" (tier 1) in the Arms domain: description: \"Move up to your movement speed and make a melee attack{arms_...\" -> \"Move up to your movement speed, then make an attack.{arms_co...\".",
+      "Changed talent \"Fire bomb\" (tier 1) in the Alchemy domain: description: \"Choose a point within 10m: Make a throwing weapon test again...\" -> (none).",
+      "Changed talent \"Riposte\" (tier 1) in the Arms domain: description: \"When fully parrying an attack: deal damage to the attacking...\" -> \"When fully deflecting an attack: deal damage to the attackin...\".",
+      "Changed talent \"Knock Back\" (tier 1) in the Arms domain: description: \"Requires wielding a bludgeoning weapon. Make an attack with...\" -> \"In addition to the attack's normal effects it gains the foll...\".",
+      "Changed talent \"Lined Up Shot\" (tier 2) in the Arms domain: description: \"Make a ranged weapon attack against all enemies in a 20y lon...\" -> \"Perform an attack against each enemy within the line of effe...\".",
+      "Changed talent \"Hail of Arrows\" (tier 1) in the Arms domain: description: \"Make an attack with a bow, rolling 2 extra dice. Split the h...\" -> \"Roll 2 extra dice. Split the successes however you wish amon...\".",
+      "Changed talent \"Improvised gadget\" (tier 1) in the Invention domain: description: \"Make a crafting check threshold 1: relevant to the gadget yo...\" -> (none).",
+      "Changed talent \"Piercing Bolt\" (tier 1) in the Arms domain: description: \"Make an attack with your crossbow: Ignore {arms_penetrating_...\" -> \"Ignore {arms_penetrating_bolt:\"all\">arms_piercing_bolt:\"up t...\".",
+      "Changed talent \"Pocket sand\" (tier 1) in the Guile domain: description: \"Make a throwing weapon cunning test. If successful add 2 dic...\" -> (none); duration: \"indefinite\" -> (none).",
+      "Changed talent \"Cleave\" (tier 1) in the Arms domain: description: \"Requires a two-handed blade or axe: Roll an attack with your...\" -> \"Requires a two-handed blade or axe: Against {arms_whirlwind:...\".",
+      "Changed talent \"Ricochet\" (tier 1) in the Arms domain: description: \"Make an attack with your throwing weapon against an enemy in...\" -> \"Risk: If a Risk is rolled, no further attacks are made.\".",
+      "Changed ancestral talent \"Shock Prod\" (tier 1) in the Automaton ancestry: description: \"You have a built in electrical weapon. You can use it to sho...\" -> \"Make an unarmed attack.\".",
+      "Changed talent \"Elemental shot\" (tier 1) in the Elemental Arms combination tree: description: wording changed (both start \"Your next basic attack using an arrow no...\").",
+      "Changed source talent \"Unstable ability\" (tier 1) in the Freak accident source of power: description: \"At the start of each scene, roll a d6. For that scene,  you...\" -> \"At the start of each scene, roll a d6. For that scene, you c...\"; castingTime: \"action\" -> \"reaction\"; range: 10 -> \"touch\".",
+      "Changed source talent \"Musical Weaving\" (tier 1) in the Musical Talent source of power: description: \"As a minor action you can use your music to manipulate the w...\" -> \"\".",
+      "Changed spell \"Levitate\" (tier 2) in the Aether domain: description: \"Target ally can levitate 20 centimeters above ground. When t...\" -> \"Target ally or self can levitate 20 centimeters above ground...\".",
+      "Changed spell \"Force blast\" (tier 1) in the Aether domain: description: \"Make a spellcasting check against the target's Physical defe...\" -> (none).",
+    ],
+  },
+  {
     date: "2026-08-17",
     entries: [
       "Changed talent \"Challenge\" (tier 1) in the Leadership domain: description: \"Make a presence + intimidation test against {lead_two_on_one...\" -> \"Against {lead_two_on_one:\"each\">lead_challenge:\"the\"} enemie...\".",

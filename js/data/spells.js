@@ -7,7 +7,15 @@ window.SPELLS = {
     {
       id: "aeth_spell_force_blast",
       name: "Force blast",
-      description: "Make a spellcasting check against the target's Physical defense. If succesful deal 1 damage and push the target up to 2m for every success beyond the threshold,",
+      test: {
+        vs: "bludgeoning",
+        tiers: [
+          {
+            successes: 1,
+            effect: "Deal 1 Bludgeoning damage, and push the target 2y for every success."
+          }
+        ]
+      },
       tier: 1,
       pool: "combat",
       cost: 1,
@@ -42,8 +50,12 @@ window.SPELLS = {
       name: "Shockwave",
       description: "Risk: For every rolled Risk, this spell also targets a random ally within range.",
       test: {
+        vs: "bludgeoning",
         tiers: [
-          { successes: 1, effect: "Deal 1 damage to all enemies in range. For every two successes, push them 2y." }
+          {
+            successes: 1,
+            effect: "Deal 1 damage to all enemies in range. For every two successes, push them 2y."
+          }
         ]
       },
       tier: 2,
@@ -130,7 +142,7 @@ window.SPELLS = {
     {
       id: "aeth_spell_levitate",
       name: "Levitate",
-      description: "Target ally can levitate 20 centimeters above ground. When they do so, they move at half speed.",
+      description: "Target ally or self can levitate 20 centimeters above ground. When they do so, they move at half speed.",
       tier: 2,
       pool: "noncombat",
       cost: 1,
@@ -139,6 +151,7 @@ window.SPELLS = {
       castingTime: 1,
       range: "touch",
       target: [
+        "self",
         "ally"
       ],
       duration: {

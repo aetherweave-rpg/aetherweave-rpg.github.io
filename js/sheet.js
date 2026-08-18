@@ -627,6 +627,9 @@
           var newCat = Engine.weaponCategoryById(v);
           if (newCat.hands !== "either" && w2.wielding === "2h" && newCat.hands !== "2h") w2.wielding = "1h";
           if (newCat.hands === "2h") w2.wielding = "2h";
+          // The damage choice belonged to the old category; drop it rather than
+          // leave a weapon claiming a type its new category cannot deal.
+          if ((newCat.damage || []).indexOf(w2.damage) < 0) delete w2.damage;
         });
       }
     ));
@@ -649,7 +652,23 @@
     diceCell.appendChild(pips(Engine.weaponDicePool(state, cat.id), maxDicePool));
     cells.appendChild(diceCell);
 
-    cells.appendChild(el("span", "inv-wdmg", Engine.weaponDamageNote(w.wielding)));
+    // Which defense this weapon is aimed at. A category offering only one kind
+    // states it; one offering several puts the choice on the weapon, the same
+    // way `hands: "either"` puts the wielding choice here (§4.10).
+    var dmgCell = el("div", "inv-wdmg-cell");
+    var dmgTypes = Engine.weaponDamageTypes(cat.id);
+    var dmgType = Engine.weaponDamageType(w);
+    if (dmgTypes.length > 1) {
+      dmgCell.appendChild(selectInput(
+        dmgTypes.map(function (d) { return { value: d, label: Engine.defenseLabel(d) }; }),
+        dmgType,
+        function (v) { State.update(function (s2) { s2.inventory.weapons[idx].damage = v; }); }
+      ));
+    } else if (dmgType) {
+      dmgCell.appendChild(el("span", "inv-wdmg-type", Engine.defenseLabel(dmgType)));
+    }
+    dmgCell.appendChild(el("span", "inv-wdmg", Engine.weaponDamageNote(w.wielding)));
+    cells.appendChild(dmgCell);
 
     row.appendChild(cells);
 
