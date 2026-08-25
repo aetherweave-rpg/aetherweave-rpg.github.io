@@ -11,24 +11,20 @@ window.CHANGELOG_RULES = [
   {
     date: "2026-08-18",
     entries: [
-      "Changed: Test rolls",
-      "Changed: Skills",
-      "Changed: Combat",
-      "Changed: Attacking",
-      "Changed: NPC Defenses",
-      "Changed: Weapons",
+      "Changed: Added basic avoidance action",
+	  "Changed: rework tests and dice rules",
     ],
   },
   {
     date: "2026-08-13",
     entries: [
-      "Changed: Rules for Rewards in combat"
+      "Changed: Rules for Rewards in combat",
     ],
   },
   {
     date: "2026-08-11",
     entries: [
-      "Changed: Rules regarding max proficiency, which is now capped at tier of play +1"
+      "Changed: Rules regarding max proficiency, which is now capped at tier of play +1",
     ],
   },
   {
@@ -49,7 +45,7 @@ window.CHANGELOG_RULES = [
   {
     date: "2026-08-04",
     entries: [
-      "Changed: Changed default skill costs and starting exp
+      "Changed: Changed default skill costs and starting exp",
     ],
   },
   {
