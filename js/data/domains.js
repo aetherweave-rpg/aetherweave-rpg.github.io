@@ -23,10 +23,20 @@ window.DOMAINS = [
     magical: true
   },
   {
-    id: "elemental",
-    name: "Elemental",
+    id: "pyrokinetics",
+    name: "Pyrokinetics",
     icon: "🔥",
     accent: "#c8792a",
+    cols: 5,
+    kind: "core",
+    talents: [],
+    magical: true
+  },
+  {
+    id: "frost",
+    name: "Frost",
+    icon: "❄️",
+    accent: "#5a8fc7",
     cols: 5,
     kind: "core",
     talents: [],
@@ -37,6 +47,16 @@ window.DOMAINS = [
     name: "Nature",
     icon: "🐺",
     accent: "#6a8f2f",
+    cols: 5,
+    kind: "core",
+    talents: [],
+    magical: true
+  },
+  {
+    id: "storm",
+    name: "Storm",
+    icon: "⚡",
+    accent: "#3a6ea5",
     cols: 5,
     kind: "core",
     talents: [],
@@ -656,11 +676,183 @@ window.DOMAINS = [
     ]
   },
   {
+    id: "brawling",
+    name: "Brawling",
+    icon: "👊",
+    accent: "#7a5233",
+    cols: 7,
+    kind: "core",
+    talents: [
+      {
+        id: "braw_improved_unarmed_strike",
+        name: "Improved Unarmed Strike",
+        description: "Your unarmed strike now deals damage equal to the number of successes rolled{braw_greater_unarmed_strike:\" + 1\"}, without limit.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 2
+      },
+      {
+        id: "braw_greater_unarmed_strike",
+        name: "Greater Unarmed Strike",
+        description: "Your unarmed strike now deals damage equal to the number of successes rolled + 1, without limit.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 2,
+        ability: "modifier",
+        modifies: {
+          braw_improved_unarmed_strike: {}
+        },
+        requires: {
+          talents: [
+            "braw_improved_unarmed_strike"
+          ]
+        }
+      },
+      {
+        id: "braw_precise_strikes",
+        name: "Precise Strikes",
+        description: "Your unarmed strikes can use cunning as their characteristic.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 1,
+        col: 3
+      },
+      {
+        id: "braw_improvised_weapon",
+        name: "Improvised Weapon",
+        flavour: "You can use everyday objects as effectively as weapons.",
+        description: "When making an unarmed attack, you can use objects in your direct vicinity to make the attack with. This can change the damage type, as well as the properties of your unarmed attack.\nWhen making an attack in this manner, the damage of your unarmed attack is not limited.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 0
+      },
+      {
+        id: "braw_jab",
+        name: "Jab",
+        description: "You throw a quick punch.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal damage equal to the number of successes to a maximum of 2. {braw_open_up:\"Your next attack roll this turn ignores up to 2 of the enemy's defense.\"}"
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 4,
+        ability: "maneuver",
+        uses: 1,
+        usesPer: "scene",
+        castingTime: "minor_action",
+        range: "touch",
+        duration: "instantaneous"
+      },
+      {
+        id: "braw_uppercut",
+        name: "Uppercut",
+        flavour: "You deliver a powerful uppercut, debilitating your opponent{braw_defensive_combo:\".\" > braw_uppercut:\", but risk injury on yourself by getting in close.\"}",
+        description: "{braw_defensive_combo:\"\" > braw_uppercut:\"Until the start of your next turn, roll 2 fewer dice on your next defense roll.\"}",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal damage equal to the number of successes"
+            },
+            {
+              successes: 3,
+              effect: "Additionally: apply Stunned 1"
+            },
+            {
+              successes: 6,
+              effect: "Instead, also apply Stunned 2"
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 2,
+        col: 5,
+        ability: "maneuver",
+        uses: 1,
+        usesPer: "scene",
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "braw_open_up",
+        name: "Open up",
+        flavour: "You use quick jabs to distract opponents.",
+        description: "After using Jab, your next attack roll this turn ignores up to 2 of the enemy's defense.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 4,
+        ability: "modifier",
+        modifies: {
+          braw_jab: {}
+        },
+        requires: {
+          talents: [
+            "braw_jab"
+          ]
+        }
+      },
+      {
+        id: "braw_defensive_combo",
+        name: "Defensive Combo",
+        description: "By opening with a jab, your uppercut no longer lowers your defenses.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 3,
+        col: 4,
+        ability: "modifier",
+        modifies: {
+          braw_uppercut: {}
+        },
+        requires: {
+          talents: [
+            "braw_jab",
+            "braw_uppercut"
+          ]
+        }
+      }
+    ]
+  },
+  {
     id: "arms",
     name: "Arms",
     icon: "⚔️",
     accent: "#8a6d3b",
-    cols: 11,
+    cols: 7,
     kind: "core",
     talents: [
       {
@@ -694,67 +886,6 @@ window.DOMAINS = [
         duration: "instantaneous"
       },
       {
-        id: "arms_ricochet",
-        name: "Ricochet",
-        flavour: "You can hit multiple enemies with a single throw of your weapon.",
-        description: "Risk: If a Risk is rolled, no further attacks are made.",
-        test: {
-          characteristic: "weapon",
-          kind: "weapon",
-          skills: [
-            "Light Throwing Weapons",
-            "Heavy Throwing Weapons"
-          ],
-          vs: "weapon",
-          tiers: [
-            {
-              successes: 1,
-              effect: "make another attack against an enemy in range. {arms_advanced_ricochet:\"If this additional attack has at least 1 success, make another attack against a third enemy in range.\">arms_ricochet:\"\"}"
-            }
-          ]
-        },
-        pool: "combat",
-        cost: 2,
-        tier: 1,
-        row: 0,
-        col: 9,
-        ability: "maneuver",
-        uses: 2,
-        castingTime: "action",
-        range: "weapon",
-        target: [
-          "enemy"
-        ],
-        duration: "instantaneous",
-        requires: {
-          proficiencies: {
-            "Heavy Throwing Weapons": 1
-          }
-        }
-      },
-      {
-        id: "arms_advanced_ricochet",
-        name: "Advanced Ricochet",
-        description: "Your ricochet ability targets one additional enemy in its chain.",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 1,
-        col: 9,
-        ability: "modifier",
-        modifies: {
-          arms_ricochet: {}
-        },
-        requires: {
-          talents: [
-            "arms_ricochet"
-          ],
-          proficiencies: {
-            "Heavy Throwing Weapons": 2
-          }
-        }
-      },
-      {
         id: "arms_coordinated_flurry",
         name: "Coordinated Flurry",
         flavour: "Your first strike creates a perfect opening for your second.",
@@ -772,37 +903,6 @@ window.DOMAINS = [
           talents: [
             "arms_flurry"
           ]
-        }
-      },
-      {
-        id: "arms_hail_of_arrows",
-        name: "Hail of Arrows",
-        description: "Roll 2 extra dice. Split the successes however you wish among as many enemies as desired.",
-        test: {
-          characteristic: "weapon",
-          kind: "weapon",
-          skills: [
-            "Bows"
-          ],
-          vs: "piercing"
-        },
-        pool: "combat",
-        cost: 2,
-        tier: 1,
-        row: 0,
-        col: 7,
-        ability: "maneuver",
-        uses: 2,
-        castingTime: "action",
-        range: "weapon",
-        target: [
-          "enemy"
-        ],
-        duration: "instantaneous",
-        requires: {
-          proficiencies: {
-            Bows: 2
-          }
         }
       },
       {
@@ -940,116 +1040,6 @@ window.DOMAINS = [
               name: "Axes",
               tier: 3
             }
-          ]
-        }
-      },
-      {
-        id: "arms_piercing_bolt",
-        name: "Piercing Bolt",
-        flavour: "Your bolts can pierce even the toughest of scales and the hardest armor.",
-        description: "Ignore {arms_penetrating_bolt:\"all\">arms_piercing_bolt:\"up to 2\"} physical armor during this attack.",
-        test: {
-          characteristic: "weapon",
-          kind: "weapon",
-          skills: [
-            "Crossbows"
-          ],
-          vs: "piercing"
-        },
-        pool: "combat",
-        cost: 2,
-        tier: 1,
-        row: 0,
-        col: 8,
-        ability: "maneuver",
-        uses: 2,
-        castingTime: "action",
-        range: "weapon",
-        target: [
-          "enemy"
-        ],
-        duration: "instantaneous",
-        requires: {
-          proficiencies: {
-            Crossbows: 2
-          }
-        }
-      },
-      {
-        id: "arms_penetrating_bolt",
-        name: "Penetrating Bolt",
-        flavour: "Your bolts are targetted even more precisely, finding any weakness.",
-        description: "Your penetrating bolt now ignores all armor.",
-        pool: "combat",
-        cost: 2,
-        tier: 1,
-        row: 1,
-        col: 8,
-        ability: "modifier",
-        modifies: {
-          arms_piercing_bolt: {}
-        },
-        requires: {
-          talents: [
-            "arms_piercing_bolt"
-          ]
-        }
-      },
-      {
-        id: "arms_effective_volley",
-        name: "Effective Volley",
-        flavour: "You are especially apt at dealing with groups of enemies using a volley of arrows.",
-        description: "When targeting a swarm or group of enemies, armor is subtracted only once, instead of per enemy.",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 1,
-        col: 7,
-        ability: "modifier",
-        modifies: {
-          arms_hail_of_arrows: {}
-        },
-        requires: {
-          talents: [
-            "arms_hail_of_arrows"
-          ]
-        }
-      },
-      {
-        id: "arms_lined_up_shot",
-        name: "Lined Up Shot",
-        flavour: "Your perfect shot hits multiple targets in a row, piercing each one.",
-        description: "Perform an attack against each enemy within the line of effect",
-        test: {
-          characteristic: "weapon",
-          kind: "weapon",
-          skills: [
-            "Crossbows"
-          ],
-          vs: "piercing"
-        },
-        pool: "combat",
-        cost: 1,
-        tier: 2,
-        row: 4,
-        col: 8,
-        ability: "maneuver",
-        uses: 2,
-        castingTime: "action",
-        range: "weapon",
-        target: [
-          "enemy"
-        ],
-        duration: "instantaneous",
-        aoe: {
-          shape: "line",
-          origin: "self",
-          size: 20,
-          width: 2
-        },
-        requires: {
-          talents: [
-            "arms_penetrating_bolt"
           ]
         }
       },
@@ -1299,6 +1289,218 @@ window.DOMAINS = [
           talents: [
             "arms_charge"
           ]
+        }
+      }
+    ]
+  },
+  {
+    id: "marksmanship",
+    name: "Marksmanship",
+    icon: "🏹",
+    accent: "#5c7a3d",
+    cols: 3,
+    kind: "core",
+    talents: [
+      {
+        id: "mrk_hail_of_arrows",
+        name: "Hail of Arrows",
+        description: "Roll 2 extra dice. Split the successes however you wish among as many enemies as desired.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Bows"
+          ],
+          vs: "piercing"
+        },
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 0,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "weapon",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        requires: {
+          proficiencies: {
+            Bows: 2
+          }
+        }
+      },
+      {
+        id: "mrk_effective_volley",
+        name: "Effective Volley",
+        flavour: "You are especially apt at dealing with groups of enemies using a volley of arrows.",
+        description: "When targeting a swarm or group of enemies, armor is subtracted only once, instead of per enemy.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 0,
+        ability: "modifier",
+        modifies: {
+          mrk_hail_of_arrows: {}
+        },
+        requires: {
+          talents: [
+            "mrk_hail_of_arrows"
+          ]
+        }
+      },
+      {
+        id: "mrk_piercing_bolt",
+        name: "Piercing Bolt",
+        flavour: "Your bolts can pierce even the toughest of scales and the hardest armor.",
+        description: "Ignore {mrk_penetrating_bolt:\"all\">mrk_piercing_bolt:\"up to 2\"} physical armor during this attack.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Crossbows"
+          ],
+          vs: "piercing"
+        },
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 1,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "weapon",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        requires: {
+          proficiencies: {
+            Crossbows: 2
+          }
+        }
+      },
+      {
+        id: "mrk_penetrating_bolt",
+        name: "Penetrating Bolt",
+        flavour: "Your bolts are targetted even more precisely, finding any weakness.",
+        description: "Your penetrating bolt now ignores all armor.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 1,
+        col: 1,
+        ability: "modifier",
+        modifies: {
+          mrk_piercing_bolt: {}
+        },
+        requires: {
+          talents: [
+            "mrk_piercing_bolt"
+          ]
+        }
+      },
+      {
+        id: "mrk_lined_up_shot",
+        name: "Lined Up Shot",
+        flavour: "Your perfect shot hits multiple targets in a row, piercing each one.",
+        description: "Perform an attack against each enemy within the line of effect",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Crossbows"
+          ],
+          vs: "piercing"
+        },
+        pool: "combat",
+        cost: 1,
+        tier: 2,
+        row: 4,
+        col: 1,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "weapon",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        aoe: {
+          shape: "line",
+          origin: "self",
+          size: 20,
+          width: 2
+        },
+        requires: {
+          talents: [
+            "mrk_penetrating_bolt"
+          ]
+        }
+      },
+      {
+        id: "mrk_ricochet",
+        name: "Ricochet",
+        flavour: "You can hit multiple enemies with a single throw of your weapon.",
+        description: "Risk: If a Risk is rolled, no further attacks are made.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Light Throwing Weapons",
+            "Heavy Throwing Weapons"
+          ],
+          vs: "weapon",
+          tiers: [
+            {
+              successes: 1,
+              effect: "make another attack against an enemy in range. {mrk_advanced_ricochet:\"If this additional attack has at least 1 success, make another attack against a third enemy in range.\">mrk_ricochet:\"\"}"
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 2,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "weapon",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        requires: {
+          proficiencies: {
+            "Heavy Throwing Weapons": 1
+          }
+        }
+      },
+      {
+        id: "mrk_advanced_ricochet",
+        name: "Advanced Ricochet",
+        description: "Your ricochet ability targets one additional enemy in its chain.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 1,
+        col: 2,
+        ability: "modifier",
+        modifies: {
+          mrk_ricochet: {}
+        },
+        requires: {
+          talents: [
+            "mrk_ricochet"
+          ],
+          proficiencies: {
+            "Heavy Throwing Weapons": 2
+          }
         }
       }
     ]

@@ -188,5 +188,26 @@ window.SPELLS = {
         }
       }
     }
+  ],
+  life: [
+    {
+      id: "life_spell_life_link",
+      name: "Life Link",
+      description: "When you or a willing ally takes damage, distribute the damage as you wish.",
+      tier: 2,
+      pool: "combat",
+      cost: 1,
+      row: 2,
+      col: 0,
+      castingTime: "minor_action",
+      range: 10,
+      target: [
+        "ally"
+      ],
+      duration: {
+        value: 6,
+        unit: "rounds"
+      }
+    }
   ]
 };

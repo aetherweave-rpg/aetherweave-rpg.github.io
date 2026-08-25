@@ -13,6 +13,38 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-25",
+    entries: [
+      "Added talent \"Penetrating Bolt\" (tier 1) to the Marksmanship domain.",
+      "Added talent \"Greater Unarmed Strike\" (tier 1) to the Brawling domain.",
+      "Added talent \"Ricochet\" (tier 1) to the Marksmanship domain.",
+      "Added talent \"Open up\" (tier 1) to the Brawling domain.",
+      "Added talent \"Hail of Arrows\" (tier 1) to the Marksmanship domain.",
+      "Added talent \"Jab\" (tier 1) to the Brawling domain.",
+      "Added talent \"Improved Unarmed Strike\" (tier 1) to the Brawling domain.",
+      "Added talent \"Piercing Bolt\" (tier 1) to the Marksmanship domain.",
+      "Added talent \"Defensive Combo\" (tier 1) to the Brawling domain.",
+      "Added talent \"Effective Volley\" (tier 1) to the Marksmanship domain.",
+      "Added talent \"Lined Up Shot\" (tier 2) to the Marksmanship domain.",
+      "Added talent \"Improvised Weapon\" (tier 1) to the Brawling domain.",
+      "Added talent \"Uppercut\" (tier 1) to the Brawling domain.",
+      "Added talent \"Precise Strikes\" (tier 1) to the Brawling domain.",
+      "Added talent \"Advanced Ricochet\" (tier 1) to the Marksmanship domain.",
+      "Removed talent \"Advanced Ricochet\" (tier 1) from the Arms domain.",
+      "Removed talent \"Penetrating Bolt\" (tier 1) from the Arms domain.",
+      "Removed talent \"Effective Volley\" (tier 1) from the Arms domain.",
+      "Removed talent \"Lined Up Shot\" (tier 2) from the Arms domain.",
+      "Removed talent \"Hail of Arrows\" (tier 1) from the Arms domain.",
+      "Removed talent \"Piercing Bolt\" (tier 1) from the Arms domain.",
+      "Removed talent \"Ricochet\" (tier 1) from the Arms domain.",
+      "Removed talent \"Flaming arrow\" (tier 1) from the Elemental Arms combination tree.",
+      "Removed talent \"Frost arrow\" (tier 1) from the Elemental Arms combination tree.",
+      "Removed talent \"Elemental shot\" (tier 1) from the Elemental Arms combination tree.",
+      "Removed talent \"Lightning arrow\" (tier 1) from the Elemental Arms combination tree.",
+      "Added spell \"Life Link\" (tier 2) to the Life domain.",
+    ],
+  },
+  {
     date: "2026-08-18",
     entries: [
       "Changed talent \"Smash\" (tier 1) in the Arms domain: description: \"Requires wielding a mace: Make an attack with the mace, this...\" -> \"The attack deals {arms_pulverize:\"triple\">arms_smash:\"double...\".",
