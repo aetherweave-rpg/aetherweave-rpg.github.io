@@ -13,6 +13,16 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-26",
+    entries: [
+      "Changed talent \"Open up\" (tier 1) in the Brawling domain: description: \"After using Jab, your next attack roll this turn ignores up...\" -> \"In addition, your Jab afflict the target with Breached 2.\".",
+      "Changed talent \"Jab\" (tier 1) in the Brawling domain: cost: 1 -> 2.",
+      "Changed talent \"Improved Unarmed Strike\" (tier 1) in the Brawling domain: cost: 1 -> 2.",
+      "Added talent \"Roundhouse Kick\" (tier 1) to the Brawling domain.",
+      "Added talent \"Low Kick\" (tier 1) to the Brawling domain.",
+    ],
+  },
+  {
     date: "2026-08-25",
     entries: [
       "Added talent \"Penetrating Bolt\" (tier 1) to the Marksmanship domain.",

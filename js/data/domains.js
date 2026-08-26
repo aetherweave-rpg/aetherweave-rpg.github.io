@@ -680,7 +680,7 @@ window.DOMAINS = [
     name: "Brawling",
     icon: "👊",
     accent: "#7a5233",
-    cols: 7,
+    cols: 10,
     kind: "core",
     talents: [
       {
@@ -688,7 +688,7 @@ window.DOMAINS = [
         name: "Improved Unarmed Strike",
         description: "Your unarmed strike now deals damage equal to the number of successes rolled{braw_greater_unarmed_strike:\" + 1\"}, without limit.",
         pool: "combat",
-        cost: 1,
+        cost: 2,
         tier: 1,
         row: 0,
         col: 2
@@ -747,12 +747,12 @@ window.DOMAINS = [
           tiers: [
             {
               successes: 1,
-              effect: "Deal damage equal to the number of successes to a maximum of 2. {braw_open_up:\"Your next attack roll this turn ignores up to 2 of the enemy's defense.\"}"
+              effect: "Deal damage equal to the number of successes to a maximum of 2. {braw_open_up:\"Inflict Breached 2 for the purposes of your next attack this turn\"}"
             }
           ]
         },
         pool: "combat",
-        cost: 1,
+        cost: 2,
         tier: 1,
         row: 0,
         col: 4,
@@ -809,7 +809,7 @@ window.DOMAINS = [
         id: "braw_open_up",
         name: "Open up",
         flavour: "You use quick jabs to distract opponents.",
-        description: "After using Jab, your next attack roll this turn ignores up to 2 of the enemy's defense.",
+        description: "In addition, your Jab afflict the target with Breached 2.",
         pool: "combat",
         cost: 1,
         tier: 1,
@@ -844,6 +844,76 @@ window.DOMAINS = [
             "braw_uppercut"
           ]
         }
+      },
+      {
+        id: "braw_low_kick",
+        name: "Low Kick",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal damage equal to the number of successes"
+            },
+            {
+              successes: 2,
+              effect: "Additionally, inflict Slow 2*number of successes"
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 6,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "braw_roundhouse_kick",
+        name: "Roundhouse Kick",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal damage equal to the number of successes."
+            },
+            {
+              successes: 2,
+              effect: "Additionally, inflict Breached 1 until the start of your next turn."
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 7,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous"
       }
     ]
   },
