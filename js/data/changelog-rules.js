@@ -9,6 +9,12 @@
 
 window.CHANGELOG_RULES = [
   {
+    date: "2026-08-27",
+    entries: [
+      "Changed: Combat",
+    ],
+  },
+  {
     date: "2026-08-18",
     entries: [
       "Changed: Added basic avoidance action",

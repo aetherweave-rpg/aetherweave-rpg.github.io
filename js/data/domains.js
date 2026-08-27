@@ -69,7 +69,98 @@ window.DOMAINS = [
     accent: "#fff904",
     cols: 5,
     kind: "core",
-    talents: []
+    talents: [
+      {
+        id: "disc_meditate",
+        name: "Meditate",
+        flavour: "You spent a minute centering yourself, healing wounds on your own body.",
+        description: "If one minute is spent uninterrupted, you heal 3 HP.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 1,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: 1,
+        range: "touch",
+        target: [
+          "self"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "disc_purge_body",
+        name: "Purge Body",
+        flavour: "You are able to actively stimulate your body to purge poison.",
+        test: {
+          characteristic: "body",
+          kind: "combat",
+          skills: [
+            "Endure"
+          ],
+          vs: "none",
+          tiers: [
+            {
+              successes: 2,
+              effect: "Lower the value of Poison by half of the number of successes, rounded down."
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 2,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "minor_action",
+        range: "self",
+        target: [
+          "self"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "disc_mental_ward",
+        name: "Mental Ward",
+        flavour: "Through intense training you are able to stave of many mental effects.",
+        description: "When rolling to Resist, add 2 additional dice.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 3,
+        ability: "maneuver",
+        uses: 1,
+        usesPer: "scene",
+        castingTime: "reaction",
+        range: "touch",
+        duration: "instantaneous"
+      },
+      {
+        id: "disc_unbreakable",
+        name: "Unbreakable",
+        flavour: "You are able to ignore blows and damage that would severely injure any other.",
+        description: "Reduce all damage taken by 1.",
+        pool: "combat",
+        cost: 3,
+        tier: 3,
+        row: 5,
+        col: 0
+      },
+      {
+        id: "disc_be_water",
+        name: "Be Water",
+        flavour: "You are quick to adapt to any situations, being able to anticipate more.",
+        description: "When you take the anticipate action, you roll 2 additional dice instead of 1.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 4
+      }
+    ]
   },
   {
     id: "shadow",
@@ -728,7 +819,7 @@ window.DOMAINS = [
         flavour: "You can use everyday objects as effectively as weapons.",
         description: "When making an unarmed attack, you can use objects in your direct vicinity to make the attack with. This can change the damage type, as well as the properties of your unarmed attack.\nWhen making an attack in this manner, the damage of your unarmed attack is not limited.",
         pool: "combat",
-        cost: 2,
+        cost: 3,
         tier: 1,
         row: 0,
         col: 0
@@ -831,7 +922,7 @@ window.DOMAINS = [
         description: "By opening with a jab, your uppercut no longer lowers your defenses.",
         pool: "combat",
         cost: 1,
-        tier: 1,
+        tier: 2,
         row: 3,
         col: 4,
         ability: "modifier",
@@ -909,6 +1000,73 @@ window.DOMAINS = [
         ability: "maneuver",
         uses: 2,
         castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "braw_one_inch_punch",
+        name: "One-Inch Punch",
+        flavour: "You can use very little wind-up to throw an extremely powerful punch.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal damage equal to the number of successes + 4"
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 3,
+        tier: 3,
+        row: 5,
+        col: 3,
+        ability: "maneuver",
+        uses: 1,
+        castingTime: "minor_action",
+        range: "touch",
+        duration: "instantaneous",
+        requires: {
+          talents: [
+            "braw_jab"
+          ]
+        }
+      },
+      {
+        id: "braw_butterfly_kick",
+        name: "Butterfly Kick",
+        flavour: "You avoid an incoming attack and use its momentum to deliver a powerful kick.",
+        description: "When you Evade or Dodge, and the attacker is in melee range, make an Unarmed attack against the opponent.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal damage equal to the number of successes"
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 3,
+        col: 6,
+        ability: "maneuver",
+        uses: 2,
+        castingTime: "reaction",
         range: "touch",
         target: [
           "enemy"
@@ -1653,7 +1811,7 @@ window.DOMAINS = [
         description: "Exploit Weaknesses damage is increased to 3",
         pool: "combat",
         cost: 2,
-        tier: 1,
+        tier: 2,
         row: 2,
         col: 2,
         ability: "modifier",
@@ -1710,6 +1868,16 @@ window.DOMAINS = [
           "self"
         ],
         duration: "instantaneous"
+      },
+      {
+        id: "guil_nimble_movement",
+        name: "Nimble Movement",
+        description: "You can move through enemies' spaces during combat.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 0,
+        col: 4
       }
     ]
   },
@@ -1958,6 +2126,15 @@ window.DOMAINS = [
         }
       }
     ]
+  },
+  {
+    id: "protection",
+    name: "Protection",
+    icon: "",
+    accent: "#8a6d3b",
+    cols: 5,
+    kind: "core",
+    talents: []
   }
 ];
 

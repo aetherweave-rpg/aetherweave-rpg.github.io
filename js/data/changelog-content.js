@@ -13,6 +13,22 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-27",
+    entries: [
+      "Changed talent \"Greater Exploit Weakness\" (tier 2) in the Guile domain: tier: 1 -> 2.",
+      "Added talent \"Be Water\" (tier 1) to the Discipline domain.",
+      "Added talent \"Nimble Movement\" (tier 1) to the Guile domain.",
+      "Added talent \"Butterfly Kick\" (tier 1) to the Brawling domain.",
+      "Changed talent \"Defensive Combo\" (tier 2) in the Brawling domain: tier: 1 -> 2.",
+      "Added talent \"Unbreakable\" (tier 3) to the Discipline domain.",
+      "Added talent \"Meditate\" (tier 1) to the Discipline domain.",
+      "Added talent \"One-Inch Punch\" (tier 3) to the Brawling domain.",
+      "Added talent \"Purge Body\" (tier 1) to the Discipline domain.",
+      "Added talent \"Mental Ward\" (tier 1) to the Discipline domain.",
+      "Changed talent \"Improvised Weapon\" (tier 1) in the Brawling domain: cost: 2 -> 3.",
+    ],
+  },
+  {
     date: "2026-08-26",
     entries: [
       "Changed talent \"Open up\" (tier 1) in the Brawling domain: description: \"After using Jab, your next attack roll this turn ignores up...\" -> \"In addition, your Jab afflict the target with Breached 2.\".",
