@@ -381,7 +381,7 @@ window.ANCESTRIES = [
           tiers: [
             {
               successes: 1,
-              effect: "Deal 2 extra damage. All damage from this attack is lightning damage."
+              effect: "Deal damage equal to the number of successes + 2. All damage from this attack is lightning damage."
             }
           ]
         },

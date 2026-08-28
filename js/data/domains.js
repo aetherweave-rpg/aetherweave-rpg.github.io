@@ -49,7 +49,134 @@ window.DOMAINS = [
     accent: "#6a8f2f",
     cols: 5,
     kind: "core",
-    talents: [],
+    talents: [
+      {
+        id: "natu_animal_companion",
+        name: "Animal Companion",
+        flavour: "You have an animal companion accompanying you.",
+        description: "Pick one of the available options as an animal companion.",
+        pool: "combat",
+        cost: 3,
+        tier: 1,
+        row: 0,
+        col: 1,
+        grants: {
+          mode: "pick",
+          options: [
+            {
+              talent: "natu_animal_companion_flying"
+            },
+            {
+              talent: "natu_animal_companion_tiny_animal"
+            },
+            {
+              talent: "natu_animal_companion_great"
+            }
+          ],
+          count: 1
+        }
+      },
+      {
+        id: "natu_animal_companion_flying",
+        name: "Animal Companion: Flying",
+        flavour: "You have a flying companion like an owl, hawk, or bat.",
+        description: "This animal companion excels at retrieving or spying from a distance. It can communicate some findings to you, like the presence or absence of certain enemies.",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 1,
+        col: 0,
+        ability: "companion",
+        companion: {
+          hp: 2,
+          defenses: {
+            bludgeoning: 1,
+            slashing: 1,
+            piercing: 1
+          },
+          attacks: [
+            {
+              name: "Claw",
+              damage: "piercing",
+              pool: 2
+            }
+          ],
+          skills: {
+            Observe: 3,
+            Wilderness: 3,
+            Acrobatics: 3
+          }
+        },
+        requires: {
+          talents: [
+            "natu_animal_companion"
+          ]
+        }
+      },
+      {
+        id: "natu_animal_companion_tiny_animal",
+        name: "Animal Companion: Tiny Animal",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 1,
+        col: 1,
+        ability: "companion",
+        companion: {
+          hp: 1,
+          skills: {
+            Climb: 3,
+            Acrobatics: 3,
+            Observe: 3,
+            Sneaking: 3,
+            Thievery: 3
+          }
+        },
+        requires: {
+          talents: [
+            "natu_animal_companion"
+          ]
+        }
+      },
+      {
+        id: "natu_animal_companion_great",
+        name: "Animal Companion: Great",
+        pool: "combat",
+        cost: 2,
+        tier: 1,
+        row: 1,
+        col: 2,
+        ability: "companion",
+        companion: {
+          hp: 5,
+          defenses: {
+            bludgeoning: 1,
+            slashing: 1,
+            piercing: 1,
+            fire: 1,
+            cold: 1,
+            lightning: 1,
+            acid: 1,
+            arcane: 1,
+            blight: 1,
+            radiant: 1,
+            fortitude: 1
+          },
+          attacks: [
+            {
+              name: "Bite",
+              damage: "piercing",
+              pool: 4
+            }
+          ]
+        },
+        requires: {
+          talents: [
+            "natu_animal_companion"
+          ]
+        }
+      }
+    ],
     magical: true
   },
   {
@@ -1061,7 +1188,7 @@ window.DOMAINS = [
         },
         pool: "combat",
         cost: 2,
-        tier: 1,
+        tier: 2,
         row: 3,
         col: 6,
         ability: "maneuver",
@@ -2130,6 +2257,15 @@ window.DOMAINS = [
   {
     id: "protection",
     name: "Protection",
+    icon: "",
+    accent: "#8a6d3b",
+    cols: 5,
+    kind: "core",
+    talents: []
+  },
+  {
+    id: "illusion",
+    name: "Illusion",
     icon: "",
     accent: "#8a6d3b",
     cols: 5,

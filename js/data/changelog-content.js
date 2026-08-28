@@ -13,6 +13,18 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-08-28",
+    entries: [
+      "Added talent \"Animal Companion\" (tier 1) to the Nature domain.",
+      "Added talent \"Animal Companion: Flying\" (tier 1) to the Nature domain.",
+      "Added talent \"Animal Companion: Tiny Animal\" (tier 1) to the Nature domain.",
+      "Added talent \"Animal Companion: Great\" (tier 1) to the Nature domain.",
+      "Changed talent \"Butterfly Kick\" (tier 2) in the Brawling domain: tier: 1 -> 2.",
+      "Changed source talent \"Hidden lesson\" (tier 1) in the Mentor source of power: castingTime: \"minor_action\" -> \"reaction\".",
+      "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / creation points).",
+    ],
+  },
+  {
     date: "2026-08-27",
     entries: [
       "Changed talent \"Greater Exploit Weakness\" (tier 2) in the Guile domain: tier: 1 -> 2.",

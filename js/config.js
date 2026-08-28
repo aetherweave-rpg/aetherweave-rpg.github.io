@@ -105,6 +105,18 @@ window.CONFIG = {
   // (talent.usesPer). The first entry is the default when none is set. "scene"
   // refreshes far more often than "session".
   MANEUVER_PERIODS: ["session", "scene"],
+
+  // --- Companions ----------------------------------------------------------
+  // A companion's name and icon belong to the PLAYER, not to the talent that
+  // grants it (DESIGN.md §4.11): two rangers who both take Wolf Companion have
+  // two different wolves. The statblock therefore authors neither, and the
+  // sheet offers this palette to pick from. First entry is the unchosen state.
+  COMPANION_ICON_DEFAULT: "🐾",
+  COMPANION_ICONS: [
+    "🐾", "🐺", "🐕", "🐈", "🦊", "🐻", "🦁", "🐅", "🐆", "🐎", "🦌", "🐗",
+    "🦅", "🦉", "🐦", "🐓", "🦇", "🐍", "🦎", "🐊", "🐢", "🐸", "🦂", "🕷",
+    "🐉", "🦄", "🐲", "👹", "👻", "🔥", "❄", "⚡", "🌿", "🪨", "💀", "⭐",
+  ],
 };
 
 // Starting free exp comes from the character-creation numbers; see

@@ -42,7 +42,7 @@
     root.appendChild(skillsSection(state));
     root.appendChild(profSection(state));
     root.appendChild(inventorySection(state));
-    [abilitiesSection, maneuversSection, spellsSection].forEach(function (fn) {
+    [abilitiesSection, maneuversSection, spellsSection, companionsSection].forEach(function (fn) {
       var s = fn(state);
       if (s) root.appendChild(s);
     });
@@ -736,9 +736,11 @@
   // Modifiers never get a row of their own: their effect is already inside the
   // entry they modify, so listing both would ask the player to merge the two
   // by hand. They stay refundable from the tree page (§4.8).
+  // Companion talents are excluded here too: all four kinds render under
+  // Companions instead, where the statblock they belong to is (§4.11).
   function abilitiesSection(state) {
     var owned = Engine.ownedTalents(state).filter(function (t) {
-      return t.ability !== "maneuver" && !Engine.isModifier(t);
+      return t.ability !== "maneuver" && !Engine.isModifier(t) && !Engine.isCompanionEntry(t);
     });
     if (!owned.length) return null;
     var s = section("Abilities", owned.length + "");
@@ -818,6 +820,186 @@
     }
     row.onclick = function () { toggleExpand(t.id); };
     return row;
+  }
+
+  // ---- Companions (§4.11) --------------------------------------------------
+  // Hidden until the character owns a companion talent, then one card per
+  // companion: the statblock (hp, damage reduction, attack, skill pools) and
+  // the abilities attached to it. Companion modifiers never get a row of their
+  // own for the same reason plain modifiers don't (§4.8) — their effect is
+  // already inside the numbers above.
+  function companionsSection(state) {
+    var list = Engine.companions(state);
+    if (!list.length) return null;
+    var s = section("Companions", list.length + "");
+    list.forEach(function (c) { s.appendChild(companionCard(c, state)); });
+    return s;
+  }
+
+  // Which companion's icon palette is open, if any. One at a time: the grid is
+  // large enough that two open at once would push the second card off-screen.
+  var iconPickerFor = null;
+
+  function companionCard(c, state) {
+    var block = c.block;
+    var id = c.talent.id;
+    var card = el("div", "companion-card");
+
+    // The name and the icon are the player's to set (§4.11), so the head is an
+    // editable row rather than a label: a button that opens the palette, and a
+    // text field that saves silently the way every other identity field does.
+    var head = el("div", "companion-head");
+    var iconBtn = el("button", "talent-icon companion-icon-btn", c.icon);
+    iconBtn.type = "button";
+    iconBtn.title = "Pick an icon";
+    iconBtn.onclick = function () {
+      iconPickerFor = iconPickerFor === id ? null : id;
+      render();
+    };
+    head.appendChild(iconBtn);
+
+    var headInfo = el("div", "talent-info");
+    var nameInput = el("input", "ed-input companion-name-input");
+    nameInput.value = c.named ? c.name : "";
+    nameInput.placeholder = c.talent.name;      // the fallback, shown as a hint
+    nameInput.setAttribute("aria-label", "Companion name");
+    nameInput.oninput = function () {
+      State.update(function (s2) {
+        s2.companions = s2.companions || {};
+        s2.companions[id] = Object.assign({}, s2.companions[id], { name: nameInput.value });
+      }, true);
+    };
+    nameInput.onchange = function () { State.notify(); };
+    headInfo.appendChild(nameInput);
+    headInfo.appendChild(el("span", "talent-meta", "granted by " + c.talent.name + " · " +
+      ((Engine.treeById(c.talent.domain) || {}).name || c.talent.domain)));
+    head.appendChild(headInfo);
+    card.appendChild(head);
+
+    if (iconPickerFor === id) card.appendChild(companionIconPicker(id, c.icon));
+
+    // The three statblock rows a player reaches for mid-fight. A companion
+    // makes no defense roll (main.tex §Companions), so its defenses read as
+    // flat damage reduction rather than a pool to roll.
+    var stats = el("div", "companion-stats");
+    stats.appendChild(statPair("HP", String(block.hp != null ? block.hp : "—")));
+
+    var defs = Engine.companionDefenses(block);
+    if (defs.length) {
+      stats.appendChild(statPair("Damage reduction", defs.map(function (d) {
+        return d.label + " " + d.value;
+      }).join(" · ")));
+    }
+    card.appendChild(stats);
+
+    // Attacks get their own block rather than a stat pair: a companion may have
+    // several, and three of them crammed into one value read as a sentence.
+    var attacks = Engine.companionAttacks(block);
+    if (attacks.length) {
+      var atkList = el("div", "companion-attack-list");
+      attacks.forEach(function (a) {
+        var r = el("div", "companion-attack-row");
+        r.appendChild(el("span", "companion-attack-name", a.name));
+        r.appendChild(el("span", "companion-attack-dmg", Engine.defenseLabel(a.damage) || a.damage));
+        r.appendChild(el("span", "companion-attack-pool", a.pool + (a.pool === 1 ? " die" : " dice")));
+        atkList.appendChild(r);
+      });
+      card.appendChild(withLabel(attacks.length === 1 ? "Attack" : "Attacks", atkList));
+    }
+
+    var skills = Engine.companionSkills(block);
+    if (skills.length) {
+      var sk = el("div", "companion-skills");
+      skills.forEach(function (row) {
+        var r = el("div", "companion-skill-row");
+        r.appendChild(el("span", "companion-skill-name", row.name));
+        r.appendChild(el("span", "companion-skill-pool", row.pool + (row.pool === 1 ? " die" : " dice")));
+        sk.appendChild(r);
+      });
+      card.appendChild(withLabel("Skills", sk));
+    }
+
+    // Inherent passives (authored on the statblock) and acquired ones
+    // (companion_passive talents) are one list: on the sheet they are the same
+    // thing, and which of them came from a talent is not a distinction the
+    // player has to act on.
+    var passives = (block.passives || []).map(function (p) {
+      return { id: null, name: p.name, description: p.description };
+    }).concat(c.passives);
+    if (passives.length) card.appendChild(withLabel("Passives", abilityList(passives, state)));
+    if (c.maneuvers.length) card.appendChild(withLabel("Maneuvers", abilityList(c.maneuvers, state)));
+
+    return card;
+  }
+
+  function companionIconPicker(id, current) {
+    var grid = el("div", "companion-icon-grid");
+    (CONFIG.COMPANION_ICONS || []).forEach(function (icon) {
+      var b = el("button", "companion-icon-option" + (icon === current ? " selected" : ""), icon);
+      b.type = "button";
+      b.onclick = function () {
+        // Close first: State.update notifies synchronously, so a re-render runs
+        // inside it and would paint the palette open again.
+        iconPickerFor = null;
+        State.update(function (s2) {
+          s2.companions = s2.companions || {};
+          s2.companions[id] = Object.assign({}, s2.companions[id], { icon: icon });
+        });
+      };
+      grid.appendChild(b);
+    });
+    return grid;
+  }
+
+  function statPair(label, value) {
+    var p = el("div", "companion-stat");
+    p.appendChild(el("span", "companion-stat-label", label));
+    p.appendChild(el("span", "companion-stat-value", value));
+    return p;
+  }
+  function withLabel(label, node) {
+    var wrap = el("div", "companion-block");
+    wrap.appendChild(el("h3", "companion-block-title", label));
+    wrap.appendChild(node);
+    return wrap;
+  }
+
+  // Companion abilities expand exactly like the character's own rows do, and
+  // reuse the same `expanded` map — an inherent passive has no talent id, so
+  // it is keyed by the companion-scoped name instead.
+  function abilityList(items, state) {
+    var wrap = el("div", "companion-ability-list");
+    items.forEach(function (a) {
+      var key = a.id || ("inherent:" + a.name);
+      var isOpen = !!expanded[key];
+      var hasBody = !!(a.description || a.flavour || (a.id && Engine.hasTest(a, state)));
+      var row = el("div", "talent-row expandable" + (isOpen ? " expanded" : ""));
+      var info = el("div", "talent-info");
+      var nameLine = el("span", "talent-name", a.name);
+      if (a.uses) nameLine.appendChild(el("span", "talent-uses-tag", "⟳ " + a.uses + " / " + (a.usesPer || "session")));
+      if (hasBody) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
+      info.appendChild(nameLine);
+      if (a.id && a.castingTime != null) {
+        info.appendChild(el("span", "talent-meta", [
+          Engine.castingTimeLabel(a), Engine.rangeLabel(a), Engine.targetLabel(a),
+          Engine.durationLabel(a), Engine.aoeLabel(a),
+        ].filter(Boolean).join(" · ")));
+      }
+      if (isOpen && hasBody) {
+        var desc = el("div", "talent-desc");
+        if (a.flavour) desc.appendChild(el("div", "talent-flavour", Engine.resolveText(a.flavour, state)));
+        if (a.description) desc.appendChild(el("div", "talent-desc-text", Engine.resolveText(a.description, state)));
+        if (a.id) {
+          var tb = UI.renderTest(a, state);
+          if (tb) desc.appendChild(tb);
+        }
+        info.appendChild(desc);
+      }
+      row.appendChild(info);
+      if (hasBody) row.onclick = function () { toggleExpand(key); };
+      wrap.appendChild(row);
+    });
+    return wrap;
   }
 
   // Spells: their own section, one block per magical domain the character

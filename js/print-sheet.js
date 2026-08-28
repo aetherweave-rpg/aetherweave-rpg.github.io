@@ -370,6 +370,89 @@
     return b;
   }
 
+  // ---- companions (§4.11) --------------------------------------------------
+  // The statblock goes on the play sheet, where the numbers are wanted; the
+  // rules text of whatever is attached to it goes in the appendix with
+  // everything else, through the ordinary entry-group machinery below.
+  function companionsBlock(state) {
+    var list = Engine.companions(state);
+    if (!list.length) return null;
+    var b = block("Companions", String(list.length), "ps-companions");
+    list.forEach(function (c) {
+      var block2 = c.block;
+      var card = el("div", "ps-companion");
+      // The player's name and icon (§4.11); the granting talent is the note, so
+      // the sheet still says where the creature came from.
+      var head = el("h3", "ps-h3", c.icon + " " + c.name);
+      head.appendChild(el("span", "ps-h3-note", c.talent.name));
+      card.appendChild(head);
+
+      var stats = el("div", "ps-companion-stats");
+      stats.appendChild(psStat("HP", String(block2.hp != null ? block2.hp : "—")));
+      var defs = Engine.companionDefenses(block2);
+      // A companion rolls no defense, so this is flat reduction — spelled out
+      // rather than abbreviated, since the paper sheet has no tooltip.
+      if (defs.length) {
+        stats.appendChild(psStat("Damage reduction", defs.map(function (d) {
+          return d.label + " " + d.value;
+        }).join(" · ")));
+      }
+      // Each attack is its own stat, so several stay legible on paper instead
+      // of running together in one value.
+      Engine.companionAttacks(block2).forEach(function (a, i) {
+        stats.appendChild(psStat(i === 0 ? "Attack" : "", a.name + " · " +
+          (Engine.defenseLabel(a.damage) || a.damage) + " · " + a.pool + " dice"));
+      });
+      card.appendChild(stats);
+
+      var skills = Engine.companionSkills(block2);
+      if (skills.length) {
+        var sk = el("div", "ps-companion-skills");
+        skills.forEach(function (row) {
+          var r = el("span", "ps-companion-skill");
+          r.appendChild(el("span", "ps-companion-skill-name", row.name));
+          r.appendChild(el("span", "ps-companion-skill-pool", String(row.pool)));
+          sk.appendChild(r);
+        });
+        card.appendChild(sk);
+      }
+      b.appendChild(card);
+    });
+    return b;
+  }
+  function psStat(label, value) {
+    var p = el("div", "ps-companion-stat");
+    p.appendChild(el("span", "ps-companion-stat-label", label));
+    p.appendChild(el("span", "ps-companion-stat-value", value));
+    return p;
+  }
+
+  // An inherent passive has no talent behind it — no id, cost, tier or test —
+  // so it produces the same entry shape with those fields left out rather than
+  // a second kind of row the index and appendix would both have to know about.
+  function companionAbilityEntry(a, state, inherent) {
+    if (inherent) {
+      return {
+        id: null, icon: "·", name: a.name,
+        flavour: "", description: Engine.resolveText(a.description || "", state),
+        test: null, source: "innate", tags: [], meta: "innate", warn: null,
+      };
+    }
+    var e = talentEntry(a, state);
+    // talentEntry only emits maneuver tags for `ability === "maneuver"`; a
+    // companion maneuver carries the identical fields, so add them here.
+    if (Engine.isCompanionManeuver(a)) {
+      var extra = [];
+      if (a.uses) extra.push("⟳ " + a.uses + " / " + (a.usesPer || "session"));
+      if (a.castingTime != null) {
+        [Engine.castingTimeLabel(a), Engine.rangeLabel(a), Engine.targetLabel(a),
+         Engine.durationLabel(a), Engine.aoeLabel(a)].forEach(function (v) { if (v) extra.push(v); });
+      }
+      e.tags = extra.concat(e.tags);
+    }
+    return e;
+  }
+
   // ---- the entries (abilities · maneuvers · spells) ------------------------
   // Collected once and rendered twice: as a scannable index on the play sheet,
   // and in full in the appendix. One collection means the two can never
@@ -465,7 +548,9 @@
 
     // Modifiers are absent by design: the paper sheet shows the modified entry,
     // not the modification (§4.8), same as the screen.
-    [["Abilities", function (t) { return t.ability !== "maneuver" && !Engine.isModifier(t); }],
+    // Companion talents are excluded here as well: all four kinds belong to a
+    // creature rather than the character, and get their own groups below.
+    [["Abilities", function (t) { return t.ability !== "maneuver" && !Engine.isModifier(t) && !Engine.isCompanionEntry(t); }],
      ["Maneuvers", function (t) { return t.ability === "maneuver"; }]].forEach(function (g) {
       var list = owned.filter(g[1]).sort(sortTalents);
       if (list.length) {
@@ -492,6 +577,23 @@
           .sort(function (a, b) { return (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name); })
           .map(function (sp) { return spellEntry(sp, state); }),
         empty: "Able to cast, but no spells learned yet.",
+      });
+    });
+
+    // One group per companion, holding everything it can actually do. Innate
+    // passives sit alongside acquired ones for the same reason they do on the
+    // screen sheet: at the table they are the same thing.
+    Engine.companions(state).forEach(function (c) {
+      var entries = (c.block.passives || []).map(function (p) {
+        return companionAbilityEntry(p, state, true);
+      }).concat(c.passives.concat(c.maneuvers).map(function (a) {
+        return companionAbilityEntry(a, state, false);
+      }));
+      if (!entries.length) return;
+      groups.push({
+        title: "Companion · " + c.name,
+        note: String(entries.length),
+        entries: entries,
       });
     });
 
@@ -599,6 +701,8 @@
     sheet.appendChild(skills(state, opts));
     sheet.appendChild(proficiencies(state));
     sheet.appendChild(inventory(state));
+    var comp = companionsBlock(state);
+    if (comp) sheet.appendChild(comp);
 
     var groups = entryGroups(state);
     var index = entryIndex(groups);

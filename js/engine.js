@@ -167,14 +167,28 @@
   // A node's corner marker is exactly this classification, which is why it
   // lives here and not in a renderer: the trees page, the editor and the tests
   // must agree on what a given entry *is*.
-  var ENTRY_KIND_MARKS = { passive: "P", maneuver: "M", spell: "S", modifier: "mod" };
-  var ENTRY_KIND_NAMES = { passive: "Passive", maneuver: "Maneuver", spell: "Spell", modifier: "Modifier" };
+  var ENTRY_KIND_MARKS = {
+    passive: "P", maneuver: "M", spell: "S", modifier: "mod",
+    companion: "C", companion_passive: "CP", companion_maneuver: "CM", companion_modifier: "cmod",
+  };
+  var ENTRY_KIND_NAMES = {
+    passive: "Passive", maneuver: "Maneuver", spell: "Spell", modifier: "Modifier",
+    companion: "Companion", companion_passive: "Companion Passive",
+    companion_maneuver: "Companion Maneuver", companion_modifier: "Companion Modifier",
+  };
+  // Every `ability` value a talent may carry. The four companion kinds (§4.11)
+  // are talents in every ordinary respect — bought, placed, gated, refunded —
+  // and differ only in who the thing they grant belongs to.
+  var TALENT_ABILITIES = [
+    "passive", "maneuver", "modifier",
+    "companion", "companion_passive", "companion_maneuver", "companion_modifier",
+  ];
 
   function isSpellEntry(entry) { return !!(entry && spellDomainById[entry.id] !== undefined); }
   function entryKind(entry) {
     if (!entry) return null;
     if (isSpellEntry(entry)) return "spell";
-    if (entry.ability === "modifier") return "modifier";
+    if (entry.ability && ENTRY_KIND_NAMES[entry.ability]) return entry.ability;
     if (entry.ability === "maneuver") return "maneuver";
     return "passive";
   }
@@ -911,6 +925,24 @@
   // One `modifies` operation whose field is part of the test block. Reuses the
   // authored-block checks so a ladder written by a modifier can't be shaped
   // differently from one written on the entry.
+  // An `attacks` op carries whole attack rows, so each gets the same check it
+  // would have got had it been authored on the statblock itself (§4.11).
+  function validateCompanionAttackOp(problems, label, op, value) {
+    if (!Array.isArray(value)) {
+      problems.push(label + ": '" + op + "' on 'attacks' needs a list of attacks");
+      return;
+    }
+    value.forEach(function (atk, i) {
+      var where = label + ": '" + op + "' on 'attacks' #" + (i + 1);
+      if (!atk || typeof atk !== "object") { problems.push(where + " must be an object"); return; }
+      if (!String(atk.name || "").trim()) problems.push(where + " needs a name");
+      if (!defenseById(atk.damage))
+        problems.push(where + " has unknown damage type '" + atk.damage + "'");
+      if (typeof atk.pool !== "number" || atk.pool <= 0)
+        problems.push(where + " needs a positive dice pool");
+    });
+  }
+
   function validateTestFieldOp(problems, label, field, op, value) {
     if (field === "test.tiers") {
       validateTierRows(problems, label + ": '" + op + "' on test.tiers", value);
@@ -1142,8 +1174,145 @@
     // A typo'd `ability` would otherwise fall through to passive-like
     // behaviour everywhere and never be noticed.
     allTalents.forEach(function (t) {
-      if (t.ability !== undefined && ["passive", "maneuver", "modifier"].indexOf(t.ability) < 0)
-        problems.push(t.id + ": unknown ability '" + t.ability + "' (passive, maneuver or modifier)");
+      if (t.ability !== undefined && TALENT_ABILITIES.indexOf(t.ability) < 0)
+        problems.push(t.id + ": unknown ability '" + t.ability + "' (" + TALENT_ABILITIES.join(", ") + ")");
+    });
+
+    // Companions (§4.11). Three rules, one per talent kind, plus the shared
+    // cross-tree rule prerequisites and modifiers already follow.
+    allTalents.forEach(function (t) {
+      var tree = treeById(t.domain);
+
+      // A link into another tree is only legal from a combination tree, into
+      // one of its own two parents — the same rule `requires` and `modifies`
+      // follow, and for the same reason: a tree that could reach anywhere
+      // could not be read on its own.
+      function checkTargetTree(targetId, verb) {
+        var target = byId[targetId];
+        if (!target) { problems.push(t.id + ": " + verb + " unknown talent '" + targetId + "'"); return null; }
+        if (!isCompanion(target)) {
+          problems.push(t.id + ": " + verb + " '" + targetId + "', which is not a companion talent");
+          return null;
+        }
+        if (target.domain !== t.domain) {
+          if (!tree || tree.kind !== "combination")
+            problems.push(t.id + ": " + verb + " '" + targetId + "' in another tree, which is only allowed in combination trees");
+          else if ((tree.parents || []).indexOf(target.domain) < 0)
+            problems.push(t.id + ": " + verb + " '" + targetId + "', not in a parent tree (" +
+              (tree.parents || []).join(", ") + ")");
+        }
+        return target;
+      }
+
+      if (t.companion && !isCompanion(t))
+        problems.push(t.id + ": has a `companion` statblock but is not ability: \"companion\"");
+      if (t.companionOf && !companionAttachKind(t))
+        problems.push(t.id + ": has `companionOf` but is not a companion passive or maneuver");
+      if (t.modifiesCompanion && !isCompanionModifier(t))
+        problems.push(t.id + ": has `modifiesCompanion` but is not ability: \"companion_modifier\"");
+
+      if (isCompanion(t)) {
+        var block = t.companion;
+        if (!block || typeof block !== "object") {
+          problems.push(t.id + ": a companion talent must carry a `companion` statblock");
+        } else {
+          // No name/icon check: both are the player's (§4.11). An authored one
+          // would be dead data, so it is reported rather than silently ignored.
+          ["name", "icon"].forEach(function (f) {
+            if (block[f] !== undefined)
+              problems.push(t.id + ": companion statblock must not author '" + f +
+                "' — the player names and picks an icon for their own companion");
+          });
+          if (typeof block.hp !== "number" || block.hp <= 0)
+            problems.push(t.id + ": companion statblock needs a positive numeric hp");
+          Object.keys(block.defenses || {}).forEach(function (d) {
+            if (!defenseById(d))
+              problems.push(t.id + ": companion has unknown defense '" + d + "'");
+            else if (typeof block.defenses[d] !== "number")
+              problems.push(t.id + ": companion defense '" + d + "' must be a number");
+          });
+          Object.keys(block.skills || {}).forEach(function (n) {
+            if (allSkillNames().indexOf(n) < 0)
+              problems.push(t.id + ": companion has unknown skill '" + n + "'");
+            else if (typeof block.skills[n] !== "number")
+              problems.push(t.id + ": companion skill '" + n + "' must be a dice pool number");
+          });
+          // A companion may have several attacks (§4.11). The singular `attack`
+          // it replaced is reported rather than quietly read, so a half-migrated
+          // statblock can't lose its attack without saying so.
+          if (block.attack !== undefined)
+            problems.push(t.id + ": companion statblock uses `attack`; it is now `attacks`, a list");
+          if (block.attacks !== undefined && !Array.isArray(block.attacks))
+            problems.push(t.id + ": companion `attacks` must be a list");
+          var attackNames = {};
+          (Array.isArray(block.attacks) ? block.attacks : []).forEach(function (atk, i) {
+            var where = t.id + ": companion attack #" + (i + 1);
+            if (!atk || typeof atk !== "object") { problems.push(where + " must be an object"); return; }
+            var nm = String(atk.name || "").trim();
+            if (!nm) problems.push(where + " needs a name");
+            // A modifier's `merge` upserts by name, so two attacks sharing one
+            // would make which of them a modifier hits unanswerable.
+            else if (attackNames[nm]) problems.push(t.id + ": two companion attacks are both named '" + nm + "'");
+            else attackNames[nm] = true;
+            if (!defenseById(atk.damage))
+              problems.push(where + " has unknown damage type '" + atk.damage + "'");
+            if (typeof atk.pool !== "number" || atk.pool <= 0)
+              problems.push(where + " needs a positive dice pool");
+          });
+          (block.passives || []).forEach(function (p, i) {
+            if (!p || !p.name || !String(p.name).trim())
+              problems.push(t.id + ": companion passive #" + (i + 1) + " needs a name");
+          });
+        }
+      }
+
+      if (companionAttachKind(t)) {
+        var of = t.companionOf || [];
+        if (!of.length)
+          problems.push(t.id + ": a companion " + companionAttachKind(t) + " must name at least one companion in `companionOf`");
+        of.forEach(function (id) { checkTargetTree(id, "attaches to"); });
+      }
+
+      if (isCompanionModifier(t)) {
+        ["uses", "usesPer", "castingTime", "range", "target", "duration", "aoe"].forEach(function (f) {
+          if (t[f] !== undefined)
+            problems.push(t.id + ": a companion modifier grants nothing itself, so it must not carry '" + f + "'");
+        });
+        var cTargets = Object.keys(t.modifiesCompanion || {});
+        if (!cTargets.length) {
+          problems.push(t.id + ": a companion modifier must name at least one companion in `modifiesCompanion`");
+        }
+        cTargets.forEach(function (targetId) {
+          if (!checkTargetTree(targetId, "modifies")) return;
+          var spec = t.modifiesCompanion[targetId] || {};
+          Object.keys(spec).forEach(function (field) {
+            var allowed = companionFieldOps(field);
+            if (!allowed) {
+              problems.push(t.id + ": '" + field + "' is not a modifiable companion field " +
+                "(hp, attacks, defenses.<defense>, skills.<skill>)");
+              return;
+            }
+            var ops = spec[field];
+            if (!ops || typeof ops !== "object" || Array.isArray(ops)) {
+              problems.push(t.id + ": '" + field + "' must be an op object, e.g. { add: 1 }");
+              return;
+            }
+            var opNames = Object.keys(ops);
+            if (!opNames.length)
+              problems.push(t.id + ": '" + field + "' names no operation (" + Object.keys(MODIFIER_OPS).join(", ") + ")");
+            opNames.forEach(function (op) {
+              if (!MODIFIER_OPS[op]) problems.push(t.id + ": unknown operation '" + op + "' on '" + field + "'");
+              else if (!allowed[op])
+                problems.push(t.id + ": '" + field + "' may only be changed with " +
+                  Object.keys(allowed).map(function (o) { return "'" + o + "'"; }).join(" or "));
+              else if (op !== "set" && op !== "merge" && typeof ops[op] !== "number")
+                problems.push(t.id + ": '" + op + "' on '" + field + "' needs a number");
+              else if (field === "attacks")
+                validateCompanionAttackOp(problems, t.id, op, ops[op]);
+            });
+          });
+        });
+      }
     });
 
     // Modifiers (§4.8). The `modifies` block is both the field-change spec and
@@ -1173,9 +1342,18 @@
           return;
         }
         if (targetId === t.id) { problems.push(t.id + ": modifies itself"); return; }
-        if (isModifier(target)) {
+        if (isModifier(target) || isCompanionModifier(target)) {
           problems.push(t.id + ": modifies '" + targetId + "', which is itself a modifier " +
             "(modifiers apply to passives, maneuvers and spells only)");
+          return;
+        }
+        // A companion's statblock is reached with `modifiesCompanion` (§4.11),
+        // never with a plain `modifies`: the fields are a different set, and a
+        // plain modifier aimed at one would silently write `name`/`icon` onto
+        // the TALENT while the statblock it looks like it is editing stays put.
+        if (isCompanion(target)) {
+          problems.push(t.id + ": modifies '" + targetId + "', a companion talent " +
+            "(use ability: \"companion_modifier\" with `modifiesCompanion` instead)");
           return;
         }
         // Same cross-tree rule prerequisites follow: only a combination tree
@@ -2314,26 +2492,44 @@
   // Upserts success-tier rows by their `successes` threshold: a rung the base
   // ladder already has is replaced, a new one is inserted. Sorted on the way
   // out, so the order rungs were authored in never shows.
-  function mergeTiers(base, incoming) {
-    var out = (Array.isArray(base) ? base : []).map(function (r) {
-      return { successes: r.successes, effect: r.effect };
-    });
+  // Upserts rows in a list by an identifying key: a row the base already has is
+  // replaced, a new one is appended. `keep` says which fields survive the copy,
+  // so a merge can never smuggle in a field the schema does not have.
+  function mergeRows(base, incoming, key, keep, sortFn) {
+    function pick(r) {
+      var o = {};
+      keep.forEach(function (f) { if (r[f] !== undefined) o[f] = r[f]; });
+      return o;
+    }
+    var out = (Array.isArray(base) ? base : []).map(pick);
     (Array.isArray(incoming) ? incoming : []).forEach(function (row) {
       if (!row || typeof row !== "object") return;
-      var next = { successes: row.successes, effect: row.effect };
+      var next = pick(row);
       var at = -1;
-      for (var i = 0; i < out.length; i++) if (out[i].successes === next.successes) { at = i; break; }
+      for (var i = 0; i < out.length; i++) if (out[i][key] === next[key]) { at = i; break; }
       if (at >= 0) out[at] = next; else out.push(next);
     });
-    return out.sort(function (a, b) { return (a.successes || 0) - (b.successes || 0); });
+    return sortFn ? out.sort(sortFn) : out;
   }
+  // A success ladder sorts by its threshold, so authoring order never shows.
+  function mergeTiers(base, incoming) {
+    return mergeRows(base, incoming, "successes", ["successes", "effect"],
+      function (a, b) { return (a.successes || 0) - (b.successes || 0); });
+  }
+  // A companion's attacks keep author order: there is no natural ordering, and
+  // the sheet lists them in the order the statblock reads (§4.11).
+  function mergeAttacks(base, incoming) {
+    return mergeRows(base, incoming, "name", ["name", "damage", "pool"], null);
+  }
+  var MERGE_BY_FIELD = { "test.tiers": mergeTiers, attacks: mergeAttacks };
 
   // Applied in a fixed order so that one modifier's ops are order-independent:
-  // replace, then merge, then scale, then offset, then clamp.
-  function applyFieldOps(value, ops) {
+  // replace, then merge, then scale, then offset, then clamp. `field` selects
+  // which list a `merge` upserts into.
+  function applyFieldOps(value, ops, field) {
     var v = value;
     if (ops.set !== undefined) v = ops.set;
-    if (ops.merge !== undefined) v = mergeTiers(v, ops.merge);
+    if (ops.merge !== undefined) v = (MERGE_BY_FIELD[field] || mergeTiers)(v, ops.merge);
     if (ops.mul !== undefined) v = numOr0(v) * ops.mul;
     if (ops.add !== undefined) v = numOr0(v) + ops.add;
     if (ops.min !== undefined && numOr0(v) < ops.min) v = ops.min;
@@ -2377,12 +2573,12 @@
         // that sub-field (e.g. Cone → Circle) without re-authoring size/origin.
         var dot = field.indexOf(".");
         if (dot < 0) {
-          out[field] = applyFieldOps(out[field], spec[field]);
+          out[field] = applyFieldOps(out[field], spec[field], field);
         } else {
           var top = field.slice(0, dot), sub = field.slice(dot + 1);
           var base = {};
           if (out[top]) Object.keys(out[top]).forEach(function (k) { base[k] = out[top][k]; });
-          base[sub] = applyFieldOps(base[sub], spec[field]);
+          base[sub] = applyFieldOps(base[sub], spec[field], field);
           out[top] = base;
         }
       });
@@ -2390,6 +2586,177 @@
     out.modifiedBy = mods.map(function (m) { return m.id; });
     return out;
   }
+
+  // ---- Companions (§4.11) --------------------------------------------------
+  // A companion is an animal/spirit/construct that fights alongside a
+  // character (main.tex §Companions). Four talent kinds carry the mechanic:
+  //
+  //   companion           grants one, and carries its statblock
+  //   companion_modifier  rewrites a companion's statblock fields
+  //   companion_passive   attaches a passive ability to named companion(s)
+  //   companion_maneuver  attaches a maneuver  to named companion(s)
+  //
+  // The split mirrors modifiers (§4.8) deliberately: the statblock is data on
+  // the granting talent, so a change to it is declared on the thing causing
+  // the change, while the abilities a companion picks up are ordinary talents
+  // and so get text hooks, test ladders and plain modifiers for free.
+  //
+  // `companionOf` / `modifiesCompanion` are the declared links, and they name
+  // companion TALENT ids rather than statblock names — a character may hold
+  // two companions whose blocks are both called "Wolf", and the id is the only
+  // thing that distinguishes them.
+  function isCompanion(t) { return !!t && t.ability === "companion"; }
+  function isCompanionModifier(t) { return !!t && t.ability === "companion_modifier"; }
+  function isCompanionManeuver(t) { return !!t && t.ability === "companion_maneuver"; }
+  function isCompanionPassive(t) { return !!t && t.ability === "companion_passive"; }
+  // "Belongs to a companion rather than to the character" — what the sheet's
+  // player-facing sections filter out, since all four render under Companions.
+  function isCompanionEntry(t) {
+    return isCompanion(t) || isCompanionModifier(t) || isCompanionManeuver(t) || isCompanionPassive(t);
+  }
+  function companionAttachKind(t) {
+    return isCompanionManeuver(t) ? "maneuver" : isCompanionPassive(t) ? "passive" : null;
+  }
+
+  // Statblock fields a companion_modifier may rewrite. Two of the three groups
+  // are OPEN sets — a defense per DEFENSES entry, a dice pool per skill — so
+  // this is a predicate rather than the flat map MODIFIABLE_FIELDS can be.
+  // Same one-level dotting `effective` already understands ("aoe.size"), for
+  // the same reason: a modifier that bumps one defense must not have to
+  // re-author the other eleven.
+  //
+  // `hp`, a defense, a skill pool and `attack.pool` are genuine quantities, so
+  // they take arithmetic; names and damage types can only be replaced.
+  // `name` and `icon` are deliberately absent: they belong to the player, not
+  // to the content (see companionName below), so a modifier that set one would
+  // silently overwrite what the player typed.
+  function companionFieldOps(field) {
+    if (field === "hp") return ARITHMETIC_OPS;
+    // `attacks` is a list, so it takes the same pair a success ladder does:
+    // `set` replaces it outright, `merge` upserts rows by attack name — which
+    // is how a modifier grants a companion an extra attack, or re-states one it
+    // is buffing, without re-authoring the others.
+    if (field === "attacks") return { set: 1, merge: 1 };
+    var dot = String(field).indexOf(".");
+    if (dot < 0) return null;
+    var top = field.slice(0, dot), sub = field.slice(dot + 1);
+    if (top === "defenses") return defenseById(sub) ? ARITHMETIC_OPS : null;
+    if (top === "skills") {
+      return allSkillNames().indexOf(sub) >= 0 ? ARITHMETIC_OPS : null;
+    }
+    return null;
+  }
+  function allSkillNames() {
+    var s = window.SKILLS || {};
+    return (s.combat || []).concat(s.noncombat || []).map(function (sk) { return sk.name; });
+  }
+
+  // Owned companion_modifiers pointing at `companionId`, in database order —
+  // same determinism rule `modifiersFor` follows.
+  function companionModifiersFor(state, companionId) {
+    var owned = (state && state.talents) || [];
+    if (!owned.length) return [];
+    return allTalents.filter(function (t) {
+      return isCompanionModifier(t) && t.modifiesCompanion &&
+        t.modifiesCompanion[companionId] && owned.indexOf(t.id) >= 0;
+    });
+  }
+
+  // The statblock as the character actually has it. Pass the AUTHORED talent;
+  // like `effective`, this is not idempotent.
+  function effectiveCompanion(talent, state) {
+    var base = (talent && talent.companion) || {};
+    var mods = companionModifiersFor(state, talent && talent.id);
+    // Deep-ish copy: the two open sub-objects are always replaced wholesale so
+    // an `add` can never write through into the authored database.
+    var out = {};
+    Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+    out.defenses = shallow(base.defenses);
+    out.skills = shallow(base.skills);
+    out.passives = (base.passives || []).map(function (p) { return { name: p.name, description: p.description }; });
+    out.attacks = (base.attacks || []).map(shallow);
+    if (!mods.length) return out;
+    mods.forEach(function (m) {
+      var spec = m.modifiesCompanion[talent.id] || {};
+      Object.keys(spec).forEach(function (field) {
+        if (!companionFieldOps(field)) return;      // validator reports these
+        var dot = field.indexOf(".");
+        if (dot < 0) { out[field] = applyFieldOps(out[field], spec[field], field); return; }
+        var top = field.slice(0, dot), sub = field.slice(dot + 1);
+        var holder = shallow(out[top]);
+        holder[sub] = applyFieldOps(holder[sub], spec[field], field);
+        out[top] = holder;
+      });
+    });
+    out.modifiedBy = mods.map(function (m) { return m.id; });
+    return out;
+  }
+  function shallow(o) {
+    var out = {};
+    if (o) Object.keys(o).forEach(function (k) { out[k] = o[k]; });
+    return out;
+  }
+
+  // A companion's name and icon are the PLAYER's, kept in state and keyed by
+  // the granting talent's id. The content authors neither: two rangers who both
+  // take Wolf Companion have two different wolves, and a name baked into the
+  // database would make them the same animal. Until the player types one, the
+  // granting talent's own name stands in, so a card is never nameless.
+  function companionIdentity(state, talent) {
+    var saved = ((state && state.companions) || {})[talent && talent.id] || {};
+    var name = String(saved.name || "").trim();
+    var icons = (window.CONFIG && CONFIG.COMPANION_ICONS) || [];
+    return {
+      name: name || (talent && talent.name) || "",
+      named: !!name,                      // false → the fallback is showing
+      icon: saved.icon || (window.CONFIG && CONFIG.COMPANION_ICON_DEFAULT) || icons[0] || "🐾",
+    };
+  }
+
+  // Only defenses and skills with a value above 0 are shown (main.tex
+  // §Companions): a statblock listing twelve zeroes is noise on a sheet that
+  // has to be readable mid-fight. Sorted into DEFENSES / skill-list order
+  // rather than authoring order, so two companions read the same way.
+  function companionDefenses(block) {
+    var d = (block && block.defenses) || {};
+    return defenses().filter(function (def) { return (d[def.id] || 0) > 0; })
+      .map(function (def) { return { id: def.id, label: def.label, value: d[def.id] }; });
+  }
+  function companionSkills(block) {
+    var s = (block && block.skills) || {};
+    return allSkillNames().filter(function (n) { return (s[n] || 0) > 0; })
+      .map(function (n) { return { name: n, pool: s[n] }; });
+  }
+  // A companion may have any number of attacks, or none at all. Author order is
+  // kept: unlike defenses and skills there is no natural ordering to impose,
+  // and the statblock's own reading order is the one the player learned.
+  function companionAttacks(block) {
+    return ((block && block.attacks) || []).filter(function (a) { return a && a.name; });
+  }
+
+  // Every companion the character has, each with its effective statblock and
+  // the abilities attached to it. Ability talents run through `effective` so an
+  // ordinary modifier (§4.8) rewriting a companion maneuver is already applied
+  // by the time any renderer sees it.
+  function companions(state) {
+    var owned = (state && state.talents) || [];
+    return allTalents.filter(function (t) { return isCompanion(t) && owned.indexOf(t.id) >= 0; })
+      .map(function (t) {
+        var attached = allTalents.filter(function (a) {
+          return companionAttachKind(a) && owned.indexOf(a.id) >= 0 &&
+            (a.companionOf || []).indexOf(t.id) >= 0;
+        }).map(function (a) { return effective(a, state); });
+        var who = companionIdentity(state, t);
+        return {
+          talent: t,
+          block: effectiveCompanion(t, state),
+          name: who.name, icon: who.icon, named: who.named,
+          passives: attached.filter(function (a) { return isCompanionPassive(a); }),
+          maneuvers: attached.filter(function (a) { return isCompanionManeuver(a); }),
+        };
+      });
+  }
+  function companionTalents() { return allTalents.filter(isCompanion); }
 
   // Requirement evaluation for a spell — the same shape as requirementStatus
   // (a `reasons` list, each coloured red/black by reasonMet), so the Spells
@@ -2860,7 +3227,16 @@
     resolveText: resolveText, scanHooks: scanHooks,
     effective: effective, isModifier: isModifier, modifiersFor: modifiersFor,
     MODIFIABLE_FIELDS: MODIFIABLE_FIELDS, MODIFIER_OPS: MODIFIER_OPS, AOE_SHAPES: AOE_SHAPES,
-    MODIFIABLE_FIELD_OPS: MODIFIABLE_FIELD_OPS,
+    MODIFIABLE_FIELD_OPS: MODIFIABLE_FIELD_OPS, TALENT_ABILITIES: TALENT_ABILITIES,
+    // companions (§4.11)
+    isCompanion: isCompanion, isCompanionModifier: isCompanionModifier,
+    isCompanionManeuver: isCompanionManeuver, isCompanionPassive: isCompanionPassive,
+    isCompanionEntry: isCompanionEntry, companionAttachKind: companionAttachKind,
+    companionFieldOps: companionFieldOps, companionModifiersFor: companionModifiersFor,
+    effectiveCompanion: effectiveCompanion, companions: companions,
+    companionTalents: companionTalents, companionIdentity: companionIdentity,
+    companionDefenses: companionDefenses, companionSkills: companionSkills,
+    companionAttacks: companionAttacks,
     // ability tests (§4.10)
     testOf: testOf, testKinds: testKinds, testKindLabel: testKindLabel,
     testSkillOptions: testSkillOptions, testSkillTier: testSkillTier,

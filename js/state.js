@@ -82,7 +82,7 @@
     });
 
     return {
-      version: 4,
+      version: 5,
       identity: { characterName: "", playerName: "", ancestry: "", sourceOfPower: "", concept: "", notes: "" },
       hp: { max: "", current: "" },
       mana: { max: "", current: "" },
@@ -104,6 +104,12 @@
       },
 
       spells: [],              // learned spell ids (magical domains; bought, or handed out by a grant)
+
+      // What the PLAYER named each companion, keyed by the id of the talent
+      // that granted it (DESIGN.md §4.11). The statblock authors neither name
+      // nor icon: two characters with the same talent have different animals.
+      //   { "bst_wolf": { name: "Ash", icon: "🐺" } }
+      companions: {},
 
       // What each granting talent/spell handed out, so refunding it can undo
       // exactly that and nothing else (see DESIGN.md §4.9).
@@ -174,6 +180,10 @@
     // for any older save that predates it.
     merged.inventory         = Object.assign({}, def.inventory, s.inventory);
     merged.inventory.weapons = Array.isArray(merged.inventory.weapons) ? merged.inventory.weapons : [];
+
+    // v4 → v5: player-chosen companion names/icons. An older save simply has
+    // none, and every companion falls back to its talent's name until named.
+    merged.companions = (s.companions && typeof s.companions === "object") ? s.companions : {};
 
     // v2 → v3: spellcasting used to live in a separate state.spellcasting
     // ladder (domain id -> level). Levels are now a Spellcasting proficiency

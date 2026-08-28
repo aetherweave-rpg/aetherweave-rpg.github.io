@@ -151,7 +151,7 @@ window.SOURCES = [
     name: "Mentor",
     icon: "",
     accent: "#5b6fa5",
-    flavour: "You were taught by an extremely skillful mentor. While not all lessons were clear to you then, you can see the wisdom and hidden knowledge now.\n",
+    flavour: "You were taught by an extremely skillful mentor. While not all lessons were clear to you then, you can see the wisdom and hidden knowledge now.",
     benefit: "—",
     characteristic: "intelligence",
     talents: [
@@ -162,7 +162,7 @@ window.SOURCES = [
         description: "What seemed like a typical everyday activity was actually a clever lesson in disguise.\n\nWhen you perform a test you can describe a flashback to a lesson or interaction with a mentor. If you do, add 1 die and 1 reward to the test roll.",
         ability: "maneuver",
         uses: 2,
-        castingTime: "minor_action",
+        castingTime: "reaction",
         range: "self",
         target: [
           "self"
