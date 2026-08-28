@@ -21,7 +21,6 @@ window.CHANGELOG_CONTENT = [
       "Added talent \"Animal Companion: Great\" (tier 1) to the Nature domain.",
       "Changed talent \"Butterfly Kick\" (tier 2) in the Brawling domain: tier: 1 -> 2.",
       "Changed source talent \"Hidden lesson\" (tier 1) in the Mentor source of power: castingTime: \"minor_action\" -> \"reaction\".",
-      "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / creation points).",
     ],
   },
   {
