@@ -94,13 +94,11 @@ window.DOMAINS = [
             slashing: 1,
             piercing: 1
           },
-          attacks: [
-            {
-              name: "Claw",
-              damage: "piercing",
-              pool: 2
-            }
-          ],
+          attack: {
+            name: "Claw",
+            damage: "piercing",
+            pool: 2
+          },
           skills: {
             Observe: 3,
             Wilderness: 3,
@@ -162,13 +160,11 @@ window.DOMAINS = [
             radiant: 1,
             fortitude: 1
           },
-          attacks: [
-            {
-              name: "Bite",
-              damage: "piercing",
-              pool: 4
-            }
-          ]
+          attack: {
+            name: "Bite",
+            damage: "piercing",
+            pool: 4
+          }
         },
         requires: {
           talents: [
@@ -177,7 +173,23 @@ window.DOMAINS = [
         }
       }
     ],
-    magical: true
+    magical: true,
+    groups: [
+      {
+        id: "animal_companion",
+        name: "Animal Companion",
+        members: [
+          "natu_animal_companion_flying",
+          "natu_animal_companion_tiny_animal",
+          "natu_animal_companion_great"
+        ],
+        requires: {
+          talents: [
+            "natu_animal_companion"
+          ]
+        }
+      }
+    ]
   },
   {
     id: "storm",
