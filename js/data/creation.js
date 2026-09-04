@@ -9,16 +9,21 @@ window.CREATION = {
   // Step 1 — the array assigned across the five characteristics, one value each.
   characteristicArray: [3, 2, 2, 1, 1],
 
-  // Step 2 — how many talents you pick from your ancestry's tree, free.
-  ancestralTalentPicks: 1,
+  // Step 2 — ancestry is flavour only; it grants nothing. See js/data/ancestries.js.
 
   // Step 3 — sources of power grant fixed bonuses; see js/data/sources.js.
 
-  // Step 4 — points spent on combat skills and weapon proficiencies.
+  // Step 4 — how many defining traits you pick, free. See
+  // js/data/traits.js.
+  definingTraitPicks: 1,
+
+  // Step 5 — exactly one background, from js/data/backgrounds.js.
+
+  // Step 6 — points spent on combat skills and weapon proficiencies.
   // These use the normal advancement costs but are NOT exp.
   combatPoints: 6,
 
-  // Step 5 — points spent on non-combat skills, crafting and instrument
+  // Step 7 — points spent on non-combat skills, crafting and instrument
   // proficiencies, with a required minimum of each proficiency kind.
   noncombatPoints: 8,
   requiredProficiencies: {
@@ -26,6 +31,6 @@ window.CREATION = {
     instrument: 1,   // at least this many instrument proficiencies at tier 1+
   },
 
-  // Step 6 — free exp left over after creation, spent on anything.
+  // Step 8 — free exp left over after creation, spent on anything.
   freeExp: { combat: 8, noncombat: 4 },
 };

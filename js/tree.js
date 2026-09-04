@@ -1,6 +1,6 @@
 // ============================================================================
-// Talent Trees page (index.html): tree tabs (core / ancestral / combination),
-// the tree grid, tier dividers, SVG prerequisite lines, node states,
+// Talent Trees page (index.html): tree tabs (core / combination), the tree
+// grid, tier dividers, SVG prerequisite lines, node states,
 // click-to-learn/refund, and tooltips.
 //
 // A magical domain's SPELLS are nodes in this grid too (§4.6) — same row/col
@@ -15,11 +15,6 @@
   var Engine = window.Engine, State = window.State, UI = window.UI, el = UI.el, CONFIG = window.CONFIG;
   var LAST_TREE_KEY = "aetherweave.lastTree";
   var SHOW_COMBOS_KEY = "aetherweave.showAllCombinations";
-
-  // A character sees ONE ancestral tree: the trees of their ancestry chain
-  // (self + parents) concatenated side by side. This sentinel selects that
-  // combined view instead of a single real tree.
-  var ANCESTRY_VIEW = "__ancestry__";
 
   var currentTree = window.SafeStorage.read(LAST_TREE_KEY) || null;
   var showAllCombos = window.SafeStorage.read(SHOW_COMBOS_KEY) === "1";
@@ -55,81 +50,25 @@
   }
 
   // Trees currently on offer, falling back if the remembered one vanished
-  // (e.g. the ancestry changed, or a combination re-locked).
+  // (e.g. a combination re-locked).
   function available() { return Engine.visibleTrees(State.get(), showAllCombos); }
-  function ancestryTreesVisible(state) {
-    return available().filter(function (t) { return t.kind === "ancestry"; });
-  }
 
   // Resolve the current selection to a renderable "view":
-  //   { id, kind, name, icon, accent, flavour, cols, entries, colOf, blocks?, realTree? }
-  // `entries` are the tree's talents AND its spells; colOf(e) gives an entry's
-  // DISPLAY column (offset within the combined grid).
+  //   { id, kind, name, icon, accent, flavour, cols, entries, realTree }
+  // `entries` are the tree's talents AND its spells (§4.6).
   function buildView(state) {
-    var ancTrees = ancestryTreesVisible(state);
-
-    // Redirect a stale saved selection that points at a single ancestry tree.
-    if (currentTree && Engine.treeById(currentTree) && (Engine.treeById(currentTree).kind === "ancestry"))
-      currentTree = ANCESTRY_VIEW;
-
-    if (currentTree === ANCESTRY_VIEW && ancTrees.length) return ancestryView(state, ancTrees);
-
     var real = available().filter(function (t) { return t.id === currentTree; })[0];
     if (!real) {
       var core = available().filter(function (t) { return t.kind === "core"; })[0];
-      if (core) { currentTree = core.id; real = core; }
-      else if (ancTrees.length) { currentTree = ANCESTRY_VIEW; return ancestryView(state, ancTrees); }
-      else return null;
+      if (!core) return null;
+      currentTree = core.id; real = core;
     }
     return {
       id: real.id, kind: real.kind, name: real.name, icon: real.icon, accent: real.accent,
       flavour: real.flavour, cols: real.cols, realTree: real,
-      entries: Engine.treeEntries(real.id), colOf: function (t) { return t.col; },
+      entries: Engine.treeEntries(real.id),
       groups: Engine.treeGroups(real.id),
       anchors: Engine.treeAnchors(real.id),
-    };
-  }
-
-  // The one ancestral tree: chain trees laid out left→right (root first), each
-  // occupying its own block of columns. Talents keep their real id/domain; only
-  // their display column is offset.
-  function ancestryView(state, ancTrees) {
-    var chainIds = Engine.accessibleAncestryTreeIds(state);   // [self, parent, grandparent]
-    var ordered = chainIds.slice().reverse()                  // root → self, left to right
-      .map(function (id) { return Engine.treeById(id); })
-      .filter(function (t) { return t && ancTrees.indexOf(t) >= 0; });
-    if (!ordered.length) ordered = ancTrees;
-
-    var offset = {}, cur = 0, blocks = [], entries = [];
-    ordered.forEach(function (tr) {
-      offset[tr.id] = cur;
-      blocks.push({ id: tr.id, name: tr.name, icon: tr.icon, accent: tr.accent, offset: cur, cols: tr.cols });
-      Engine.treeEntries(tr.id).forEach(function (t) { entries.push(t); });
-      cur += tr.cols;
-    });
-    var selfA = Engine.ancestryById(state.creation && state.creation.ancestry);
-    return {
-      id: ANCESTRY_VIEW, kind: "ancestry-combined",
-      name: "Ancestry", icon: (selfA && selfA.icon) || (ordered[0] || {}).icon || "🧬",
-      accent: (selfA && selfA.accent) || (ordered[ordered.length - 1] || {}).accent,
-      flavour: ordered.length > 1 ? "Your ancestral line, joined into one tree." : ((ordered[0] || {}).flavour || ""),
-      cols: Math.max(1, cur), entries: entries, blocks: blocks,
-      colOf: function (t) { return (offset[Engine.entryTreeId(t)] || 0) + (t.col || 0); },
-      // Each ancestry in the chain keeps its own groups; the display column
-      // offset is applied when the boxes are measured, same as the nodes.
-      groups: ordered.reduce(function (a, tr) { return a.concat(Engine.treeGroups(tr.id)); }, []),
-      // An anchor's column is authored against its own tree, so shift it by
-      // that tree's block offset the same way a talent's column is.
-      anchors: ordered.reduce(function (a, tr) {
-        return a.concat(Engine.treeAnchors(tr.id).map(function (an) {
-          return {
-            from: an.from, to: an.to,
-            via: (an.via || []).map(function (w) {
-              return { col: w.col + (offset[tr.id] || 0), row: w.row };
-            }),
-          };
-        }));
-      }, []),
     };
   }
 
@@ -142,10 +81,8 @@
     var view = buildView(state);
     var activeId = view ? view.id : null;
 
-    // Core domains and combination trees: one tab each. Ancestry: a SINGLE tab
-    // for the combined ancestral tree.
+    // Core domains and combination trees: one tab each.
     [{ kind: "core", label: "Domains" },
-     { kind: "ancestry", label: "Ancestry" },
      { kind: "combination", label: "Combinations" }].forEach(function (group) {
       var inGroup = list.filter(function (t) { return t.kind === group.kind; });
       if (!inGroup.length) return;
@@ -153,25 +90,6 @@
       var section = el("div", "tab-group");
       section.appendChild(el("span", "tab-group-label", group.label));
       var row = el("div", "tab-row");
-
-      if (group.kind === "ancestry") {
-        var selfA = Engine.ancestryById(state.creation && state.creation.ancestry);
-        var b = el("button", "domain-tab" + (activeId === ANCESTRY_VIEW ? " active" : ""));
-        b.type = "button";
-        b.style.setProperty("--accent", (selfA && selfA.accent) || inGroup[0].accent);
-        b.appendChild(el("span", "domain-tab-icon", (selfA && selfA.icon) || inGroup[0].icon));
-        b.appendChild(el("span", "domain-tab-name", (selfA && selfA.name) || "Ancestry"));
-        b.title = inGroup.length > 1 ? ("Ancestral line: " + inGroup.map(function (t) { return t.name; }).join(" + ")) : inGroup[0].name;
-        b.onclick = function () {
-          currentTree = ANCESTRY_VIEW;
-          window.SafeStorage.write(LAST_TREE_KEY, ANCESTRY_VIEW);
-          renderTabs(); render();
-        };
-        row.appendChild(b);
-        section.appendChild(row);
-        host.appendChild(section);
-        return;
-      }
 
       inGroup.forEach(function (tree) {
         var unlocked = Engine.combinationUnlocked(tree, state);
@@ -259,13 +177,6 @@
     var grid = _grid = el("div", "tree-grid");
     scroller.appendChild(grid);
 
-    // Column boundaries between concatenated blocks (combined ancestral view).
-    var boundaries = {};
-    if (view.blocks && view.blocks.length > 1) {
-      view.blocks.forEach(function (bl) { if (bl.offset > 0) boundaries[bl.offset] = true; });
-      grid.appendChild(blockHeaderRow(view));
-    }
-
     var maxRow = entries.reduce(function (m, t) { return Math.max(m, t.row); }, 0);
 
     var prevTier = null;
@@ -280,7 +191,7 @@
       var rowEl = el("div", "tree-row");
       rowEl.style.setProperty("--cols", view.cols);
       for (var c = 0; c < view.cols; c++) {
-        var cell = el("div", "tree-cell" + (boundaries[c] ? " block-start" : ""));
+        var cell = el("div", "tree-cell");
         var t = matchAt(rowEntries, view, c);
         if (t) cell.appendChild(makeNode(t, state));
         rowEl.appendChild(cell);
@@ -293,23 +204,8 @@
   }
 
   function matchAt(rowEntries, view, c) {
-    for (var i = 0; i < rowEntries.length; i++) if (view.colOf(rowEntries[i]) === c) return rowEntries[i];
+    for (var i = 0; i < rowEntries.length; i++) if (rowEntries[i].col === c) return rowEntries[i];
     return null;
-  }
-
-  // Labels spanning each ancestry's block of columns in the combined view.
-  function blockHeaderRow(view) {
-    var rowEl = el("div", "tree-row ancestry-headers");
-    rowEl.style.setProperty("--cols", view.cols);
-    view.blocks.forEach(function (bl) {
-      var label = el("div", "ancestry-block-label");
-      label.style.gridColumn = (bl.offset + 1) + " / span " + bl.cols;
-      label.style.setProperty("--accent", bl.accent);
-      label.appendChild(el("span", "abl-icon", bl.icon));
-      label.appendChild(el("span", "abl-name", bl.name));
-      rowEl.appendChild(label);
-    });
-    return rowEl;
   }
 
   // Banner above the tree: what it is, and what entering it will cost.
@@ -324,15 +220,6 @@
     head.appendChild(title);
 
     var tags = el("div", "tree-head-tags");
-
-    // Combined ancestral view: no per-tree exp/access (ancestral trees are free).
-    if (view.kind === "ancestry-combined") {
-      tags.appendChild(el("span", "tree-tag ok", "Ancestral (free)"));
-      if (view.blocks && view.blocks.length > 1)
-        tags.appendChild(el("span", "tree-tag", "Line: " + view.blocks.map(function (b) { return b.name; }).join(" → ")));
-      head.appendChild(tags);
-      return head;
-    }
 
     var tree = view.realTree || view;
 
@@ -643,7 +530,7 @@
         // The group sits at its lowest row, so the shared arrow arrives from
         // below like any other link.
         row: Math.min.apply(null, boxed.map(function (t) { return t.row; })),
-        col: Math.round(boxed.reduce(function (a, t) { return a + view.colOf(t); }, 0) / boxed.length),
+        col: Math.round(boxed.reduce(function (a, t) { return a + (t.col || 0); }, 0) / boxed.length),
         sharedIds: (reqs.talents || []).concat(reqs.anyTalents || []),
         sharedAny: (reqs.anyTalents || []).slice(),
       });
@@ -760,13 +647,12 @@
     var viewById = {};
     view.entries.forEach(function (t) { viewById[t.id] = t; });
 
-    // Each rendered box in grid coordinates, at its DISPLAY column (which the
-    // combined ancestral view offsets per block).
+    // Each rendered box in grid coordinates.
     var nodes = view.entries.map(function (t) {
       var elx = _nodeEls[t.id];
       if (!elx) return null;
       return {
-        id: t.id, row: t.row, col: view.colOf(t),
+        id: t.id, row: t.row, col: t.col,
         box: relRect(elx.querySelector(".node-box"), baseRect),
         outer: relRect(elx, baseRect),
       };

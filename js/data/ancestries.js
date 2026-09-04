@@ -4,433 +4,197 @@
 window.ANCESTRIES = [
   {
     id: "human",
-    treeId: "anc_human",
     name: "Human",
     icon: "🧑",
     accent: "#8a6d3b",
-    cols: 3,
-    flavour: "The most populous people on Aera. They are not characterized by any specific speciality, but can be found in all corners of the world occupying any and all professions.",
-    talents: [
-      {
-        id: "anch_jack_of_all_trades",
-        name: "Jack of all trades",
-        icon: "🃛",
-        description: "Choose any 2 non-combat skill, instrument, or crafting proficiencies and attain basic proficiency.",
-        pool: "noncombat",
-        cost: 2,
-        tier: 1,
-        row: 0,
-        col: 1,
-        grants: {
-          mode: "pick",
-          options: [
-            {
-              anySkill: "noncombat"
-            },
-            {
-              anyProficiency: [
-                "crafting",
-                "instrument"
-              ]
-            }
-          ],
-          count: 2
-        }
-      },
-      {
-        id: "anch_courageous",
-        name: "Courageous",
-        icon: "✊",
-        description: "You roll an additional die on Initiative test rolls",
-        pool: "combat",
-        cost: 2,
-        tier: 1,
-        row: 0,
-        col: 0
-      },
-      {
-        id: "anch_versatile",
-        name: "Versatile",
-        icon: "🔀",
-        description: "Twice per day, if you attempt a test roll in a non-combat skill in which you have no proficiency, you can add 1 additional die.",
-        pool: "noncombat",
-        cost: 2,
-        tier: 1,
-        row: 0,
-        col: 2
-      }
-    ]
+    flavour: "The most populous people on Aera. They are not characterized by any specific speciality, but can be found in all corners of the world occupying any and all professions."
   },
   {
     id: "high_elf",
-    treeId: "anc_high_elf",
     name: "High Elf",
     icon: "🧝🏻‍♀️",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "The once immortal high elves had a thriving civilization, prizing culture and arts from the alabaster city of Kinara. Since the loss of the Alabaster stone, the high elves found themselves confronted with imminent mortality, and lost most of their population overnight. What remains is a proud people, desperately hanging on to what is left of their once great society.",
-    talents: [],
     parent: "elf",
     hidden: true
   },
   {
     id: "snow_elf",
-    treeId: "anc_snow_elf",
     name: "Snow Elf",
     icon: "🧝‍♂️",
     accent: "#aee8ee",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "elf",
     hidden: true
   },
   {
     id: "wood_elf",
-    treeId: "anc_wood_elf",
     name: "Wood Elf",
     icon: "🧝",
     accent: "#33b920",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "elf",
     hidden: true
   },
   {
     id: "keramish_orc",
-    treeId: "anc_keramish_orc",
     name: "Keramish Orc",
     icon: "🧌",
     accent: "#ac2d46",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "orc",
     hidden: true
   },
   {
     id: "aislir_orc",
-    treeId: "anc_aislir_orc",
     name: "Aislir Orc",
     icon: "🛶",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "orc",
     hidden: true
   },
   {
     id: "halfling",
-    treeId: "anc_halfling",
     name: "Halfling",
     icon: "👨🏻‍🦱",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     hidden: true
   },
   {
     id: "dryad",
-    treeId: "anc_dryad",
     name: "Dryad",
     icon: "🌳",
     accent: "#008040",
-    cols: 3,
     flavour: "",
-    talents: [],
     hidden: true
   },
   {
     id: "nomad_orc",
-    treeId: "anc_nomad_orc",
     name: "Nomad Orc",
     icon: "🛖",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [
-      {
-        id: "ancn_nomad_of_the_desert",
-        name: "Nomad of the Desert",
-        description: "Receive a +2 bonus on any checks pertaining to exhaustion or fatigue while traveling",
-        pool: "noncombat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 0
-      },
-      {
-        id: "ancn_shards_of_the_past",
-        name: "Shards of the past:",
-        description: "You have a greater connection to your ancestors and their wisdom. Choose one knowledge skill: you gain a +1 bonus to knowledge test rolls of that skill.",
-        pool: "noncombat",
-        cost: 2,
-        tier: 1,
-        row: 0,
-        col: 1
-      },
-      {
-        id: "ancn_emissary",
-        name: "Emissary",
-        description: "Upon making a first impression, add a +2 on a Charm test roll.",
-        pool: "noncombat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 2
-      }
-    ],
     parent: "orc"
   },
   {
     id: "hammerlake_dwarf",
-    treeId: "anc_hammerlake_dwarf",
     name: "Hammerlake Dwarf",
     icon: "⛵",
     accent: "#ff8040",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "dwarf",
     hidden: true
   },
   {
     id: "elf",
-    treeId: "anc_elf",
     name: "Elf",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
-    talents: [],
     pickable: false
   },
   {
     id: "dwarf",
-    treeId: "anc_dwarf",
     name: "Dwarf",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     pickable: false,
     hidden: true
   },
   {
     id: "orc",
-    treeId: "anc_orc",
     name: "Orc",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     pickable: false
   },
   {
     id: "ben_duran_dwarf",
-    treeId: "anc_ben_duran_dwarf",
     name: "Ben Duran Dwarf",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "dwarf",
     pickable: false,
     hidden: true
   },
   {
     id: "pillar_dwarf",
-    treeId: "anc_pillar_dwarf",
     name: "Pillar Dwarf",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "dwarf",
     hidden: true
   },
   {
     id: "gnome",
-    treeId: "anc_gnome",
     name: "Gnome",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     pickable: false,
     hidden: true
   },
   {
     id: "rock_gnome",
-    treeId: "anc_rock_gnome",
     name: "Rock Gnome",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "gnome",
     hidden: true
   },
   {
     id: "traveler_gnome",
-    treeId: "anc_traveler_gnome",
     name: "Traveler Gnome",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "gnome",
     hidden: true
   },
   {
     id: "vistavi_elf",
-    treeId: "anc_vistavi_elf",
     name: "Vistavi Elf",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "elf",
     hidden: true
   },
   {
     id: "mokra_nor",
-    treeId: "anc_mokra_nor",
     name: "Mokra'nor",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [
-      {
-        id: "ancm_imposing",
-        name: "Imposing",
-        description: "Few sapient peoples in Aera are as tall as the Mokra'nor. \nWhenever you roll an Intimidation test, add 1 die to your test roll.",
-        pool: "noncombat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 1
-      },
-      {
-        id: "ancm_horned",
-        name: "Horned",
-        description: "Mokra'nor sport natural horns and bone growths, protecting against the fearsome predators of their ancestral lands.\nOnce per combat scene: Reduce any physical damage taken by 1.",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 2
-      }
-    ],
     pickable: false
   },
   {
     id: "grib_morean_mokra_nor",
-    treeId: "anc_grib_morean_mokra_nor",
     name: "Grib'morean Mokra'nor",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
     flavour: "",
-    talents: [],
     parent: "mokra_nor"
   },
   {
     id: "bor_gan_mokra_nor",
-    treeId: "anc_bor_gan_mokra_nor",
     name: "Bor'gan Mokra'nor",
     icon: "",
     accent: "#804000",
-    cols: 3,
     flavour: "A rugged people, the so-called half-giants of the Bor'gan mountain range live a relatively isolated pastoral existence. \nThe Mokra’nor are a tall people. Females are between 1,90 and 2,20 meters tall, males are between 2,10 and 2,40 meters tall. \nThe southern Mokra’nor have a light-brown skin, their horns not only cover their head like a crown, but bone protrudes from the spine and shoulders as well. ",
-    talents: [],
     parent: "mokra_nor"
   },
   {
     id: "automaton",
-    treeId: "anc_automaton",
     name: "Automaton",
     icon: "",
     accent: "#4a8f7b",
-    cols: 3,
-    flavour: "A recent invention from the Pillars, Automatons are arcanomechanical constructs with distinct personalities. While there is still debate on whether Automatons can be considered alive, or have souls, it is clear that they can have agency beyond what their creators originally intended.",
-    talents: [
-      {
-        id: "anca_shock_prod",
-        name: "Shock Prod",
-        flavour: "You have a built in electrical weapon. You can use it to shock enemies.",
-        description: "Make an unarmed attack.",
-        test: {
-          characteristic: "weapon",
-          kind: "weapon",
-          skills: [
-            "Unarmed"
-          ],
-          vs: "lightning",
-          tiers: [
-            {
-              successes: 1,
-              effect: "Deal damage equal to the number of successes + 2. All damage from this attack is lightning damage."
-            }
-          ]
-        },
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 0,
-        ability: "maneuver",
-        uses: 2,
-        castingTime: "action",
-        range: "touch",
-        target: [
-          "enemy"
-        ],
-        duration: "instantaneous"
-      },
-      {
-        id: "anca_self_repair_systems",
-        name: "Self-repair systems",
-        flavour: "You can perform quick field repairs on yourself.",
-        description: "You heal yourself a number of hitpoints up to your Clockwork proficiency.",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 1,
-        ability: "maneuver",
-        uses: 1,
-        castingTime: "action",
-        range: "self",
-        target: [
-          "self"
-        ],
-        duration: "instantaneous"
-      },
-      {
-        id: "anca_clockwork_physiology",
-        name: "Clockwork Physiology",
-        description: "Due to your arcanomechanical body, you are not as easily affected by normal bodily effects. You add an additional dice to any Endure tests",
-        pool: "combat",
-        cost: 1,
-        tier: 1,
-        row: 0,
-        col: 2
-      }
-    ]
+    flavour: "A recent invention from the Pillars, Automatons are arcanomechanical constructs with distinct personalities. While there is still debate on whether Automatons can be considered alive, or have souls, it is clear that they can have agency beyond what their creators originally intended."
   }
 ];
-
-window.TALENT_DB = window.TALENT_DB || {};
-window.ANCESTRIES.forEach(function (a) { window.TALENT_DB[a.treeId] = a.talents; });

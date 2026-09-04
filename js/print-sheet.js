@@ -515,7 +515,10 @@
       flavour: Engine.resolveText(t.flavour || "", state),
       description: Engine.resolveText(t.description || "", state),
       test: test,
-      source: source, tags: tags, meta: cost + " · " + tierName(t.tier), warn: unmetNote(status),
+      // A catalogue entry (a defining trait, a background)
+      // carries no tier: it is granted, not reached.
+      source: source, tags: tags,
+      meta: cost + (t.tier ? " · " + tierName(t.tier) : ""), warn: unmetNote(status),
     };
   }
 

@@ -108,16 +108,19 @@
     if (!c.completed) {
       var hint = el("div", "sheet-hint", "This character hasn't been through creation. ");
       hint.appendChild(link("Run character creation", "create.html"));
-      hint.appendChild(document.createTextNode(" to assign characteristics, an ancestry and a source of power."));
+      hint.appendChild(document.createTextNode(" to assign characteristics, an ancestry, a source of power, a defining trait and a background."));
       s.appendChild(hint);
       return s;
     }
 
     var anc = Engine.ancestryById(c.ancestry);
     var src = Engine.sourceById(c.source);
+    var trait = Engine.characterTrait(state);
+    var background = Engine.characterBackground(state);
     var row = el("div", "creation-row");
 
-    [[anc, "Ancestry"], [src, "Source of Power"]].forEach(function (pair) {
+    [[anc, "Ancestry"], [src, "Source of Power"],
+     [trait, "Defining Trait"], [background, "Background"]].forEach(function (pair) {
       var obj = pair[0];
       var card = el("div", "creation-card");
       card.appendChild(el("span", "creation-card-label", pair[1]));
@@ -125,7 +128,7 @@
       body.appendChild(el("span", "creation-icon", obj ? obj.icon : "—"));
       var t = el("div");
       t.appendChild(el("div", "creation-name", obj ? obj.name : "—"));
-      if (obj) t.appendChild(el("div", "creation-desc", obj.benefit || obj.flavour));
+      if (obj) t.appendChild(el("div", "creation-desc", obj.benefit || obj.flavour || obj.description));
       body.appendChild(t);
       card.appendChild(body);
       row.appendChild(card);
@@ -773,11 +776,14 @@
       nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
     info.appendChild(nameLine);
     var grantSrc = !t.fromSource && status.granted ? Engine.grantSource(state, "talent", t.id) : null;
-    info.appendChild(el("span", "talent-meta", t.fromSource
-      ? "granted by " + t.sourceName + " · " + tierName(t.tier)
+    // A catalogue entry (a defining trait, a background) carries no tier: it is
+    // granted, not reached.
+    var tierSuffix = t.tier ? " · " + tierName(t.tier) : "";
+    info.appendChild(el("span", "talent-meta", (t.fromSource
+      ? "granted by " + t.sourceName
       : status.granted
-        ? (grantSrc ? "granted by " + grantSrc.name : "free at creation") + " · " + tierName(t.tier)
-        : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp · " + tierName(t.tier)));
+        ? (grantSrc ? "granted by " + grantSrc.name : "free at creation")
+        : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp") + tierSuffix));
     if (t.ability === "maneuver" && t.castingTime != null) {
       info.appendChild(el("span", "talent-meta", [
         Engine.castingTimeLabel(t), Engine.rangeLabel(t), Engine.targetLabel(t),

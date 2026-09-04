@@ -112,8 +112,8 @@
     card.appendChild(el("div", "gate-icon", "❖"));
     card.appendChild(el("h2", "gate-title", "Create your character first"));
     card.appendChild(el("p", "gate-text",
-      "Aetherweave characters are built in six prompted steps: characteristics, ancestry, " +
-      "source of power, and starting training. "));
+      "Aetherweave characters are built in eight prompted steps: characteristics, ancestry, " +
+      "source of power, a defining trait, a background, and starting training. "));
 
     var row = el("div", "gate-actions");
     var go = el("a", "btn btn-primary", "Begin character creation");

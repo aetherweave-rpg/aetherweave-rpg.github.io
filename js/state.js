@@ -82,7 +82,7 @@
     });
 
     return {
-      version: 5,
+      version: 9,
       identity: { characterName: "", playerName: "", ancestry: "", sourceOfPower: "", concept: "", notes: "" },
       hp: { max: "", current: "" },
       mana: { max: "", current: "" },
@@ -120,8 +120,10 @@
       creation: {
         completed: false,
         skipped: false,        // "skip for now" — stops the wizard nagging
-        ancestry: null,        // ancestry id  -> reveals that ancestral tree
+        ancestry: null,        // ancestry id  -> flavour only, grants nothing
         source: null,          // source of power id
+        trait: null,           // defining trait id (its talent is in `talents`)
+        background: null,      // background id     (likewise)
       },
 
       // The free baseline handed out during creation. Everything here costs no
@@ -166,6 +168,10 @@
     var def = defaultState();
     if (!s || typeof s !== "object") return def;
     var merged = Object.assign({}, def, s);
+    // Migration is shape-driven, so whatever came in leaves here in the current
+    // shape — and says so. Letting the saved number win would freeze a stamp
+    // that no longer describes the object.
+    merged.version = def.version;
     merged.identity        = Object.assign({}, def.identity, s.identity);
     merged.hp              = Object.assign({}, def.hp, s.hp);
     merged.mana            = Object.assign({}, def.mana, s.mana);
@@ -203,6 +209,21 @@
     }
     delete merged.spellcasting;
     merged.creation        = Object.assign({}, def.creation, s.creation);
+
+    // v5 → v6: ancestries stopped granting anything; a defining trait and a
+    // background took their place. An older save simply has neither — its
+    // ancestral talent is left where it is (it resolves to nothing once the
+    // ancestral trees are gone), and re-running creation replaces it.
+    //
+    // v7 → v9: the optional trauma became the required background, and then
+    // stopped being a thing you carry and overcome — a background simply grants
+    // an ability now, so it is recorded next to the trait as a creation pick.
+    // An older save's id carries over; it resolves to nothing unless a
+    // background of that id was authored.
+    var oldBackground = s.background || s.trauma;
+    if (oldBackground && !merged.creation.background) merged.creation.background = oldBackground.id || null;
+    delete merged.background;
+    delete merged.trauma;
     merged.granted         = Object.assign({}, def.granted, s.granted);
     merged.granted.talents       = Array.isArray(merged.granted.talents) ? merged.granted.talents : [];
     merged.granted.spells        = Array.isArray(merged.granted.spells) ? merged.granted.spells : [];
@@ -210,8 +231,33 @@
     merged.granted.proficiencies = merged.granted.proficiencies || {};
     merged.grantChoices          = (s.grantChoices && typeof s.grantChoices === "object") ? s.grantChoices : {};
     merged.charAdvances          = s.charAdvances || {};
+    renameExperiencesToTraits(merged, s);
     syncCharacteristics(merged);
     return merged;
+  }
+
+  // v6 → v7: "defining experience" was renamed to "defining trait", which moved
+  // both the id prefix (exp_ → trt_) and the field creation records it in. The
+  // map is built from the catalogue itself rather than by rewriting any id that
+  // happens to start with "exp_", so only ids that really were renamed move.
+  function renameExperiencesToTraits(merged, saved) {
+    var byOldId = {};
+    (window.TRAITS || []).forEach(function (t) {
+      if (typeof t.id === "string" && t.id.indexOf("trt_") === 0) {
+        byOldId["exp_" + t.id.slice(4)] = t.id;
+      }
+    });
+    function rename(id) { return byOldId[id] || id; }
+
+    merged.talents = merged.talents.map(rename);
+    merged.granted.talents = merged.granted.talents.map(rename);
+    var choices = {};
+    Object.keys(merged.grantChoices).forEach(function (id) { choices[rename(id)] = merged.grantChoices[id]; });
+    merged.grantChoices = choices;
+
+    var old = saved && saved.creation && saved.creation.experience;
+    if (old && !merged.creation.trait) merged.creation.trait = rename(old);
+    delete merged.creation.experience;
   }
 
   function load() {

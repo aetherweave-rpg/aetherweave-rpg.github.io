@@ -8,10 +8,25 @@
   var CONFIG = window.CONFIG;
 
   // ---- Tree registry ------------------------------------------------------
-  // Three kinds of tree, all sharing one talent schema and one id space:
-  //   core        — always visible                       (js/data/domains.js)
-  //   ancestry    — visible only to that ancestry        (js/data/ancestries.js)
+  // Two kinds of *tree*, plus two catalogues that reuse the same machinery.
+  // All four share one talent schema and one id space:
+  //   core        — always visible                         (js/data/domains.js)
   //   combination — visible once both parents have talents (js/data/combinations.js)
+  //   trait       — the defining-trait catalogue           (js/data/traits.js)
+  //   background  — the background catalogue               (js/data/backgrounds.js)
+  //
+  // A catalogue is not a grid: its entries have no row/col/cost, are never
+  // bought, and it is never drawn on the trees page. It is registered as a tree
+  // anyway so that one lookup (`treeById(talent.domain)`) resolves for every
+  // talent in the game, and so grants, modifiers, companions, text hooks and
+  // the sheet's source label all work on it unchanged.
+  var TRAIT_TREE = "__traits__";
+  var BACKGROUND_TREE = "__backgrounds__";
+  var CATALOGUE_KINDS = ["trait", "background"];
+  function isCatalogueTree(tree) {
+    return !!tree && CATALOGUE_KINDS.indexOf(tree.kind) >= 0;
+  }
+
   var trees = [], treeIndex = {};
 
   function buildTrees() {
@@ -19,14 +34,14 @@
     (window.DOMAINS || []).forEach(function (d) {
       trees.push({ id: d.id, name: d.name, icon: d.icon, accent: d.accent, cols: d.cols, kind: d.kind || "core", magical: !!d.magical, hidden: !!d.hidden, groups: d.groups || [], anchors: d.anchors || [] });
     });
-    (window.ANCESTRIES || []).forEach(function (a) {
-      trees.push({ id: a.treeId, name: a.name, icon: a.icon, accent: a.accent, cols: a.cols || 3,
-        kind: "ancestry", ancestry: a.id, parent: a.parent || null, description: a.description, hidden: !!a.hidden, groups: a.groups || [], anchors: a.anchors || [] });
-    });
     (window.COMBINATIONS || []).forEach(function (c) {
       trees.push({ id: c.id, name: c.name, icon: c.icon, accent: c.accent, cols: c.cols || 3,
         kind: "combination", parents: c.parents || [], description: c.description, groups: c.groups || [], anchors: c.anchors || [] });
     });
+    trees.push({ id: TRAIT_TREE, name: "Defining Trait", icon: "✴", accent: "#8a6d3b",
+      cols: 1, kind: "trait", groups: [], anchors: [] });
+    trees.push({ id: BACKGROUND_TREE, name: "Background", icon: "🎒", accent: "#8a6d3b",
+      cols: 1, kind: "background", groups: [], anchors: [] });
     treeIndex = {};
     trees.forEach(function (t) { treeIndex[t.id] = t; });
   }
@@ -308,7 +323,7 @@
   // Your first tree containing a PURCHASED talent is free; each further tree
   // costs a one-time surcharge from CONFIG.TREE_ACCESS.costs, charged to the
   // pool of the talent that opened it. Granted talents never open a tree, and
-  // exempt tree kinds (ancestry) never charge. Because the surcharge ladder is
+  // exempt tree kinds never charge. Because the surcharge ladder is
   // applied in the order trees were opened, the total is the same however you
   // reorder your purchases — refunds stay predictable.
   function treeAccessCharges(state) {
@@ -515,9 +530,10 @@
     return (tree.parents || []).every(function (pid) { return hasInvestmentInTree(state, pid); });
   }
 
-  // Ancestries form a hierarchy (ancestry → sub → sub-sub) via `parent`. A
-  // character of a given ancestry has access to its own tree AND every ancestor
-  // tree above it. This returns [self, parent, grandparent, …] ancestry ids.
+  // Ancestries form a hierarchy (ancestry → sub → sub-sub) via `parent`. An
+  // ancestry is flavour: it grants nothing and owns no tree, but the chain is
+  // still what the creation wizard indents and what the sheet names.
+  // This returns [self, parent, grandparent, …] ancestry ids.
   function ancestryChain(ancestryId) {
     var chain = [], seen = {}, cur = ancestryId, guard = 0;
     while (cur && !seen[cur] && guard++ < 20) {
@@ -529,20 +545,13 @@
     return chain;
   }
   function ancestryDepth(ancestryId) { return ancestryChain(ancestryId).length; }
-  function accessibleAncestryTreeIds(state) {
-    var sel = state.creation && state.creation.ancestry;
-    if (!sel) return [];
-    return ancestryChain(sel).map(function (aid) {
-      var a = ancestryById(aid); return a ? a.treeId : null;
-    }).filter(Boolean);
-  }
 
   function treeVisible(tree, state, showAllCombinations) {
     if (tree.hidden) return false;   // marked hidden in the editor — not shown on the user site
-    if (tree.kind === "ancestry") {
-      // Visible for the character's own ancestry and all of its ancestors.
-      return accessibleAncestryTreeIds(state).indexOf(tree.id) >= 0;
-    }
+    // Catalogues are held by the character, not browsed: a defining trait and a
+    // background are each picked once at creation, so neither is ever a tab to
+    // shop in.
+    if (isCatalogueTree(tree)) return false;
     if (tree.kind === "combination") {
       return !!showAllCombinations || combinationUnlocked(tree, state);
     }
@@ -619,10 +628,10 @@
       met: curTier >= tierNum,
     });
 
-    // The in-tree exp gate does NOT apply to ancestral trees — heritage talents
-    // are gated by tier of play alone, not by investment in the tree.
+    // The in-tree exp gate does NOT apply to a catalogue — nothing is ever
+    // spent there, so the gate could only ever read as unmet.
     var needTree = CONFIG.TALENT_TIER_TREE_EXP[tierNum - 1] || 0;
-    if (needTree > 0 && (!tree || tree.kind !== "ancestry")) {
+    if (needTree > 0 && !isCatalogueTree(tree)) {
       var haveTree = treeSpent(state, talent.domain);
       reasons.push({
         type: "treeSpent",
@@ -999,12 +1008,16 @@
 
       var tree = treeById(t.domain);
       if (!tree) problems.push(t.id + ": talent in unregistered tree '" + t.domain + "'");
-      if (tree && (t.col < 0 || t.col >= tree.cols))
-        problems.push(t.id + ": col " + t.col + " out of range 0.." + (tree.cols - 1));
-      if (t.pool !== "combat" && t.pool !== "noncombat")
-        problems.push(t.id + ": pool must be 'combat' or 'noncombat' (got '" + t.pool + "')");
-      if (typeof t.tier !== "number" || t.tier < 1 || t.tier > CONFIG.TIERS.length)
-        problems.push(t.id + ": tier " + t.tier + " out of range 1.." + CONFIG.TIERS.length);
+      // Price and placement belong to a tree. A catalogue entry has neither,
+      // and carrying one is reported by the catalogue's own checks below.
+      if (!isCatalogueTree(tree)) {
+        if (tree && (t.col < 0 || t.col >= tree.cols))
+          problems.push(t.id + ": col " + t.col + " out of range 0.." + (tree.cols - 1));
+        if (t.pool !== "combat" && t.pool !== "noncombat")
+          problems.push(t.id + ": pool must be 'combat' or 'noncombat' (got '" + t.pool + "')");
+        if (typeof t.tier !== "number" || t.tier < 1 || t.tier > CONFIG.TIERS.length)
+          problems.push(t.id + ": tier " + t.tier + " out of range 1.." + CONFIG.TIERS.length);
+      }
       if (t.ability === "maneuver") validateCastableFields(problems, t.id, t);
       validateTestBlock(problems, t.id, t);
       validateTargetedDefense(problems, t.id, t);
@@ -1410,8 +1423,10 @@
     // domain's spells share its tree's row/col space (§4.6), so two entries can
     // now collide, a spell can break a row's single tier, and a prerequisite
     // line can run the wrong way between kinds.
+    // A catalogue has no grid, so none of the three apply to one.
     var gridEntries = [];
     trees.forEach(function (tree) {
+      if (isCatalogueTree(tree)) return;
       treeEntries(tree.id).forEach(function (e) { gridEntries.push({ tree: tree, entry: e }); });
     });
 
@@ -1454,10 +1469,10 @@
 
     // A talent tier is gated on exp spent in its own tree, so a tree must
     // actually contain enough cheaper talents to fund reaching that tier —
-    // otherwise those talents can never be taken by anyone. Ancestral trees are
+    // otherwise those talents can never be taken by anyone. Catalogues are
     // exempt from the in-tree exp gate, so this check does not apply to them.
     trees.forEach(function (tree) {
-      if (tree.kind === "ancestry") return;
+      if (isCatalogueTree(tree)) return;
       var talents = talentsForDomain(tree.id);
       if (!talents.length) return;
       [2, 3, 4].forEach(function (n) {
@@ -1505,19 +1520,20 @@
         problems.push(tree.id + ": combination trees need exactly 2 parents (has " + (tree.parents || []).length + ")");
     });
 
-    // Each ancestry a player can PICK needs at least `ancestralTalentPicks` base
-    // talents to choose from at creation — counting its own tree AND any ancestor
-    // trees. Grouping-only (unpickable) ancestries are skipped: you never pick
-    // them, and their talents count towards their children's chains instead.
-    var picks = (window.CREATION || {}).ancestralTalentPicks || 1;
+    // The wizard's defining-trait step has to be completable: there must
+    // be at least as many offerable traits as it asks the player to pick.
+    var expPicks = (window.CREATION || {}).definingTraitPicks || 1;
+    var offerable = traits().length;
+    if (offerable < expPicks)
+      problems.push("defining traits: only " + offerable + " offered at creation, needs " + expPicks);
+
+    // Every character takes exactly one background, so a database with none
+    // authored cannot produce a complete character.
+    if (!backgrounds().length)
+      problems.push("backgrounds: only 0 offered at creation, needs 1");
+
     var ancIds = (window.ANCESTRIES || []).reduce(function (m, a) { m[a.id] = true; return m; }, {});
     (window.ANCESTRIES || []).forEach(function (a) {
-      if (ancestryPickable(a)) {
-        var base = creationPicksForChain(a.id);
-        if (base.length < picks)
-          problems.push("ancestry '" + a.id + "': only " + base.length + " base talent(s) to pick from " +
-            "(own tree + ancestors), needs " + picks);
-      }
       // Parent must exist, form no cycle, and stay within 3 levels (sub-sub max).
       if (a.parent) {
         if (!ancIds[a.parent]) problems.push("ancestry '" + a.id + "': unknown parent ancestry '" + a.parent + "'");
@@ -1533,9 +1549,9 @@
     if ((window.ANCESTRIES || []).length && !(window.ANCESTRIES || []).some(ancestryPickable))
       problems.push("no ancestry is selectable at character creation (every one is hidden)");
 
-    // Sources of power and ancestries must never hand out skills or proficiencies,
-    // and ancestries never grant talents. A source MAY define one unique talent
-    // per tier of play (feature): validate those instead of forbidding them.
+    // Sources of power and ancestries must never hand out skills, proficiencies
+    // or talents. A source MAY define one unique talent per tier of play
+    // (feature): validate those instead of forbidding them.
     (window.SOURCES || []).forEach(function (src) {
       var g = src.grants || {};
       if (Object.keys(g.skills || {}).length)
@@ -1558,11 +1574,37 @@
         validateTargetedDefense(problems, "source '" + src.id + "' tier-" + tier + " talent", st);
       });
     });
+    // An ancestry is flavour and nothing else: no grants, and no tree of its own.
     (window.ANCESTRIES || []).forEach(function (a) {
       var g = a.grants || {};
       if ((g.talents || []).length || Object.keys(g.skills || {}).length || (g.proficiencies || []).length)
-        problems.push("ancestry '" + a.id + "': ancestries must not grant skills or talents " +
-          "(the player picks an ancestral talent at creation instead)");
+        problems.push("ancestry '" + a.id + "': ancestries are flavour only and must not grant anything " +
+          "(author it as a defining trait instead)");
+      if ((a.talents || []).length || a.treeId)
+        problems.push("ancestry '" + a.id + "': ancestries no longer own a talent tree " +
+          "(move its talents to js/data/traits.js)");
+    });
+
+    // Catalogue entries (defining traits and backgrounds) are talents in every
+    // way the sheet cares about, but they are never bought and never placed, so
+    // the fields that price or position a tree talent are meaningless on them
+    // and would silently do nothing.
+    CATALOGUE_KINDS.forEach(function (kind) {
+      var tree = treesOfKind(kind)[0];
+      if (!tree) return;
+      var label = kind === "trait" ? "defining trait" : "background";
+      talentsForDomain(tree.id).forEach(function (t) {
+        if (!t.name || !String(t.name).trim())
+          problems.push(label + " '" + t.id + "': missing name");
+        ["cost", "pool", "row", "col", "tier"].forEach(function (f) {
+          if (t[f] !== undefined)
+            problems.push(label + " '" + t.id + "': '" + f + "' has no meaning here (never bought, never placed)");
+        });
+        if (t.requires)
+          problems.push(label + " '" + t.id + "': requirements have no meaning here (it is granted outright)");
+        if (t.ability === "modifier" || t.ability === "companion_modifier")
+          problems.push(label + " '" + t.id + "': a modifier grants nothing, so it cannot be a " + label);
+      });
     });
 
     // Spells must live on an existing magical domain, carry a tier in range, a
@@ -1840,25 +1882,35 @@
     return problems;
   }
 
-  // Talents offered as the free ancestral pick at creation: the base row of the
-  // ancestry's tree (tier 1, no talent prerequisites).
-  function creationPicksFor(ancestryId) {
-    var a = (window.ANCESTRIES || []).filter(function (x) { return x.id === ancestryId; })[0];
-    if (!a) return [];
-    return (a.talents || []).filter(function (t) {
-      var r = t.requires || {};
-      return t.tier === 1 && !(r.talents || []).length && !(r.anyTalents || []).length;
-    });
+  // ---- Defining traits & backgrounds --------------------------------------
+  // Two catalogues of the same thing mechanically: a free talent, exactly one
+  // of each, picked at creation and living in no tree. They differ only in what
+  // they say about the character — a defining trait is what sets them apart, a
+  // background is where they came from.
+  // Both are indexed as ordinary talents (see the tree registry), so grants,
+  // modifiers, companions and text hooks all work on them untouched.
+  function traits() {
+    return (window.TRAITS || []).filter(function (e) { return !e.hidden; });
   }
-  // With sub-ancestries, the free pick may come from the chosen ancestry OR any
-  // of its ancestors (a child has access to all of the parent tree's talents).
-  function creationPicksForChain(ancestryId) {
-    var out = [];
-    ancestryChain(ancestryId).forEach(function (aid) {
-      creationPicksFor(aid).forEach(function (t) { out.push(t); });
-    });
-    return out;
+  function traitById(id) {
+    return (window.TRAITS || []).filter(function (e) { return e.id === id; })[0];
   }
+  // The trait this character was built with, resolved to its talent.
+  function characterTrait(state) {
+    return traitById(state && state.creation && state.creation.trait);
+  }
+
+  function backgrounds() {
+    return (window.BACKGROUNDS || []).filter(function (t) { return !t.hidden; });
+  }
+  function backgroundById(id) {
+    return (window.BACKGROUNDS || []).filter(function (t) { return t.id === id; })[0];
+  }
+  // The background this character was built with, resolved to its talent.
+  function characterBackground(state) {
+    return backgroundById(state && state.creation && state.creation.background);
+  }
+
   function ancestryById(id) {
     return (window.ANCESTRIES || []).filter(function (a) { return a.id === id; })[0];
   }
@@ -3185,9 +3237,10 @@
     visibleTrees: visibleTrees, treeVisible: treeVisible,
     combinationUnlocked: combinationUnlocked, hasTalentInTree: hasTalentInTree,
     hasSpellInDomain: hasSpellInDomain, hasInvestmentInTree: hasInvestmentInTree,
-    // ancestry hierarchy
+    isCatalogueTree: isCatalogueTree,
+    TRAIT_TREE: TRAIT_TREE, BACKGROUND_TREE: BACKGROUND_TREE,
+    // ancestry hierarchy (flavour only — ancestries own no tree)
     ancestryChain: ancestryChain, ancestryDepth: ancestryDepth,
-    accessibleAncestryTreeIds: accessibleAncestryTreeIds,
     // talents
     talentById: talentById, talentsForDomain: talentsForDomain,
     allTalents: function () { return allTalents; },
@@ -3213,8 +3266,10 @@
     // granted baseline
     isGrantedTalent: isGrantedTalent, grantedSkillTier: grantedSkillTier, grantedProfTier: grantedProfTier,
     // creation helpers
-    creationPicksFor: creationPicksFor, creationPicksForChain: creationPicksForChain,
     ancestryById: ancestryById, ancestryPickable: ancestryPickable,
+    traits: traits, traitById: traitById,
+    characterTrait: characterTrait,
+    backgrounds: backgrounds, backgroundById: backgroundById, characterBackground: characterBackground,
     sourceById: sourceById, sourceTalents: sourceTalents, ownedTalents: ownedTalents,
     // spells & spellcasting
     spellById: spellById, spellsForDomain: spellsForDomain, spellDomain: spellDomain, allSpells: allSpells,

@@ -94,11 +94,13 @@ window.DOMAINS = [
             slashing: 1,
             piercing: 1
           },
-          attack: {
-            name: "Claw",
-            damage: "piercing",
-            pool: 2
-          },
+          attacks: [
+            {
+              name: "Claw",
+              damage: "piercing",
+              pool: 2
+            }
+          ],
           skills: {
             Observe: 3,
             Wilderness: 3,
@@ -160,11 +162,13 @@ window.DOMAINS = [
             radiant: 1,
             fortitude: 1
           },
-          attack: {
-            name: "Bite",
-            damage: "piercing",
-            pool: 4
-          }
+          attacks: [
+            {
+              name: "Bite",
+              damage: "piercing",
+              pool: 4
+            }
+          ]
         },
         requires: {
           talents: [

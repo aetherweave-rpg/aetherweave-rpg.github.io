@@ -80,10 +80,12 @@ window.CONFIG = {
   // ladder along for the trees that do charge.
   TREE_ACCESS: {
     costs: [1, 3, 6, 9],
-    // ancestry:    your own heritage is free to develop.
-    // combination: you already paid to enter both parent trees, so braiding
-    //              them together costs nothing extra to start.
-    exemptKinds: ["ancestry", "combination"],
+    // combination:            you already paid to enter both parent trees, so
+    //                         braiding them together costs nothing extra to start.
+    // trait / background:     catalogues, not trees. Their entries are granted
+    //                         at creation and are never bought, so branching
+    //                         never applies.
+    exemptKinds: ["combination", "trait", "background"],
   },
 
   // --- Spellcasting --------------------------------------------------------
