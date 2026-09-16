@@ -82,7 +82,7 @@
     });
 
     return {
-      version: 9,
+      version: 10,
       identity: { characterName: "", playerName: "", ancestry: "", sourceOfPower: "", concept: "", notes: "" },
       hp: { max: "", current: "" },
       mana: { max: "", current: "" },
@@ -232,8 +232,57 @@
     merged.grantChoices          = (s.grantChoices && typeof s.grantChoices === "object") ? s.grantChoices : {};
     merged.charAdvances          = s.charAdvances || {};
     renameExperiencesToTraits(merged, s);
+    renameFormerSkills(merged);
     syncCharacteristics(merged);
     return merged;
+  }
+
+  // v9 → v10: skills were renamed (Athletics became Strength) and merged
+  // (Evade folded into Dodge). Each skill lists the names it went by in
+  // `formerly` (data/skills.js), so an old save's ranks move to the skill they
+  // became. Left under the old name they would show nowhere, yet computeSpent
+  // would still charge them, to whichever pool an unknown name falls into. A
+  // merge keeps the better rank, for the current and the free baseline alike,
+  // and a grant record follows the rename so refunding its talent still
+  // revokes the right skill. A former name that is still a skill is left alone.
+  function renameFormerSkills(merged) {
+    var all = (window.SKILLS.combat || []).concat(window.SKILLS.noncombat || []);
+    var current = {}, byOld = {};
+    all.forEach(function (sk) { current[sk.name] = true; });
+    all.forEach(function (sk) {
+      (sk.formerly || []).forEach(function (old) { if (!current[old]) byOld[old] = sk.name; });
+    });
+    function renamed(name) {
+      return Object.prototype.hasOwnProperty.call(byOld, name) ? byOld[name] : null;
+    }
+
+    function moveRanks(ranks) {
+      var out = Object.assign({}, ranks);
+      Object.keys(out).forEach(function (old) {
+        var now = renamed(old);
+        if (!now) return;
+        out[now] = Math.max(out[now] || 0, out[old] || 0);
+        delete out[old];
+      });
+      return out;
+    }
+    merged.skills = moveRanks(merged.skills);
+    merged.granted.skills = moveRanks(merged.granted.skills);
+
+    var choices = {};
+    Object.keys(merged.grantChoices).forEach(function (id) {
+      var recs = merged.grantChoices[id];
+      choices[id] = !Array.isArray(recs) ? recs : recs.map(function (rec) {
+        var now = rec && rec.kind === "skill" ? renamed(rec.name) : null;
+        if (!now) return rec;
+        // "skill:Evade" or "skill:Evade:2": only the name inside the key moves.
+        var prefix = "skill:" + rec.name;
+        var key = typeof rec.key === "string" && rec.key.indexOf(prefix) === 0
+          ? "skill:" + now + rec.key.slice(prefix.length) : rec.key;
+        return Object.assign({}, rec, { name: now, key: key });
+      });
+    });
+    merged.grantChoices = choices;
   }
 
   // v6 → v7: "defining experience" was renamed to "defining trait", which moved

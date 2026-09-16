@@ -208,7 +208,7 @@
     list.forEach(function (sk) {
       var row = el("div", "ps-row");
       var name = el("span", "ps-row-name", sk.name);
-      name.appendChild(el("span", "ps-row-sub", charAbbr(sk.char)));
+      name.appendChild(el("span", "ps-row-sub", Engine.skillChars(sk).map(charAbbr).join("/")));
       row.appendChild(name);
       row.appendChild(dots(state.skills[sk.name] || 0, CONFIG.MAX_SKILL_TIER));
       body.appendChild(row);
@@ -217,10 +217,11 @@
     return g;
   }
 
+  // A skill paired with two characteristics prints under both, as the screen does.
   function charSkillEntries(key) {
     return window.SKILLS.combat.map(function (sk) { return { sk: sk, pool: "combat" }; })
       .concat(window.SKILLS.noncombat.map(function (sk) { return { sk: sk, pool: "noncombat" }; }))
-      .filter(function (entry) { return entry.sk.char === key; });
+      .filter(function (entry) { return Engine.skillChars(entry.sk).indexOf(key) >= 0; });
   }
 
   function skillsByCharWrap(state) {

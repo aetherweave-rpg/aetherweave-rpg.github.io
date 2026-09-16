@@ -9,6 +9,15 @@
 
 window.CHANGELOG_RULES = [
   {
+    date: "2026-09-16",
+    entries: [
+      "Changed: Skills",
+      "Changed: NPC Defenses",
+      "Changed: Defending as a player character",
+      "Changed: Weapons",
+    ],
+  },
+  {
     date: "2026-08-27",
     entries: [
       "Added: rules for companions",

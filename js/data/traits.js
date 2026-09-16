@@ -103,7 +103,7 @@ window.TRAITS = [
     id: "trt_clockwork_physiology",
     name: "Clockwork Physiology",
     icon: "⚙",
-    description: "You add an additional dice to any Endure tests.",
+    description: "You add an additional dice to any Body + Resist tests.",
     flavour: "Due to your arcanomechanical body, you are not as easily affected by normal bodily effects."
   }
 ];

@@ -3,41 +3,53 @@
 // ----------------------------------------------------------------------------
 // `char` is the paired characteristic key (from CONFIG.CHARACTERISTICS). It's
 // shown as an abbreviation on the sheet; it does not gate anything by itself.
+// A skill that took in another when the two were merged keeps both
+// characteristics as a list, and the sheet lists it under each of them. Which
+// one a roll adds is named by what calls for the roll: a poison calls for
+// Body + Resist, a charm for Presence + Resist (main.tex "Defending as a
+// player character").
+//
+// `formerly` lists names a skill used to go by, so a saved character's ranks
+// follow it through a rename or a merge (state.js). A merge keeps the better
+// of the two ranks.
+//
 // Combat skills draw from COMBAT exp; everything else from NON-COMBAT exp.
 // ============================================================================
 
 window.SKILLS = {
   combat: [
-    { name: "Deflect",          char: "body" },
-    { name: "Dodge",            char: "cunning" },
-    { name: "Endure",           char: "body" },
-    { name: "Evade",            char: "awareness" },
+    { name: "Deflect",          char: ["body", "intelligence"], formerly: ["Ward"] },
+    { name: "Dodge",            char: ["awareness", "cunning"], formerly: ["Evade"] },
     { name: "Initiative",       char: "awareness" },
-    { name: "Resist",           char: "presence" },
-    { name: "Ward",             char: "intelligence" },
+    { name: "Resist",           char: ["body", "presence"],     formerly: ["Endure"] },
   ],
 
   noncombat: [
-    { name: "Acrobatics",       char: "body" },
-    { name: "Animal Handling",  char: "presence" },
-    { name: "Arcane",           char: "intelligence" },
-    { name: "Athletics",        char: "body" },
-    { name: "Charm",            char: "presence" },
-    { name: "Climb",            char: "body" },
-    { name: "Disguise",         char: "cunning" },
-    { name: "Divine",           char: "intelligence" },
-    { name: "Insight",          char: "awareness" },
-    { name: "Intimidation",     char: "presence" },
-    { name: "Lie",              char: "cunning" },
-    { name: "Medicine",         char: "intelligence" },
-    { name: "Nature",           char: "intelligence" },
-    { name: "Observe",          char: "awareness" },
-    { name: "Occult",           char: "intelligence" },
-    { name: "Sneaking",         char: "cunning" },
-    { name: "Society",          char: "intelligence" },
-    { name: "Swimming",         char: "body" },
-    { name: "Thievery",         char: "cunning" },
-    { name: "Wilderness",       char: "awareness" },
+    { name: "Acrobatics",                char: "body" },
+    { name: "Animal Handling",           char: "presence" },
+    { name: "Charm",                     char: "presence" },
+    { name: "Climb",                     char: "body" },
+    { name: "Deceive",                   char: "cunning",      formerly: ["Lie"] },
+    { name: "Disguise",                  char: "cunning" },
+    { name: "Entertain",                 char: "presence" },
+    { name: "Insight",                   char: "awareness" },
+    { name: "Intimidation",              char: "presence" },
+    { name: "Knowledge: Arcane",         char: "intelligence", formerly: ["Arcane"] },
+    { name: "Knowledge: Divine",         char: "intelligence", formerly: ["Divine"] },
+    { name: "Knowledge: Natural World",  char: "intelligence", formerly: ["Nature"] },
+    { name: "Knowledge: Occult",         char: "intelligence", formerly: ["Occult"] },
+    { name: "Knowledge: Society",        char: "intelligence", formerly: ["Society"] },
+    { name: "Listen",                    char: "awareness" },
+    { name: "Medicine",                  char: "intelligence" },
+    { name: "Observe",                   char: "awareness" },
+    { name: "Persuasion",                char: "presence" },
+    { name: "Sail",                      char: "awareness" },
+    { name: "Search",                    char: "awareness" },
+    { name: "Sneak",                     char: "cunning",      formerly: ["Sneaking"] },
+    { name: "Strength",                  char: "body",         formerly: ["Athletics"] },
+    { name: "Survival",                  char: "awareness",    formerly: ["Wilderness"] },
+    { name: "Swim",                      char: "body",         formerly: ["Swimming"] },
+    { name: "Thievery",                  char: "cunning" },
   ],
 };
 
@@ -83,24 +95,39 @@ window.PROFICIENCY_KINDS = [
 // (site/DESIGN.md §4.10), so a defense is a number taken off a roll, not a
 // threshold the roll has to beat.
 //
-// `replaces` names the player skill each one stands in for, straight from the
-// rulebook table. Physical is deliberately three entries rather than one: the
-// damage types the content already deals (bludgeoning / slashing / piercing)
-// are exactly the distinctions armour and hide make, so one "Physical" number
-// could not express a creature that shrugs off a mace but not a blade.
+// `replaces` names the player defense rolls each one stands in for, straight
+// from the rulebook table: a defensive skill together with the characteristic
+// it is rolled with, since Deflect, Dodge and Resist each pair with two and the
+// pairing is what tells a poison (Body + Resist) from a charm (Presence +
+// Resist). Physical is deliberately three entries rather than one: the damage
+// types the content already deals (bludgeoning / slashing / piercing) are
+// exactly the distinctions armour and hide make, so one "Physical" number could
+// not express a creature that shrugs off a mace but not a blade.
 window.DEFENSES = [
-  { id: "bludgeoning", label: "Bludgeoning", replaces: ["Deflect", "Dodge", "Evade"], covers: "Maces, staves, falls, crushing blows" },
-  { id: "slashing",    label: "Slashing",    replaces: ["Deflect", "Dodge", "Evade"], covers: "Blades, axes, claws" },
-  { id: "piercing",    label: "Piercing",    replaces: ["Deflect", "Dodge", "Evade"], covers: "Arrows, bolts, spears, bites" },
-  { id: "fortitude",   label: "Fortitude",   replaces: ["Endure"],  covers: "Poison, disease, suffocation, exhaustion" },
-  { id: "mental",      label: "Mental",      replaces: ["Resist"],  covers: "Fear, charm, domination, mind-affecting" },
-  { id: "fire",        label: "Fire",        replaces: ["Ward"],    covers: "Elemental domain: flame" },
-  { id: "cold",        label: "Cold",        replaces: ["Ward"],    covers: "Elemental domain: frost" },
-  { id: "lightning",   label: "Lightning",   replaces: ["Ward"],    covers: "Elemental domain: storm" },
-  { id: "acid",        label: "Acid",        replaces: ["Ward"],    covers: "Corrosives, alchemical burns" },
-  { id: "arcane",      label: "Arcane",      replaces: ["Ward"],    covers: "Aether and force effects, non-elemental conjuration" },
-  { id: "blight",      label: "Blight",      replaces: [],          covers: "Death domain: decay and drain" },
-  { id: "radiant",     label: "Radiant",     replaces: [],          covers: "Life and Light domains: holy and vital energy" },
+  { id: "bludgeoning", label: "Bludgeoning", covers: "Maces, staves, falls, crushing blows",
+    replaces: [{ skill: "Deflect", char: "body" }, { skill: "Dodge", char: "awareness" }, { skill: "Dodge", char: "cunning" }] },
+  { id: "slashing",    label: "Slashing",    covers: "Blades, axes, claws",
+    replaces: [{ skill: "Deflect", char: "body" }, { skill: "Dodge", char: "awareness" }, { skill: "Dodge", char: "cunning" }] },
+  { id: "piercing",    label: "Piercing",    covers: "Arrows, bolts, spears, bites",
+    replaces: [{ skill: "Deflect", char: "body" }, { skill: "Dodge", char: "awareness" }, { skill: "Dodge", char: "cunning" }] },
+  { id: "fortitude",   label: "Fortitude",   covers: "Poison, disease, suffocation, exhaustion",
+    replaces: [{ skill: "Resist", char: "body" }] },
+  { id: "mental",      label: "Mental",      covers: "Fear, charm, domination, mind-affecting",
+    replaces: [{ skill: "Resist", char: "presence" }] },
+  { id: "fire",        label: "Fire",        covers: "Elemental domain: flame",
+    replaces: [{ skill: "Deflect", char: "intelligence" }] },
+  { id: "cold",        label: "Cold",        covers: "Elemental domain: frost",
+    replaces: [{ skill: "Deflect", char: "intelligence" }] },
+  { id: "lightning",   label: "Lightning",   covers: "Elemental domain: storm",
+    replaces: [{ skill: "Deflect", char: "intelligence" }] },
+  { id: "acid",        label: "Acid",        covers: "Corrosives, alchemical burns",
+    replaces: [{ skill: "Deflect", char: "intelligence" }] },
+  { id: "arcane",      label: "Arcane",      covers: "Aether and force effects, non-elemental conjuration",
+    replaces: [{ skill: "Deflect", char: "intelligence" }] },
+  { id: "blight",      label: "Blight",      covers: "Death domain: decay and drain",
+    replaces: [] },
+  { id: "radiant",     label: "Radiant",     covers: "Life and Light domains: holy and vital energy",
+    replaces: [] },
 ];
 
 // The 12 weapon categories (main.tex "Weapons"), with the mechanics fixed per

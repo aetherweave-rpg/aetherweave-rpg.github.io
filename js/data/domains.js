@@ -103,7 +103,7 @@ window.DOMAINS = [
           ],
           skills: {
             Observe: 3,
-            Wilderness: 3,
+            Survival: 3,
             Acrobatics: 3
           }
         },
@@ -128,7 +128,7 @@ window.DOMAINS = [
             Climb: 3,
             Acrobatics: 3,
             Observe: 3,
-            Sneaking: 3,
+            Sneak: 3,
             Thievery: 3
           }
         },
@@ -240,7 +240,7 @@ window.DOMAINS = [
           characteristic: "body",
           kind: "combat",
           skills: [
-            "Endure"
+            "Resist"
           ],
           vs: "none",
           tiers: [
@@ -268,7 +268,7 @@ window.DOMAINS = [
         id: "disc_mental_ward",
         name: "Mental Ward",
         flavour: "Through intense training you are able to stave of many mental effects.",
-        description: "When rolling to Resist, add 2 additional dice.",
+        description: "When rolling Presence + Resist, add 2 additional dice.",
         pool: "combat",
         cost: 1,
         tier: 1,
@@ -1187,7 +1187,7 @@ window.DOMAINS = [
         id: "braw_butterfly_kick",
         name: "Butterfly Kick",
         flavour: "You avoid an incoming attack and use its momentum to deliver a powerful kick.",
-        description: "When you Evade or Dodge, and the attacker is in melee range, make an Unarmed attack against the opponent.",
+        description: "When you Dodge, and the attacker is in melee range, make an Unarmed attack against the opponent.",
         test: {
           characteristic: "weapon",
           kind: "weapon",
@@ -1917,7 +1917,7 @@ window.DOMAINS = [
           tiers: [
             {
               successes: 1,
-              effect: "Add 2 dice to your next deflect, dodge, or evade test against this enemy"
+              effect: "Add 2 dice to your next Body + Deflect/Dodge test against this enemy"
             }
           ]
         },

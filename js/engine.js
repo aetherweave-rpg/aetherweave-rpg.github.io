@@ -276,6 +276,14 @@
     }
     return !!COMBAT_SKILL_NAMES[name];
   }
+  // The characteristics a skill pairs with, always as a list. Most skills
+  // author one key; a merged skill authors both of the skills it came from
+  // (Dodge took in Evade), and the roll that calls for it names which applies.
+  function skillChars(skill) {
+    var c = skill && skill.char;
+    if (Array.isArray(c)) return c.slice();
+    return c ? [c] : [];
+  }
   function findKind(id) {
     return (window.PROFICIENCY_KINDS || []).filter(function (k) { return k.id === id; })[0];
   }
@@ -3308,7 +3316,7 @@
     rangeLabel: rangeLabel, targetLabel: targetLabel, durationLabel: durationLabel, aoeLabel: aoeLabel,
     maxHP: maxHP, maxMana: maxMana,
     // misc
-    validateDB: validateDB, isCombatSkill: isCombatSkill, findKind: findKind,
+    validateDB: validateDB, isCombatSkill: isCombatSkill, skillChars: skillChars, findKind: findKind,
     profTier: profTier, charLabel: charLabel, poolLabel: poolLabel,
     // weapon categories (inventory section)
     weaponCategories: weaponCategories, weaponCategoryById: weaponCategoryById,

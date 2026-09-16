@@ -434,11 +434,12 @@
 
   // Combat and non-combat skills cost from different curves, so a merged
   // characteristic group can't carry one cost note the way a pool group can;
-  // each row is tagged with its own pool instead.
+  // each row is tagged with its own pool instead. A skill paired with two
+  // characteristics is listed under both: two rows, one skill, one level.
   function skillGroupByChar(c, state) {
     var list = window.SKILLS.combat.map(function (sk) { return { sk: sk, pool: "combat" }; })
       .concat(window.SKILLS.noncombat.map(function (sk) { return { sk: sk, pool: "noncombat" }; }))
-      .filter(function (entry) { return entry.sk.char === c.key; });
+      .filter(function (entry) { return Engine.skillChars(entry.sk).indexOf(c.key) >= 0; });
     if (!list.length) return null;
     var g = el("div", "skill-group");
     var h = el("h3", "skill-group-title", c.label);
@@ -458,7 +459,7 @@
     var name = el("div", "skill-name");
     name.appendChild(el("span", "skill-name-text", sk.name));
     if (showPool) name.appendChild(el("span", "skill-pool-tag " + showPool, showPool === "combat" ? "combat" : "non-combat"));
-    else name.appendChild(el("span", "skill-char", charAbbr(sk.char)));
+    else name.appendChild(el("span", "skill-char", Engine.skillChars(sk).map(charAbbr).join("/")));
     row.appendChild(name);
     row.appendChild(dots(tier, CONFIG.MAX_SKILL_TIER, function (v) {
       State.update(function (s2) { s2.skills[sk.name] = v; });

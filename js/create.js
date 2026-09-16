@@ -552,7 +552,7 @@
       var row = el("div", "skill-row");
       var name = el("div", "skill-name");
       name.appendChild(el("span", "skill-name-text", sk.name));
-      name.appendChild(el("span", "skill-char", abbr(sk.char)));
+      name.appendChild(el("span", "skill-char", Engine.skillChars(sk).map(abbr).join("/")));
       row.appendChild(name);
       row.appendChild(dots(tier, CONFIG.MAX_SKILL_TIER, costs, left, function (v) {
         if (v > 0) opts.skillStore[sk.name] = v; else delete opts.skillStore[sk.name];
