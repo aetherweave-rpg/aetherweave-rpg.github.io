@@ -24,7 +24,6 @@ window.DOMAINS = [
         id: "life_spell_life_link",
         name: "Life Link",
         description: "When you or a willing ally takes damage, distribute the damage as you wish.",
-        pool: "combat",
         cost: 1,
         tier: 2,
         row: 2,
@@ -79,7 +78,6 @@ window.DOMAINS = [
         name: "Animal Companion",
         flavour: "You have an animal companion accompanying you.",
         description: "Pick one of the available options as an animal companion.",
-        pool: "combat",
         cost: 3,
         tier: 1,
         row: 0,
@@ -105,7 +103,6 @@ window.DOMAINS = [
         name: "Animal Companion: Flying",
         flavour: "You have a flying companion like an owl, hawk, or bat.",
         description: "This animal companion excels at retrieving or spying from a distance. It can communicate some findings to you, like the presence or absence of certain enemies.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 1,
@@ -140,7 +137,6 @@ window.DOMAINS = [
       {
         id: "natu_animal_companion_tiny_animal",
         name: "Animal Companion: Tiny Animal",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 1,
@@ -165,7 +161,6 @@ window.DOMAINS = [
       {
         id: "natu_animal_companion_great",
         name: "Animal Companion: Great",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 1,
@@ -242,7 +237,6 @@ window.DOMAINS = [
         name: "Meditate",
         flavour: "You spent a minute centering yourself, healing wounds on your own body.",
         description: "If one minute is spent uninterrupted, you heal 3 HP.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -274,7 +268,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 0,
@@ -293,7 +286,6 @@ window.DOMAINS = [
         name: "Mental Ward",
         flavour: "Through intense training you are able to stave of many mental effects.",
         description: "When rolling Presence + Resist, add 2 additional dice.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 0,
@@ -310,7 +302,6 @@ window.DOMAINS = [
         name: "Unbreakable",
         flavour: "You are able to ignore blows and damage that would severely injure any other.",
         description: "Reduce all damage taken by 1.",
-        pool: "combat",
         cost: 3,
         tier: 3,
         row: 5,
@@ -321,7 +312,6 @@ window.DOMAINS = [
         name: "Be Water",
         flavour: "You are quick to adapt to any situations, being able to anticipate more.",
         description: "When you take the anticipate action, you roll 2 additional dice instead of 1.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -374,7 +364,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "noncombat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -409,7 +398,6 @@ window.DOMAINS = [
             "Alchemy"
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -463,7 +451,6 @@ window.DOMAINS = [
         name: "Well-prepared",
         flavour: "You are always on top of your game, and have prepared even for the most absurd of situations.",
         description: "Regardless of mode of play you can perform a Minor Flashback {inve_more_preparations:\"twice\">inve_well_prepared:\"once\"} per session to have acquired an item, or grant you an extra use of Arsenal.",
-        pool: "noncombat",
         cost: 1,
         tier: 1,
         row: 0,
@@ -479,7 +466,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Sticky",
         flavour: "Your inventions can leverage sticky materials to ensure they stick to whatever you throw them at.",
         description: "When added to a contraption, this material ensures the contraption moves around with whatever it is stuck on.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 2,
@@ -499,7 +485,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Bouncy",
         flavour: "You have acquired knowledge of rubbery and elastic substances.",
         description: "When added to a contraption: the target point no longer needs to be in line of sight as long it can be reached from where it is {inve_arsenal:\n\"thrown\"}.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 2,
@@ -518,7 +503,6 @@ window.DOMAINS = [
         id: "inve_material_hoarder",
         name: "Material Hoarder",
         description: "You have a larger collection of materials, allowing for an extra use per session of your Arsenal ability.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 3,
@@ -542,7 +526,6 @@ window.DOMAINS = [
         name: "Complicated Contraption",
         flavour: "You are adept at making even more complicated contraptions, combining more materials for wild effects.",
         description: "You can add an additional material to your Arsenal contraptions.",
-        pool: "combat",
         cost: 2,
         tier: 2,
         row: 4,
@@ -562,7 +545,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Explosive",
         flavour: "You are proficient in the use of explosive materials",
         description: "Deal 1 bludgeoning damage per success.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 2,
@@ -582,7 +564,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Smoking",
         flavour: "You have mastered the use of materials to produce smoke. Your contraptions can cloak their area of effect in smoke",
         description: "A blanket of smoke covers the affected area, blocking sight and obscuring everything within.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -602,7 +583,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Sharp",
         flavour: "You can add sharp material to your contraptions, cutting through anything in their path.",
         description: "Your contraption deals 1 slashing damage per success.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -622,7 +602,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Piercing",
         flavour: "You can add piercing objects such as nails or needles to your contraptions.",
         description: "Your contraption deals 1 piercing damage per success.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -642,7 +621,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Incendiary",
         flavour: "You have intimate knowledge of inflammable materials.",
         description: "On 1 success: deal 1 fire damage to all creatures and objects in range.\nOn 3+ successes: Deal 1 fire damage and inflict Burning #successes to all creatures and objects in range.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -662,7 +640,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Electrifying",
         flavour: "You have learnt how to shock targets with your contraptions.",
         description: "On 1+ successes: Deal 1 lightning damage.\nOn 3+ successes: Deal 2 lightning damage.\nOn 4+ successes: Deal 2 lightning damage and inflict Stunned 1.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 2,
@@ -682,7 +659,6 @@ window.DOMAINS = [
         name: "Contraption Launcher",
         flavour: "You have developed a weapon for launching your contraptions a greater distance.",
         description: "You can now launch your contraptions up to twice the base range.",
-        pool: "combat",
         cost: 2,
         tier: 2,
         row: 4,
@@ -706,7 +682,6 @@ window.DOMAINS = [
         name: "Close range delivery",
         flavour: "You have devised a mechanism through which you can activate and deliver the payload of your contraptions locally and in melee range.",
         description: "Instead of using your Arsenal ability at range, you can choose to deliver it through a melee strike. If you do so, you can choose to roll for an unarmed melee attack to determine the number of successes instead.\nWhen choosing to activate the contraption in this manner, the effect size and shape changes to a {inve_increased_contraption_range:\"12y\"> inve_arsenal:\"6y\"} cone.",
-        pool: "combat",
         cost: 2,
         tier: 2,
         row: 4,
@@ -726,7 +701,6 @@ window.DOMAINS = [
         name: "Increased contraption range",
         flavour: "You can extend the affected area of your contraption significantly.",
         description: "You double the range of Arsenal's area of effect.",
-        pool: "combat",
         cost: 3,
         tier: 2,
         row: 4,
@@ -750,7 +724,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Seeking",
         flavour: "Your contraptions can now specifically target objects or creatures in range.",
         description: "You choose which creatures and targets in range of your contraptions are affected.",
-        pool: "combat",
         cost: 1,
         tier: 2,
         row: 5,
@@ -770,7 +743,6 @@ window.DOMAINS = [
         name: "Material Knowledge: Cluster",
         flavour: "You are able to launch cluster contraptions, which explode in midair and deliver their payload in 3 distinct locations in range.",
         description: "When you use this material, halve the area of effect range of your contraption. You choose 3 distinct location in range to target with your contraption, and resolve each of them with a single roll.",
-        pool: "combat",
         cost: 1,
         tier: 2,
         row: 5,
@@ -791,7 +763,6 @@ window.DOMAINS = [
         name: "More Preparations",
         flavour: "You are even better prepared than your peers!",
         description: "Gain an additional use of Well-prepared",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -830,7 +801,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -945,7 +915,6 @@ window.DOMAINS = [
         id: "braw_improved_unarmed_strike",
         name: "Improved Unarmed Strike",
         description: "Your unarmed strike now deals damage equal to the number of successes rolled{braw_greater_unarmed_strike:\" + 1\"}, without limit.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -955,7 +924,6 @@ window.DOMAINS = [
         id: "braw_greater_unarmed_strike",
         name: "Greater Unarmed Strike",
         description: "Your unarmed strike now deals damage equal to the number of successes rolled + 1, without limit.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -974,7 +942,6 @@ window.DOMAINS = [
         id: "braw_precise_strikes",
         name: "Precise Strikes",
         description: "Your unarmed strikes can use cunning as their characteristic.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 1,
@@ -985,7 +952,6 @@ window.DOMAINS = [
         name: "Improvised Weapon",
         flavour: "You can use everyday objects as effectively as weapons.",
         description: "When making an unarmed attack, you can use objects in your direct vicinity to make the attack with. This can change the damage type, as well as the properties of your unarmed attack.\nWhen making an attack in this manner, the damage of your unarmed attack is not limited.",
-        pool: "combat",
         cost: 3,
         tier: 1,
         row: 0,
@@ -1009,7 +975,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1048,7 +1013,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 2,
@@ -1068,7 +1032,6 @@ window.DOMAINS = [
         name: "Open up",
         flavour: "You use quick jabs to distract opponents.",
         description: "In addition, your Jab afflict the target with Breached 2.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -1087,7 +1050,6 @@ window.DOMAINS = [
         id: "braw_defensive_combo",
         name: "Defensive Combo",
         description: "By opening with a jab, your uppercut no longer lowers your defenses.",
-        pool: "combat",
         cost: 1,
         tier: 2,
         row: 3,
@@ -1124,7 +1086,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1159,7 +1120,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1191,7 +1151,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 3,
         tier: 3,
         row: 5,
@@ -1226,7 +1185,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 2,
         row: 3,
@@ -1266,7 +1224,6 @@ window.DOMAINS = [
           ],
           vs: "weapon"
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1285,7 +1242,6 @@ window.DOMAINS = [
         name: "Coordinated Flurry",
         flavour: "Your first strike creates a perfect opening for your second.",
         description: "You combine the damage of the two individual strikes of your Flurry.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 1,
@@ -1308,7 +1264,6 @@ window.DOMAINS = [
         test: {
           vs: "weapon"
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1335,7 +1290,6 @@ window.DOMAINS = [
           ],
           vs: "slashing"
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1372,7 +1326,6 @@ window.DOMAINS = [
         name: "Greater Cleave",
         flavour: "Your sweeping cleave can hit an additional enemy",
         description: "Cleave can hit an additional enemy in range.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -1406,7 +1359,6 @@ window.DOMAINS = [
         name: "Whirlwind",
         flavour: "You become a whirlwind of steel attacking al enemies around you.",
         description: "Your cleave attack hits all enemies in a circle around you instead of an arc.",
-        pool: "combat",
         cost: 2,
         tier: 2,
         row: 4,
@@ -1451,7 +1403,6 @@ window.DOMAINS = [
           ],
           vs: "bludgeoning"
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1474,7 +1425,6 @@ window.DOMAINS = [
         id: "arms_pulverize",
         name: "Pulverize",
         flavour: "You have become more adapt at crushing groups of enemies",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -1516,7 +1466,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1536,7 +1485,6 @@ window.DOMAINS = [
         name: "Weapon Expertise",
         flavour: "You are adapt at using a large number of different weapons.",
         description: "Gain basic proficiency in all weapons (excluding unarmed). Any previously spent exp is refunded.",
-        pool: "combat",
         cost: 3,
         tier: 1,
         row: 0,
@@ -1645,7 +1593,6 @@ window.DOMAINS = [
         name: "Quick Switch",
         flavour: "You can quickly swap out weapons.",
         description: "Changing between weapons is now a free action.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 0,
@@ -1656,7 +1603,6 @@ window.DOMAINS = [
         name: "Charge",
         flavour: "You can rush in and attack.",
         description: "Move up to your movement speed, then make an attack.{arms_complex_charge:\", or use a 2 action melee maneuver\"}.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 2,
@@ -1671,7 +1617,6 @@ window.DOMAINS = [
         id: "arms_complex_charge",
         name: "Complex Charge",
         description: "While charging: Instead of a melee attack, you can also use a 2 action melee maneuver.",
-        pool: "combat",
         cost: 1,
         tier: 3,
         row: 5,
@@ -1708,7 +1653,6 @@ window.DOMAINS = [
           ],
           vs: "piercing"
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1732,7 +1676,6 @@ window.DOMAINS = [
         name: "Effective Volley",
         flavour: "You are especially apt at dealing with groups of enemies using a volley of arrows.",
         description: "When targeting a swarm or group of enemies, armor is subtracted only once, instead of per enemy.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -1760,7 +1703,6 @@ window.DOMAINS = [
           ],
           vs: "piercing"
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1784,7 +1726,6 @@ window.DOMAINS = [
         name: "Penetrating Bolt",
         flavour: "Your bolts are targetted even more precisely, finding any weakness.",
         description: "Your penetrating bolt now ignores all armor.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 1,
@@ -1812,7 +1753,6 @@ window.DOMAINS = [
           ],
           vs: "piercing"
         },
-        pool: "combat",
         cost: 1,
         tier: 2,
         row: 4,
@@ -1857,7 +1797,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -1880,7 +1819,6 @@ window.DOMAINS = [
         id: "mrk_advanced_ricochet",
         name: "Advanced Ricochet",
         description: "Your ricochet ability targets one additional enemy in its chain.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -1925,7 +1863,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 0,
@@ -1946,7 +1883,6 @@ window.DOMAINS = [
         id: "aeth_spell_speed",
         name: "Speed",
         description: "An ally of your choice or self gains an additional 2 actions on their next turn.\nRisk 1: on 1+ Risk You lose one action this turn if available, otherwise lose one action next turn.",
-        pool: "combat",
         cost: 1,
         tier: 2,
         row: 2,
@@ -1981,7 +1917,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 1,
         tier: 2,
         row: 2,
@@ -2012,7 +1947,6 @@ window.DOMAINS = [
         id: "aeth_spell_accelerate",
         name: "Accelerate",
         description: "Target ally within 10m or self can move up to 10 meters more on their next move.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 0,
@@ -2034,7 +1968,6 @@ window.DOMAINS = [
         id: "aeth_spell_burst",
         name: "Burst",
         description: "Target ally within 10m or self can move up to 3 times their normal speed on their next move action.",
-        pool: "combat",
         cost: 1,
         tier: 2,
         row: 2,
@@ -2060,7 +1993,6 @@ window.DOMAINS = [
         id: "aeth_spell_hover",
         name: "Hover",
         description: "Target object you can touch will hover at the height it had during the casting of the spell. It can be moved laterally, but excessive upward or downward force breaks the spell. Can be cast on objects up to 10kg and last up to 10 minutes.",
-        pool: "noncombat",
         cost: 1,
         tier: 1,
         row: 0,
@@ -2084,7 +2016,6 @@ window.DOMAINS = [
         id: "aeth_spell_levitate",
         name: "Levitate",
         description: "Target ally or self can levitate 20 centimeters above ground. When they do so, they move at half speed.",
-        pool: "noncombat",
         cost: 1,
         tier: 2,
         row: 2,
@@ -2113,7 +2044,6 @@ window.DOMAINS = [
         id: "aeth_spell_ethereal_ward",
         name: "Ethereal Ward",
         description: "An ethereal shield hovers around you, aiding in your defense.\n\nReduce the number of rolled Risk dice rolled due to melee opponents by 3. (to a minimum of 0)\nYou roll 2 additional dice on Deflect rolls.",
-        pool: "combat",
         cost: 1,
         tier: 2,
         row: 2,
@@ -2175,7 +2105,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -2196,7 +2125,6 @@ window.DOMAINS = [
         id: "guil_exploit_weakness",
         name: "Exploit Weakness",
         description: "When flanking an enemy and using Cunning as attack characteristic: \nevery Reward you roll adds {gui1 damage to attack tests against the flanked enemy",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -2206,7 +2134,6 @@ window.DOMAINS = [
         id: "guil_greater_exploit_weakness",
         name: "Greater Exploit Weakness",
         description: "Exploit Weaknesses damage is increased to 3",
-        pool: "combat",
         cost: 2,
         tier: 2,
         row: 2,
@@ -2225,7 +2152,6 @@ window.DOMAINS = [
         id: "guil_improved_exploit_weakness",
         name: "Improved Exploit Weakness",
         description: "Increase the damage from Exploit Weakness to 2.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 1,
@@ -2252,7 +2178,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 0,
@@ -2270,7 +2195,6 @@ window.DOMAINS = [
         id: "guil_nimble_movement",
         name: "Nimble Movement",
         description: "You can move through enemies' spaces during combat.",
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -2314,7 +2238,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -2362,7 +2285,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 0,
@@ -2386,7 +2308,6 @@ window.DOMAINS = [
         name: "Two on One",
         flavour: "You can challenge multiple enemies at the same time.",
         description: "Challenge can target one additional enemy.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -2425,7 +2346,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,
@@ -2448,7 +2368,6 @@ window.DOMAINS = [
         id: "lead_insightful_alert",
         name: "Insightful Alert",
         description: "Alert Ally gains a further success tier.",
-        pool: "combat",
         cost: 1,
         tier: 1,
         row: 1,
@@ -2503,7 +2422,6 @@ window.DOMAINS = [
             }
           ]
         },
-        pool: "combat",
         cost: 2,
         tier: 1,
         row: 0,

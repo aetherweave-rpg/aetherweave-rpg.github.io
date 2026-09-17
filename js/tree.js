@@ -333,9 +333,10 @@
 
     node.appendChild(el("div", "node-name", t.name));
 
-    var cost = el("div", "node-cost " + (t.pool === "combat" ? "combat" : "noncombat"));
+    // Every talent costs talent exp, so the badge is just the price.
+    var cost = el("div", "node-cost");
     if (granted) { cost.textContent = "free"; cost.className = "node-cost granted"; }
-    else cost.textContent = (t.cost || 0) + (t.pool === "combat" ? "C" : "NC");
+    else cost.textContent = (t.cost || 0) + " exp";
     node.appendChild(cost);
 
     // Both take the AUTHORED entry, not `t`: Engine.effective is not
@@ -703,7 +704,7 @@
   function showTooltip(raw, status, node) {
     var state = State.get();
     // What the character would actually have: any owned modifier's field
-    // changes already folded in (§4.8). Cost/pool/tier aren't modifiable, so
+    // changes already folded in (§4.8). Cost and tier aren't modifiable, so
     // the price and gates below still read the authored values.
     var t = Engine.effective(raw, state);
     var tip = tooltipEl();
@@ -716,8 +717,7 @@
     if (status.granted) {
       meta.appendChild(el("span", "tt-cost granted", grantedBy ? "granted by " + grantedBy.name : "granted at creation"));
     } else {
-      meta.appendChild(el("span", "tt-cost " + (t.pool === "combat" ? "combat" : "noncombat"),
-        (t.cost || 0) + " " + (t.pool === "combat" ? "combat" : "non-combat") + " exp"));
+      meta.appendChild(el("span", "tt-cost", (t.cost || 0) + " talent exp"));
       if (!status.owned && lc.opensTree && lc.surcharge)
         meta.appendChild(el("span", "tt-cost surcharge", "+" + lc.surcharge + " tree access"));
     }
@@ -779,7 +779,7 @@
       hint.classList.add(chk.ok ? "ok" : "no");
     } else {
       hint.textContent = status.met
-        ? "Click to learn (" + lc.total + " " + Engine.poolLabel(lc.pool) + " exp)"
+        ? "Click to learn (" + lc.total + " talent exp)"
         : "Requirements not met";
       hint.classList.add(status.met ? "ok" : "no");
     }

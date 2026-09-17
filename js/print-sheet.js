@@ -140,12 +140,12 @@
     var b = block("Experience");
 
     var row = el("div", "ps-exp-row");
-    [["combat", "⚔ Combat"], ["noncombat", "❖ Non-combat"]].forEach(function (p) {
-      var earned = Number(state.expEarned[p[0]]) || 0;
+    Engine.EXP_POOLS.forEach(function (p) {
+      var earned = Number((state.expEarned || {})[p.id]) || 0;
       var box = el("div", "ps-exp-pool");
-      box.appendChild(el("span", "ps-exp-pool-name", p[1]));
+      box.appendChild(el("span", "ps-exp-pool-name", p.icon + " " + p.label));
       var g = el("span", "ps-exp-nums");
-      [["earned", earned], ["spent", spent[p[0]]], ["left", earned - spent[p[0]]]].forEach(function (n) {
+      [["earned", earned], ["spent", spent[p.id]], ["left", earned - spent[p.id]]].forEach(function (n) {
         var cell = el("span", "ps-exp-cell" + (n[0] === "left" && n[1] < 0 ? " over" : ""));
         cell.appendChild(el("span", "ps-exp-cell-label", n[0]));
         cell.appendChild(el("span", "ps-exp-cell-value", String(n[1])));
@@ -158,8 +158,8 @@
 
     var bd = spent.breakdown;
     var parts = [
-      ["Skills", bd.skills], ["Proficiencies", bd.proficiencies], ["Talents", bd.talents],
-      ["Tree access", bd.treeAccess], ["Spellcasting", bd.spellcasting],
+      ["Skills", bd.skills], ["Proficiencies", bd.proficiencies], ["Spellcasting", bd.spellcasting],
+      ["Talents", bd.talents], ["Tree access", bd.treeAccess],
     ].filter(function (p) { return p[1] > 0; });
     if (parts.length) {
       b.appendChild(inlineList("Spent on", parts.map(function (p) { return p[0] + " " + p[1]; })));
@@ -184,16 +184,16 @@
   // ---- skills & proficiencies ----------------------------------------------
 
   // Two layouts over the same skill data, mirroring the toggle on screen: the
-  // Combat/Non-Combat pool split (default), or one group per characteristic
-  // with each row tagged by its pool instead of by its characteristic (the
+  // Combat/Non-Combat category split (default), or one group per characteristic
+  // with each row tagged by its category instead of by its characteristic (the
   // group heading already says that).
   function skills(state, opts) {
     var b = block("Skills", "filled to current level · max " + Engine.skillCap(state) + " at this tier");
-    b.appendChild(opts && opts.skillsGroupByChar ? skillsByCharWrap(state) : skillsByPoolWrap(state));
+    b.appendChild(opts && opts.skillsGroupByChar ? skillsByCharWrap(state) : skillsByCategoryWrap(state));
     return b;
   }
 
-  function skillsByPoolWrap(state) {
+  function skillsByCategoryWrap(state) {
     var wrap = el("div", "ps-skills");
     wrap.appendChild(skillGroup("Combat", window.SKILLS.combat, state, "ps-one-col"));
     wrap.appendChild(skillGroup("Non-Combat", window.SKILLS.noncombat, state, "ps-two-col"));
@@ -218,8 +218,8 @@
 
   // A skill paired with two characteristics prints under both, as the screen does.
   function charSkillEntries(key) {
-    return window.SKILLS.combat.map(function (sk) { return { sk: sk, pool: "combat" }; })
-      .concat(window.SKILLS.noncombat.map(function (sk) { return { sk: sk, pool: "noncombat" }; }))
+    return window.SKILLS.combat.map(function (sk) { return { sk: sk, category: "combat" }; })
+      .concat(window.SKILLS.noncombat.map(function (sk) { return { sk: sk, category: "noncombat" }; }))
       .filter(function (entry) { return Engine.skillChars(entry.sk).indexOf(key) >= 0; });
   }
 
@@ -234,7 +234,7 @@
       entries.forEach(function (entry) {
         var row = el("div", "ps-row");
         var name = el("span", "ps-row-name", entry.sk.name);
-        name.appendChild(el("span", "ps-row-sub", entry.pool === "combat" ? "combat" : "non-combat"));
+        name.appendChild(el("span", "ps-row-sub", entry.category === "combat" ? "combat" : "non-combat"));
         row.appendChild(name);
         row.appendChild(dots(state.skills[entry.sk.name] || 0, CONFIG.MAX_SKILL_TIER));
         body.appendChild(row);
@@ -495,7 +495,7 @@
     var grantSrc = !t.fromSource && status.granted ? Engine.grantSource(state, "talent", t.id) : null;
     var cost = t.fromSource ? "granted by " + t.sourceName
       : status.granted ? (grantSrc ? "granted by " + grantSrc.name : "free at creation")
-      : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp";
+      : t.cost + " talent exp";
     var tags = Engine.entryTags(t).map(Engine.tagLabel);
     if (t.ability === "maneuver") {
       if (Engine.usesLabel(t)) tags.push("⟳ " + Engine.usesLabel(t));

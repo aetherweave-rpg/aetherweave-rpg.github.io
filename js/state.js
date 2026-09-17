@@ -82,13 +82,15 @@
     });
 
     return {
-      version: 11,
+      version: 12,
       identity: { characterName: "", playerName: "", ancestry: "", sourceOfPower: "", concept: "", notes: "" },
       hp: { max: "", current: "" },
       characteristics: chars,
+      // The two exp pools: skill exp buys skills and proficiencies, talent exp
+      // buys talents. User-editable totals; spent is always computed.
       expEarned: {
-        combat: window.CONFIG.STARTING_EXP.combat,
-        noncombat: window.CONFIG.STARTING_EXP.noncombat,
+        skill: window.CONFIG.STARTING_EXP.skill,
+        talent: window.CONFIG.STARTING_EXP.talent,
       },
       skills: skills,          // display name -> CURRENT tier 0..4 (granted included)
       proficiencies: [],       // [{ name, kind, tier }]  (granted included)
@@ -123,9 +125,11 @@
         background: null,      // background id     (likewise)
       },
 
-      // The free baseline handed out during creation. Everything here costs no
-      // exp: exp spent is computed as (current totals - this baseline), and
-      // granted talents are excluded from cost and from the tree surcharge.
+      // The free baseline: the creation picks (defining trait, background) and
+      // whatever a grant handed out. Everything here costs no exp: exp spent is
+      // computed as (current totals - this baseline), and granted talents are
+      // excluded from cost and from the tree surcharge. Training bought at
+      // creation is NOT here; it is paid for like any later purchase.
       granted: {
         talents: [],           // free talent ids
         skills: {},            // skill name  -> free tier
@@ -229,8 +233,106 @@
     foldSpellsIntoTalents(merged, s);
     renameExperiencesToTraits(merged, s);
     renameFormerSkills(merged);
+    splitExpPools(merged, s);
     syncCharacteristics(merged);
     return merged;
+  }
+
+  // v11 → v12: the combat and non-combat pools became skill exp and talent exp,
+  // and the training bought at creation stopped being free. Recognised by
+  // shape: a save whose earned exp still names the old pools.
+  //
+  // What creation bought leaves the granted baseline. A level is kept free only
+  // when a grant record accounts for it (the rank a record's key names, so a
+  // trait's grant stays free), and the rest is now paid for. The earned exp is
+  // then re-split so nothing already bought becomes unaffordable: skill exp is
+  // exactly what the skills cost now, and the rest of everything the character
+  // had earned becomes talent exp. Total unspent exp is unchanged. The Earned
+  // fields stay editable for a table that wants another split.
+  function splitExpPools(merged, saved) {
+    var old = (saved && saved.expEarned) || {};
+    delete merged.expEarned.combat;
+    delete merged.expEarned.noncombat;
+    if (old.combat == null && old.noncombat == null) return;
+    if (old.skill != null || old.talent != null) return;
+
+    var before = {
+      skills: Object.assign({}, merged.granted.skills),
+      proficiencies: Object.assign({}, merged.granted.proficiencies),
+    };
+    var skillRanks = grantedRanks(merged.grantChoices, "skill");
+    var profRanks = grantedRanks(merged.grantChoices, "proficiency");
+    function keepGranted(from, ranks, fold) {
+      var out = {};
+      Object.keys(from).forEach(function (name) {
+        var rank = ranks[fold(name)] || 0;
+        if (rank) out[name] = Math.min(from[name] || 0, rank);
+      });
+      return out;
+    }
+    merged.granted.skills = keepGranted(before.skills, skillRanks, function (n) { return n; });
+    merged.granted.proficiencies = keepGranted(before.proficiencies, profRanks,
+      function (n) { return String(n).toLowerCase(); });
+
+    var earned = (Number(old.combat) || 0) + (Number(old.noncombat) || 0);
+    var skillNow = skillExpSpent(merged, merged.granted);
+    merged.expEarned = {
+      skill: skillNow,
+      talent: earned - skillExpSpent(merged, before),
+    };
+  }
+
+  // The highest rank a grant record hands out, per skill or proficiency name.
+  // A record's key names its rank ("skill:Strength" is rank 1,
+  // "skill:Strength:2" rank 2); the name is known, so only what follows it is
+  // read, and a name with a colon of its own is safe.
+  function grantedRanks(grantChoices, kind) {
+    var ranks = {};
+    Object.keys(grantChoices || {}).forEach(function (id) {
+      var recs = grantChoices[id];
+      (Array.isArray(recs) ? recs : []).forEach(function (rec) {
+        if (!rec || rec.kind !== kind || typeof rec.key !== "string" || rec.name == null) return;
+        var prefix = kind === "skill" ? "skill:" + rec.name
+                                      : "proficiency:" + (rec.profKind || "") + ":" + rec.name;
+        var rest = rec.key.indexOf(prefix) === 0 ? rec.key.slice(prefix.length) : "";
+        var rank = /^:\d+$/.test(rest) ? Number(rest.slice(1)) : 1;
+        var name = kind === "skill" ? rec.name : String(rec.name).toLowerCase();
+        ranks[name] = Math.max(ranks[name] || 0, rank);
+      });
+    });
+    return ranks;
+  }
+
+  // What skills and proficiencies cost above a granted baseline: the skill-exp
+  // half of Engine.computeSpent, which is not loaded yet when a save migrates.
+  function skillExpSpent(s, granted) {
+    var costs = window.CONFIG.SKILL_COSTS || {};
+    var combat = {};
+    ((window.SKILLS || {}).combat || []).forEach(function (sk) { combat[sk.name] = true; });
+    function steps(curve, from, to) {
+      var total = 0;
+      for (var i = from; i < to && i < (curve || []).length; i++) total += curve[i];
+      return total;
+    }
+    function freeProf(name) {
+      var hit = Object.keys(granted.proficiencies || {}).filter(function (k) {
+        return k.toLowerCase() === String(name || "").toLowerCase();
+      })[0];
+      return hit ? (granted.proficiencies[hit] || 0) : 0;
+    }
+    var total = 0;
+    Object.keys(s.skills || {}).forEach(function (name) {
+      var tier = s.skills[name] || 0;
+      var free = Math.min((granted.skills || {})[name] || 0, tier);
+      total += steps(costs[combat[name] ? "combat" : "noncombat"], free, tier);
+    });
+    (s.proficiencies || []).forEach(function (p) {
+      var kind = (window.PROFICIENCY_KINDS || []).filter(function (k) { return k.id === p.kind; })[0];
+      if (!kind) return;
+      var tier = p.tier || 0;
+      total += steps(costs[kind.costKey], Math.min(freeProf(p.name), tier), tier);
+    });
+    return total;
   }
 
   // v10 → v11: spells stopped being a kind of their own. Every spell became a

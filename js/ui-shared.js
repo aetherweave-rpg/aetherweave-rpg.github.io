@@ -1,6 +1,7 @@
 // ============================================================================
 // Shared UI: the sticky header (nav + live exp counters + tier badge),
-// the DB-validation banner, small DOM helpers, and toast notifications.
+// the DB-validation banner, small DOM helpers, toast notifications, modals, and
+// the reminder of what is left to spend after character creation.
 // ============================================================================
 
 (function () {
@@ -54,6 +55,13 @@
      { href: "sheet.html", label: "Character Sheet", key: "sheet" }].forEach(function (l) {
       var a = el("a", "nav-link" + (l.key === activePage ? " active" : ""), l.label);
       a.href = base + l.href;
+      a.dataset.page = l.key;
+      // Talent exp is spent on the trees page, so that is where the reminder
+      // after creation points (see "Spend reminder" below).
+      if (l.key === "trees" && !opts.editor) {
+        var arrow = reminderArrow(state, "talent", "below");
+        if (arrow) a.appendChild(arrow);
+      }
       nav.appendChild(a);
     });
     bar.appendChild(nav);
@@ -67,8 +75,11 @@
     }
 
     var counters = el("div", "counters");
-    counters.appendChild(expCounter("⚔", "Combat", spent.combat, state.expEarned.combat));
-    counters.appendChild(expCounter("❖", "Non-combat", spent.noncombat, state.expEarned.noncombat));
+    Engine.EXP_POOLS.forEach(function (p) {
+      var c = expCounter(p.icon, p.label + " exp", spent[p.id], (state.expEarned || {})[p.id]);
+      c.dataset.pool = p.id;
+      counters.appendChild(c);
+    });
     var badge = el("div", "tier-badge");
     badge.appendChild(el("span", "tier-badge-label", "Tier of play"));
     badge.appendChild(el("span", "tier-badge-value", tier ? tier.name : "—"));
@@ -210,7 +221,8 @@
   // A lightweight content modal for the play pages (the editor has its own,
   // richer `dialog`). `buildBody(body, close)` fills the content and may use
   // `close` to dismiss it; Escape and a click on the backdrop also close.
-  function modal(title, buildBody) {
+  // `onClose` runs once, however it was closed.
+  function modal(title, buildBody, onClose) {
     var overlay = el("div", "modal-overlay");
     var card = el("div", "modal-card");
     var head = el("div", "modal-head");
@@ -226,7 +238,14 @@
     document.addEventListener("keydown", onKey);
     document.body.appendChild(overlay);
     function onKey(ev) { if (ev.key === "Escape") close(); }
-    function close() { document.removeEventListener("keydown", onKey); overlay.remove(); }
+    var closed = false;
+    function close() {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener("keydown", onKey);
+      overlay.remove();
+      if (onClose) onClose();
+    }
     buildBody(body, close);
     return { close: close, body: body };
   }
@@ -344,6 +363,108 @@
       footer.appendChild(confirm);
       body.appendChild(footer);
     });
+  }
+
+  // ---- Spend reminder -----------------------------------------------------
+  // Character creation ends with exp still unspent: whatever skill exp the
+  // training minimums left over, and all of the talent exp. So the sheet opens
+  // on a pop-up saying how much is left, and closing it leaves arrows on the
+  // places each pool is spent: the Skills section for skill exp, the Talent
+  // Trees link for talent exp. An arrow goes away when it is clicked or its
+  // pool runs out. A checkbox in the pop-up turns the whole thing off for every
+  // later character, which is why that choice lives in the browser rather than
+  // on the character.
+  //
+  // create.js queues it on Finish and the sheet takes it on load, because the
+  // wizard page has neither a nav nor a skills section to point at.
+  var REMINDER_PENDING_KEY = "aetherweave.ui.spendReminderPending";
+  var REMINDER_OFF_KEY = "aetherweave.ui.spendReminderOff";
+  var reminderArrows = {};   // pool id -> true while its arrow is showing
+
+  function queueSpendReminder() {
+    window.SafeStorage.write(REMINDER_PENDING_KEY, "1");
+  }
+  function spendReminderOff() {
+    return window.SafeStorage.read(REMINDER_OFF_KEY) === "1";
+  }
+
+  // The pools with exp left, in EXP_POOLS order: [{ pool, left }].
+  function poolsWithExpLeft(state) {
+    var left = Engine.expRemaining(state);
+    return Engine.EXP_POOLS.filter(function (p) { return left[p.id] > 0; })
+      .map(function (p) { return { pool: p, left: left[p.id] }; });
+  }
+
+  // Called once by the sheet on load. Opens the pop-up if Finish queued one,
+  // the player has not turned it off, and there is something left to spend.
+  // `rerender` redraws the page once the arrows are set. Returns the modal, or
+  // null when nothing opened.
+  function takeSpendReminder(rerender) {
+    if (window.SafeStorage.read(REMINDER_PENDING_KEY) !== "1") return null;
+    window.SafeStorage.write(REMINDER_PENDING_KEY, "0");
+    var state = State.get();
+    var pending = poolsWithExpLeft(state);
+    if (spendReminderOff() || !pending.length) return null;
+
+    return modal("Exp left to spend", function (body, close) {
+      body.appendChild(el("p", "modal-lede", "Your character is ready. You still have:"));
+      var list = el("div", "reminder-list");
+      pending.forEach(function (row) {
+        var line = el("div", "reminder-row");
+        line.dataset.pool = row.pool.id;
+        line.appendChild(el("span", "reminder-icon", row.pool.icon));
+        var text = el("div", "reminder-text");
+        text.appendChild(el("span", "reminder-amount", row.left + " " + row.pool.label.toLowerCase() + " exp"));
+        text.appendChild(el("span", "reminder-where", row.pool.id === "skill"
+          ? "Raise skills and proficiencies on this sheet."
+          : "Learn talents on the Talent Trees page."));
+        line.appendChild(text);
+        list.appendChild(line);
+      });
+      body.appendChild(list);
+
+      var footer = el("div", "modal-actions");
+      var skip = el("label", "reminder-skip");
+      var cb = el("input");
+      cb.type = "checkbox";
+      cb.onchange = function () { window.SafeStorage.write(REMINDER_OFF_KEY, cb.checked ? "1" : "0"); };
+      skip.appendChild(cb);
+      skip.appendChild(el("span", null, "Don't show this again"));
+      footer.appendChild(skip);
+      var go = el("button", "btn btn-primary", "Show me where");
+      go.type = "button";
+      go.onclick = close;
+      footer.appendChild(go);
+      body.appendChild(footer);
+    }, function onClose() {
+      // However it is closed, the arrows are the instruction it promised.
+      pending.forEach(function (row) { reminderArrows[row.pool.id] = true; });
+      if (rerender) rerender();
+    });
+  }
+
+  // The arrow for one pool, or null when it is not showing. `side` says where
+  // it sits relative to what it points at: "below" hangs under a nav link and
+  // points up at it, "after" follows a heading and points back at it. An arrow
+  // whose pool has run out removes itself.
+  function reminderArrow(state, poolId, side) {
+    if (!reminderArrows[poolId]) return null;
+    var left = Engine.expRemaining(state)[poolId];
+    if (!(left > 0)) { delete reminderArrows[poolId]; return null; }
+    var pool = Engine.EXP_POOLS.filter(function (p) { return p.id === poolId; })[0];
+    var arrow = el("span", "spend-arrow spend-arrow-" + side);
+    arrow.dataset.pool = poolId;
+    arrow.title = "Dismiss";
+    arrow.appendChild(el("span", "spend-arrow-head", side === "below" ? "▲" : "◀"));
+    arrow.appendChild(el("span", "spend-arrow-text", "Spend " + left + " " + pool.label.toLowerCase() + " exp here"));
+    arrow.onclick = function (ev) {
+      // Inside a nav link, a click on the arrow is a dismissal, not navigation.
+      ev.preventDefault();
+      ev.stopPropagation();
+      delete reminderArrows[poolId];
+      if (arrow.parentNode) arrow.parentNode.removeChild(arrow);
+    };
+    return arrow;
   }
 
   // Wire an #export-pdf button to the browser's print → "Save as PDF". The page
@@ -464,5 +585,8 @@
     renderCreationGate: renderCreationGate,
     toast: toast,
     modal: modal, grantPicker: grantPicker, grantChooser: grantChooser, grantLede: grantLede,
+    // the reminder after character creation
+    queueSpendReminder: queueSpendReminder, takeSpendReminder: takeSpendReminder,
+    reminderArrow: reminderArrow, spendReminderOff: spendReminderOff,
   };
 })();

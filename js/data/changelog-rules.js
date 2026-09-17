@@ -11,6 +11,20 @@ window.CHANGELOG_RULES = [
   {
     date: "2026-09-17",
     entries: [
+      "Changed: Creating and Advancing a Character",
+      "Changed: Character Creation, Step by Step",
+      "Changed: Experience Points",
+      "Changed: Tiers of Play",
+      "Changed: Hit Points",
+      "Changed: Skills",
+      "Changed: Talents",
+      "Changed: Talent Trees",
+      "Changed: Character Advancement",
+    ],
+  },
+  {
+    date: "2026-09-17",
+    entries: [
       "Changed: In combat",
       "Changed: Risk and Reward Rolls",
       "Changed: Tiers of Play",

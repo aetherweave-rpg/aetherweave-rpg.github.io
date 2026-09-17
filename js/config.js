@@ -7,7 +7,8 @@
 
 window.CONFIG = {
   // --- Tiers of play -------------------------------------------------------
-  // A character's tier of play is derived from TOTAL exp spent (both pools).
+  // A character's tier of play is derived from TOTAL exp spent (skill exp and
+  // talent exp together).
   // This is a property of the character, and is entirely separate from the
   // tier a talent sits at inside its tree (see TALENT_TIER_TREE_EXP below).
   TIERS: [
@@ -27,6 +28,7 @@ window.CONFIG = {
 
   // --- Skill / proficiency step costs --------------------------------------
   // Cost to advance FROM level i TO level i+1. Skills run 0–5, so five steps.
+  // Every curve is paid in skill exp; talents are paid in talent exp.
   // A Spellcasting proficiency (see PROFICIENCY_KINDS in data/skills.js) reuses
   // the weapon curve below, so raising it costs exactly what a weapon step does.
   SKILL_COSTS: {
@@ -72,10 +74,10 @@ window.CONFIG = {
   // Branching out is expensive. Your FIRST tree with a purchased talent is
   // free; each additional tree costs a one-time surcharge — the 2nd tree costs
   // costs[0], the 3rd costs[1], and so on (the last value repeats beyond the
-  // end). Charged to the pool of the talent that opened the tree.
+  // end). Paid in talent exp.
   //
-  // Talents granted at character creation never open a tree or trigger this,
-  // and trees whose `kind` is listed in `exemptKinds` are ignored by the
+  // Granted talents never open a tree or trigger this, and trees whose `kind`
+  // is listed in `exemptKinds` are ignored by the
   // surcharge entirely: they cost nothing to start in, and they do not push the
   // ladder along for the trees that do charge.
   TREE_ACCESS: {
@@ -127,6 +129,6 @@ window.CONFIG = {
   ],
 };
 
-// Starting free exp comes from the character-creation numbers; see
+// Starting exp comes from the character-creation numbers; see
 // js/data/creation.js. Kept here as a fallback if that file is not loaded.
-window.CONFIG.STARTING_EXP = (window.CREATION && window.CREATION.freeExp) || { combat: 5, noncombat: 5 };
+window.CONFIG.STARTING_EXP = (window.CREATION && window.CREATION.startingExp) || { skill: 18, talent: 8 };

@@ -23,6 +23,13 @@
     }, renderPrint);
     render();
     State.subscribe(function () { UI.renderHeader("sheet"); render(); });
+    // Straight after creation: what is left to spend, then arrows at where.
+    UI.takeSpendReminder(function () {
+      UI.renderHeader("sheet");
+      render();
+      var arrow = document.querySelector(".spend-arrow-after");
+      if (arrow && arrow.scrollIntoView) arrow.scrollIntoView({ block: "center" });
+    });
   }
 
   // The paper copy is a whole second document (js/print-sheet.js), rebuilt
@@ -60,9 +67,9 @@
 
   // A reusable "dots" control (skills, characteristics). Click a dot to set the
   // value; click the current highest dot to step back down. Dots below `min`
-  // were granted (at creation, or by a talent's grant): they are free and
-  // cannot be lowered. `grantedTitle` names the source; omitted, it reads as
-  // the plain creation-baseline case.
+  // were granted (by a talent, a defining trait or a background): they are
+  // free and cannot be lowered. `grantedTitle` names the source. Training
+  // bought at creation is not granted, so it lowers like any purchase.
   function dots(value, max, onSet, min, cap, grantedTitle) {
     min = min || 0;
     cap = cap == null ? max : cap;
@@ -75,7 +82,7 @@
           (isGranted ? " granted" : "") + (beyondCap ? " capped" : ""));
         dot.type = "button";
         dot.setAttribute("aria-label", "set to " + (i + 1));
-        if (isGranted) dot.title = grantedTitle || "Granted at creation, free";
+        if (isGranted) dot.title = grantedTitle || "Granted, free";
         else if (beyondCap) dot.title = "Locked until a higher tier of play";
         dot.disabled = beyondCap && i + 1 > value;
         dot.onclick = function () {
@@ -294,12 +301,14 @@
   function expSection(state) {
     var s = section("Experience Points");
     var spent = Engine.computeSpent(state);
+    var remaining = Engine.expRemaining(state, spent);
     var wrap = el("div", "exp-wrap");
 
-    [["combat", "Combat", "⚔"], ["noncombat", "Non-combat", "❖"]].forEach(function (p) {
-      var pool = p[0];
+    Engine.EXP_POOLS.forEach(function (p) {
+      var pool = p.id;
       var box = el("div", "exp-pool");
-      box.appendChild(el("div", "exp-pool-title", p[2] + " " + p[1] + " exp"));
+      box.dataset.pool = pool;
+      box.appendChild(el("div", "exp-pool-title", p.icon + " " + p.label + " exp"));
       var grid = el("div", "exp-pool-grid");
 
       var earned = el("div", "exp-cell");
@@ -311,8 +320,7 @@
       grid.appendChild(earned);
 
       grid.appendChild(expReadout("Spent", spent[pool], false));
-      var rem = (Number(state.expEarned[pool]) || 0) - spent[pool];
-      grid.appendChild(expReadout("Remaining", rem, rem < 0));
+      grid.appendChild(expReadout("Remaining", remaining[pool], remaining[pool] < 0));
 
       box.appendChild(grid);
       wrap.appendChild(box);
@@ -320,12 +328,12 @@
 
     s.appendChild(wrap);
 
-    // Where the spent exp actually went, including tree-access surcharges.
+    // Where the spent exp actually went, including tree-access surcharges:
+    // the skill exp lines first, then the talent exp ones.
     var b = spent.breakdown;
     var parts = [
-      ["Skills", b.skills], ["Proficiencies", b.proficiencies],
+      ["Skills", b.skills], ["Proficiencies", b.proficiencies], ["Spellcasting", b.spellcasting],
       ["Talents", b.talents], ["Tree access", b.treeAccess],
-      ["Spellcasting", b.spellcasting],
     ].filter(function (p) { return p[1] > 0; });
 
     if (parts.length) {
@@ -374,7 +382,13 @@
 
   function skillsSection(state) {
     var s = section("Skills");
-    s.querySelector(".sheet-h2").appendChild(skillModeToggle());
+    var h2 = s.querySelector(".sheet-h2");
+    // Straight after the title it points back at; the toggle keeps the far end.
+    var arrow = UI.reminderArrow(state, "skill", "after");
+    if (arrow) h2.appendChild(arrow);
+    h2.appendChild(skillModeToggle());
+    var warning = minimumsWarning(state);
+    if (warning) s.appendChild(warning);
     if (skillsGroupByChar) {
       CONFIG.CHARACTERISTICS.forEach(function (c) {
         var g = skillGroupByChar(c, state);
@@ -385,6 +399,31 @@
       s.appendChild(skillGroup("Non-Combat Skills", window.SKILLS.noncombat, state, "noncombat"));
     }
     return s;
+  }
+
+  // Creation's training minimums outlive creation (Engine.creationMinimums).
+  // Dropping below one is allowed, since a player may be rearranging, but the
+  // sheet says so until it is fixed.
+  function minimumsWarning(state) {
+    var unmet = Engine.unmetCreationMinimums(state);
+    if (!unmet.length) return null;
+    var box = el("div", "minimums-warning");
+    box.appendChild(el("span", "minimums-warning-head", "⚠ Below the creation minimums:"));
+    box.appendChild(el("span", "minimums-warning-list", unmet.map(Engine.creationMinimumLabel).join(" · ")));
+    return box;
+  }
+
+  // Raising, lowering or removing a skill or proficiency goes through here, so
+  // the moment one takes the character below a creation minimum it also says so
+  // in a toast, wherever on the sheet the edit happened.
+  function updateTraining(mutator) {
+    var before = Engine.unmetCreationMinimums(State.get()).map(function (m) { return m.id; });
+    State.update(mutator);
+    var broken = Engine.unmetCreationMinimums(State.get()).filter(function (m) {
+      return before.indexOf(m.id) < 0;
+    });
+    if (broken.length)
+      UI.toast("Below the creation minimum: " + broken.map(Engine.creationMinimumLabel).join(", "), "error");
   }
 
   function skillModeToggle() {
@@ -415,12 +454,12 @@
   }
 
   // Combat and non-combat skills cost from different curves, so a merged
-  // characteristic group can't carry one cost note the way a pool group can;
-  // each row is tagged with its own pool instead. A skill paired with two
-  // characteristics is listed under both: two rows, one skill, one level.
+  // characteristic group can't carry one cost note the way a category group
+  // can; each row is tagged with its own category instead. A skill paired with
+  // two characteristics is listed under both: two rows, one skill, one level.
   function skillGroupByChar(c, state) {
-    var list = window.SKILLS.combat.map(function (sk) { return { sk: sk, pool: "combat" }; })
-      .concat(window.SKILLS.noncombat.map(function (sk) { return { sk: sk, pool: "noncombat" }; }))
+    var list = window.SKILLS.combat.map(function (sk) { return { sk: sk, category: "combat" }; })
+      .concat(window.SKILLS.noncombat.map(function (sk) { return { sk: sk, category: "noncombat" }; }))
       .filter(function (entry) { return Engine.skillChars(entry.sk).indexOf(c.key) >= 0; });
     if (!list.length) return null;
     var g = el("div", "skill-group");
@@ -429,46 +468,48 @@
     g.appendChild(h);
     var grid = el("div", "skill-grid");
     var cap = Engine.skillCap(state);
-    list.forEach(function (entry) { grid.appendChild(skillRow(entry.sk, state, cap, entry.pool)); });
+    list.forEach(function (entry) { grid.appendChild(skillRow(entry.sk, state, cap, entry.category)); });
     g.appendChild(grid);
     return g;
   }
 
-  function skillRow(sk, state, cap, showPool) {
+  function skillRow(sk, state, cap, showCategory) {
     var tier = state.skills[sk.name] || 0;
     var free = Engine.grantedSkillTier(state, sk.name);
     var row = el("div", "skill-row");
     var name = el("div", "skill-name");
     name.appendChild(el("span", "skill-name-text", sk.name));
-    if (showPool) name.appendChild(el("span", "skill-pool-tag " + showPool, showPool === "combat" ? "combat" : "non-combat"));
+    if (showCategory) name.appendChild(el("span", "skill-category-tag " + showCategory,
+      showCategory === "combat" ? "combat" : "non-combat"));
     else name.appendChild(el("span", "skill-char", Engine.skillChars(sk).map(charAbbr).join("/")));
     row.appendChild(name);
     row.appendChild(dots(tier, CONFIG.MAX_SKILL_TIER, function (v) {
-      State.update(function (s2) { s2.skills[sk.name] = v; });
+      updateTraining(function (s2) { s2.skills[sk.name] = v; });
     }, free, cap, free ? grantedBy(state, "skill", sk.name) + ", free" : null));
     return row;
   }
 
-  // "Granted by X" once X (the talent whose grant handed this out) is
-  // known, else the plain creation-baseline phrasing. `kind`/`id` match
-  // Engine.grantSource's.
+  // "Granted by X", X being the talent, trait or background whose grant handed
+  // this out. A free level no grant accounts for just reads "Granted".
+  // `kind`/`id` match Engine.grantSource's.
   function grantedBy(state, kind, id) {
     var src = Engine.grantSource(state, kind, id);
-    return src ? "Granted by " + src.name : "Granted at creation";
+    return src ? "Granted by " + src.name : "Granted";
   }
 
   function withNote(h, note) { h.appendChild(el("span", "group-note", note)); return h; }
 
   // ---- Proficiencies ------------------------------------------------------
   // Two columns — non-combat kinds on the left, combat kinds on the right —
-  // driven entirely by PROFICIENCY_KINDS' own `pool`, so a new kind (of
-  // either pool) slots into the right side automatically with no layout change.
+  // driven entirely by PROFICIENCY_KINDS' own `category`, so a new kind (of
+  // either category) slots into the right side automatically with no layout
+  // change.
   function profSection(state) {
     var s = section("Proficiencies");
     var wrap = el("div", "prof-wrap");
-    ["noncombat", "combat"].forEach(function (poolName) {
+    ["noncombat", "combat"].forEach(function (category) {
       var side = el("div", "prof-side");
-      window.PROFICIENCY_KINDS.filter(function (k) { return k.pool === poolName; }).forEach(function (kind) {
+      window.PROFICIENCY_KINDS.filter(function (k) { return Engine.trainingCategory(k) === category; }).forEach(function (kind) {
         var costs = CONFIG.SKILL_COSTS[kind.costKey];
         var col = el("div", "prof-col");
         col.appendChild(withNote(el("h3", "prof-title", kind.label),
@@ -509,13 +550,13 @@
           }
           row.appendChild(nameInput);
           row.appendChild(dots(p.tier || 0, CONFIG.MAX_SKILL_TIER, function (v) {
-            State.update(function (s2) { s2.proficiencies[idx].tier = v; });
+            updateTraining(function (s2) { s2.proficiencies[idx].tier = v; });
           }, free, Engine.skillCap(state), free ? grantedBy(state, "proficiency", p.name) + ", free" : null));
           var del = el("button", "icon-btn", "✕");
           del.title = free ? grantedBy(state, "proficiency", p.name) + ", can't be removed" : "Remove";
           del.type = "button";
           del.disabled = !!free;
-          del.onclick = function () { State.update(function (s2) { s2.proficiencies.splice(idx, 1); }); };
+          del.onclick = function () { updateTraining(function (s2) { s2.proficiencies.splice(idx, 1); }); };
           row.appendChild(del);
           col.appendChild(row);
         });
@@ -768,7 +809,7 @@
       ? "granted by " + t.sourceName
       : status.granted
         ? (grantSrc ? "granted by " + grantSrc.name : "free at creation")
-        : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp") + tierSuffix));
+        : t.cost + " talent exp") + tierSuffix));
     if (t.ability === "maneuver" && t.castingTime != null) {
       info.appendChild(el("span", "talent-meta", [
         Engine.castingTimeLabel(t), Engine.rangeLabel(t), Engine.targetLabel(t),

@@ -2,7 +2,8 @@
 // CHARACTER CREATION numbers  (EDITABLE DATABASE)
 // ----------------------------------------------------------------------------
 // Every number used by the character-creation wizard lives here. Change a value,
-// refresh, and the wizard follows. Nothing chosen during creation costs exp.
+// refresh, and the wizard follows. The defining trait and background are free;
+// training is bought with the starting skill exp, like any later purchase.
 // ============================================================================
 
 window.CREATION = {
@@ -19,18 +20,20 @@ window.CREATION = {
 
   // Step 5 — exactly one background, from js/data/backgrounds.js.
 
-  // Step 6 — points spent on combat skills and weapon proficiencies.
-  // These use the normal advancement costs but are NOT exp.
-  combatPoints: 6,
+  // The exp a new character starts with, in its two pools. Steps 6 and 7 are
+  // paid from the skill exp; whatever is left of either pool is spent once
+  // creation is done.
+  startingExp: { skill: 18, talent: 8 },
 
-  // Step 7 — points spent on non-combat skills, crafting and instrument
-  // proficiencies, with a required minimum of each proficiency kind.
-  noncombatPoints: 8,
+  // Steps 6 and 7 — the least skill exp spent on each category of training:
+  // combat skills with weapon and Spellcasting proficiencies, then non-combat
+  // skills with crafting and instrument proficiencies. Minimums, not budgets,
+  // and they outlive creation: the sheet flags a character who falls below one.
+  trainingMinimum: { combat: 6, noncombat: 8 },
+
+  // Step 7 — proficiencies of these kinds the character must hold.
   requiredProficiencies: {
     crafting: 1,     // at least this many crafting proficiencies at tier 1+
     instrument: 1,   // at least this many instrument proficiencies at tier 1+
   },
-
-  // Step 8 — free exp left over after creation, spent on anything.
-  freeExp: { combat: 8, noncombat: 4 },
 };

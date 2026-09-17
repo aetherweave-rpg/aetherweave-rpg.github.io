@@ -1,9 +1,10 @@
 // ============================================================================
 // Character Creation wizard (create.html)
 // ----------------------------------------------------------------------------
-// Eight prompted steps, run before anything else on a new character. Everything
-// chosen here is FREE: it is written into state.granted, which the engine
-// subtracts when computing spent exp. All numbers come from js/data/creation.js.
+// Eight prompted steps, run before anything else on a new character. The
+// defining trait and background are free (state.granted); the training in steps
+// 6 and 7 is bought with the starting skill exp, like any later purchase, and
+// must reach creation's minimums. All numbers come from js/data/creation.js.
 // ============================================================================
 
 (function () {
@@ -44,7 +45,7 @@
       traits: [],             // picked defining-trait ids
       backgrounds: [],        // picked background ids (exactly one)
       grantChoices: {},       // talent id -> [option key] for the ones that grant a choice
-      combatSkills: {},       // name -> tier
+      combatSkills: {},       // name -> level set in step 6
       combatProfs: [],        // [{ name, kind, tier }]
       ncSkills: {},
       ncProfs: [],
@@ -61,6 +62,15 @@
     { key: "noncombat",  title: "Non-combat Training", short: "Non-combat" },
     { key: "review",     title: "Review",              short: "Review" },
   ];
+
+  function startingExp() {
+    var s = CREATION.startingExp || {};
+    return { skill: s.skill || 0, talent: s.talent || 0 };
+  }
+  function trainingMinimum(category) {
+    return (CREATION.trainingMinimum || {})[category] || 0;
+  }
+  function otherCategory(category) { return category === "combat" ? "noncombat" : "combat"; }
 
   function init() {
     draft = freshDraft();
@@ -121,11 +131,11 @@
     var box = el("div", "wizard-intro");
     box.appendChild(el("span", "wizard-intro-icon", "❖"));
     var t = el("div");
+    var exp = startingExp();
     t.appendChild(el("div", "wizard-intro-title", "Create your character"));
     t.appendChild(el("div", "wizard-intro-sub",
-      "Nothing chosen here costs experience. Afterwards you keep " +
-      CREATION.freeExp.combat + " combat and " + CREATION.freeExp.noncombat +
-      " non-combat exp to spend freely."));
+      "You start with " + exp.skill + " skill exp and " + exp.talent + " talent exp. " +
+      "Your training in steps 6 and 7 is paid from the skill exp. Whatever is left, you spend after creation."));
     box.appendChild(t);
 
     var rand = el("button", "btn btn-random btn-random-lg", "🎲 Random character");
@@ -389,7 +399,10 @@
 
   // Everything picked from either catalogue: one flat list, because that is
   // what the character will own and what a grant is qualified against.
-  function pickedTalents() { return draft.traits.concat(draft.backgrounds); }
+  function pickedTalents() {
+    return draft.traits.concat(draft.backgrounds)
+      .filter(function (v, i, a) { return a.indexOf(v) === i; });
+  }
 
   // Drop choices belonging to picks that have since been deselected.
   function pruneGrantChoices() {
@@ -399,21 +412,39 @@
     });
   }
 
-  // A character-shaped object for the engine, from the draft so far. Skills and
-  // proficiencies are assigned in steps 6 and 7, *after* the step-4 grant
-  // choice, so they are usually empty here. They are included anyway so that
-  // coming back to step 4 later flags a pick the creation points already cover.
-  function draftState() {
+  // The training set in steps 6 and 7: skills by name, proficiencies merged by
+  // name and kind. A row not named yet stays a row of its own: it already
+  // costs its exp, and the step will not pass until it has a name.
+  function draftTraining() {
     var skills = {};
-    Object.keys(draft.combatSkills).forEach(function (n) { skills[n] = draft.combatSkills[n]; });
-    Object.keys(draft.ncSkills).forEach(function (n) { skills[n] = draft.ncSkills[n]; });
-    var profs = draft.combatProfs.concat(draft.ncProfs)
-      .filter(function (p) { return p.name && p.name.trim(); })
-      .map(function (p) { return { name: p.name.trim(), kind: p.kind, tier: p.tier || 0 }; });
+    function addSkill(name, tier) { if (tier > 0) skills[name] = Math.max(skills[name] || 0, tier); }
+    Object.keys(draft.combatSkills).forEach(function (n) { addSkill(n, draft.combatSkills[n]); });
+    Object.keys(draft.ncSkills).forEach(function (n) { addSkill(n, draft.ncSkills[n]); });
+
+    var profs = [];
+    draft.combatProfs.concat(draft.ncProfs).forEach(function (p) {
+      var name = (p.name || "").trim();
+      var hit = name && profs.filter(function (x) {
+        return x.name.toLowerCase() === name.toLowerCase() && x.kind === p.kind;
+      })[0];
+      if (hit) hit.tier = Math.max(hit.tier, p.tier || 0);
+      else profs.push({ name: name, kind: p.kind, tier: p.tier || 0 });
+    });
+    return { skills: skills, proficiencies: profs };
+  }
+
+  // A character-shaped object for the grant chooser: the picks and the training
+  // so far, with NO grant applied yet. The chooser is deciding what a grant
+  // hands out, so it has to see the character without it; that is also what
+  // flags a pick the training already paid for. Skills and proficiencies are
+  // set in steps 6 and 7, after step 4, so they are usually empty here, but
+  // coming back to step 4 later still shows them.
+  function draftState() {
+    var training = draftTraining();
     return {
       talents: pickedTalents(),
-      skills: skills,
-      proficiencies: profs,
+      skills: training.skills,
+      proficiencies: training.proficiencies,
       characteristics: draft.chars || {},
       granted: { talents: [], skills: {}, proficiencies: {} },
       creation: {
@@ -421,6 +452,39 @@
         trait: draft.traits[0] || null, background: draft.backgrounds[0] || null,
       },
     };
+  }
+
+  // The character exactly as Finish will write it: the picks granted, the
+  // training bought with the starting skill exp, and whatever a pick's grant
+  // hands out applied on top. Every exp figure the wizard shows (the meters,
+  // the price on a dot, what is left) is read off this, so none of them can
+  // disagree with the sheet the player lands on. A grant that covers a level
+  // the training bought makes that level free, which is the refund rule of
+  // §4.9 working here exactly as it does later.
+  function candidate() {
+    var training = draftTraining();
+    var picks = pickedTalents();
+    var baseChars = {};
+    CONFIG.CHARACTERISTICS.forEach(function (c) { baseChars[c.key] = draft.chars[c.key] || 0; });
+    var s = {
+      characteristics: Object.assign({}, baseChars),
+      skills: training.skills,
+      proficiencies: training.proficiencies,
+      talents: picks.slice(),
+      expEarned: startingExp(),
+      granted: { talents: picks.slice(), skills: {}, proficiencies: {}, characteristics: baseChars },
+      grantChoices: {},
+      charAdvances: {},
+      creation: {
+        completed: false, ancestry: draft.ancestry, source: draft.source,
+        trait: draft.traits[0] || null, background: draft.backgrounds[0] || null,
+      },
+    };
+    picks.forEach(function (id) {
+      var t = Engine.talentById(id);
+      if (t && Engine.grantsOf(t)) Engine.applyGrants(s, id, draft.grantChoices[id] || []);
+    });
+    return s;
   }
 
   // True once every pick's grant has a legal selection.
@@ -479,91 +543,122 @@
     return wrap;
   }
 
-  // At creation the character is at tier of play 1, so skills and proficiencies
-  // can only be taken as high as tier 1 allows.
+  // A new character is at tier of play 1 (its starting exp is nowhere near the
+  // tier 2 threshold), so training can only be taken as high as tier 1 allows.
   function creationLevelCap() {
     return Math.min(CONFIG.MAX_SKILL_TIER, 1 + CONFIG.LEVEL_CAPS.skillOffset);
   }
 
-  // ---- steps 4 & 5: spending points --------------------------------------
-  function costsForSkill(pool) { return CONFIG.SKILL_COSTS[pool]; }
-  function costsForProf(kindId) {
-    var k = Engine.findKind(kindId);
-    return k ? CONFIG.SKILL_COSTS[k.costKey] : [0, 0, 0, 0];
-  }
-
-  function pointsSpent(skills, profs, pool) {
-    var total = 0;
-    Object.keys(skills).forEach(function (n) { total += Engine.sumSteps(costsForSkill(pool), skills[n]); });
-    profs.forEach(function (p) { total += Engine.sumSteps(costsForProf(p.kind), p.tier || 0); });
-    return total;
+  // ---- steps 6 & 7: buying training ---------------------------------------
+  function stepKinds(category) {
+    return (window.PROFICIENCY_KINDS || []).filter(function (k) { return Engine.trainingCategory(k) === category; });
   }
 
   function stepCombat() {
-    return spender({
-      lead: "Spend " + CREATION.combatPoints + " points on combat skills and weapon proficiencies.",
-      budget: CREATION.combatPoints,
-      pool: "combat",
+    return trainingStep({
+      category: "combat",
+      lead: "Spend at least " + trainingMinimum("combat") + " skill exp on combat skills and combat proficiencies.",
       skills: window.SKILLS.combat,
       skillStore: draft.combatSkills,
       profStore: draft.combatProfs,
-      kinds: (window.PROFICIENCY_KINDS || []).filter(function (k) { return k.pool === "combat"; }),
+      kinds: stepKinds("combat"),
     });
   }
 
   function stepNoncombat() {
     var req = CREATION.requiredProficiencies || {};
     var reqText = Object.keys(req).map(function (k) { return req[k] + " " + k; }).join(" and ");
-    return spender({
-      lead: "Spend " + CREATION.noncombatPoints + " points on non-combat skills and proficiencies, " +
-            "including at least " + reqText + ".",
-      budget: CREATION.noncombatPoints,
-      pool: "noncombat",
+    return trainingStep({
+      category: "noncombat",
+      lead: "Spend at least " + trainingMinimum("noncombat") + " skill exp on non-combat skills and proficiencies." +
+            (reqText ? " You need at least " + reqText + " proficiency." : ""),
       skills: window.SKILLS.noncombat,
       skillStore: draft.ncSkills,
       profStore: draft.ncProfs,
-      kinds: (window.PROFICIENCY_KINDS || []).filter(function (k) { return k.pool === "noncombat"; }),
+      kinds: stepKinds("noncombat"),
     });
   }
 
-  function spender(opts) {
+  // What the training steps are working against, read off the candidate once
+  // per render. `available` is what a raise in this category may still cost:
+  // the skill exp left, less whatever the OTHER category still needs to reach
+  // its own minimum, so spending here can never strand the other step short.
+  function trainingBudget(category) {
+    var cand = candidate();
+    var spent = Engine.computeSpent(cand);
+    var start = startingExp().skill;
+    var other = otherCategory(category);
+    var reserve = Math.max(0, trainingMinimum(other) - spent.training[other]);
+    return {
+      cand: cand, spent: spent, start: start,
+      left: start - spent.skill,
+      available: start - spent.skill - reserve,
+      need: trainingMinimum(category), have: spent.training[category],
+    };
+  }
+
+  function meter(cls, label, value, note, state) {
+    var m = el("div", "budget-meter " + cls + (state ? " " + state : ""));
+    m.appendChild(el("span", "budget-label", label));
+    m.appendChild(el("span", "budget-value", value));
+    m.appendChild(el("span", "budget-left", note));
+    return m;
+  }
+
+  function trainingStep(opts) {
     var wrap = el("div");
     wrap.appendChild(el("p", "step-lead", opts.lead));
 
-    var spent = pointsSpent(opts.skillStore, opts.profStore, opts.pool);
-    var left = opts.budget - spent;
+    var b = trainingBudget(opts.category);
+    var meters = el("div", "budget-row");
+    var toGo = b.need - b.have;
+    meters.appendChild(meter("training", opts.category === "combat" ? "Combat training" : "Non-combat training",
+      b.have + " / " + b.need, toGo > 0 ? toGo + " to go" : "minimum met", toGo > 0 ? "" : "done"));
+    meters.appendChild(meter("skill-exp", "Skill exp", b.spent.skill + " / " + b.start,
+      b.left >= 0 ? b.left + " left" : Math.abs(b.left) + " over", b.left < 0 ? "over" : ""));
+    wrap.appendChild(meters);
 
-    var meter = el("div", "budget-meter" + (left < 0 ? " over" : left === 0 ? " done" : ""));
-    meter.appendChild(el("span", "budget-label", "Points"));
-    meter.appendChild(el("span", "budget-value", spent + " / " + opts.budget));
-    meter.appendChild(el("span", "budget-left", left === 0 ? "all spent" : left > 0 ? left + " left" : Math.abs(left) + " over"));
-    wrap.appendChild(meter);
-
-    // Skills
     var cap = creationLevelCap();
     if (cap < CONFIG.MAX_SKILL_TIER) {
       wrap.appendChild(el("div", "sheet-hint",
         "At tier of play 1 nothing can be taken above level " + cap + "."));
     }
 
+    // Skills. A level a pick's grant covers is shown as granted: it is free,
+    // and raising the skill costs only the steps above it.
     var grid = el("div", "skill-grid");
-    var costs = costsForSkill(opts.pool);
+    var costs = CONFIG.SKILL_COSTS[opts.category];
     opts.skills.forEach(function (sk) {
-      var tier = opts.skillStore[sk.name] || 0;
+      var floor = Engine.grantedSkillTier(b.cand, sk.name);
+      var value = Math.max(opts.skillStore[sk.name] || 0, floor);
       var row = el("div", "skill-row");
       var name = el("div", "skill-name");
       name.appendChild(el("span", "skill-name-text", sk.name));
       name.appendChild(el("span", "skill-char", Engine.skillChars(sk).map(abbr).join("/")));
       row.appendChild(name);
-      row.appendChild(dots(tier, CONFIG.MAX_SKILL_TIER, costs, left, function (v) {
-        if (v > 0) opts.skillStore[sk.name] = v; else delete opts.skillStore[sk.name];
+      row.appendChild(dots(value, CONFIG.MAX_SKILL_TIER, costs, b.available, function (v) {
+        if (v > floor) opts.skillStore[sk.name] = v; else delete opts.skillStore[sk.name];
         render();
-      }, cap));
+      }, cap, floor, floor ? grantedBy(b.cand, "skill", sk.name) : null));
       grid.appendChild(row);
     });
     wrap.appendChild(grid);
 
-    // Proficiencies
+    // Proficiencies a pick already grants in this category don't have a row
+    // here, but they are already the character's, and they count toward a
+    // required kind. Naming one in a row below raises it from where the grant
+    // left it.
+    var grantedHere = b.cand.proficiencies.filter(function (p) {
+      var kind = Engine.findKind(p.kind);
+      return kind && Engine.trainingCategory(kind) === opts.category && Engine.grantedProfTier(b.cand, p.name) > 0;
+    });
+    if (grantedHere.length) {
+      wrap.appendChild(el("div", "sheet-hint",
+        "Your picks already grant: " + grantedHere.map(function (p) {
+          return p.name + " " + Engine.grantedProfTier(b.cand, p.name) + " (" + p.kind + ")";
+        }).join(", ") + "."));
+    }
+
     opts.kinds.forEach(function (kind) {
       var pcosts = CONFIG.SKILL_COSTS[kind.costKey];
       var exhaustive = EXHAUSTIVE_PROF_KINDS.indexOf(kind.id) >= 0;
@@ -581,6 +676,7 @@
 
       opts.profStore.forEach(function (p, idx) {
         if (p.kind !== kind.id) return;
+        var floor = (p.name || "").trim() ? Engine.grantedProfTier(b.cand, p.name.trim()) : 0;
         var row = el("div", "prof-row");
         var input;
         if (exhaustive) {
@@ -594,9 +690,9 @@
           input.onchange = function () { render(); };
         }
         row.appendChild(input);
-        row.appendChild(dots(p.tier || 0, CONFIG.MAX_SKILL_TIER, pcosts, left, function (v) {
+        row.appendChild(dots(Math.max(p.tier || 0, floor), CONFIG.MAX_SKILL_TIER, pcosts, b.available, function (v) {
           opts.profStore[idx].tier = v; render();
-        }, cap));
+        }, cap, floor, floor ? grantedBy(b.cand, "proficiency", p.name.trim()) : null));
         var del = el("button", "icon-btn", "✕"); del.type = "button"; del.title = "Remove";
         del.onclick = function () { opts.profStore.splice(idx, 1); render(); };
         row.appendChild(del);
@@ -604,9 +700,13 @@
       });
 
       var add = el("button", "prof-add", "+ Add " + kind.label); add.type = "button";
+      var firstCost = pcosts[0];
       if (exhaustive && !kindOptions.length) {
         add.disabled = true;
         add.title = "No " + kind.label.toLowerCase() + " options defined";
+      } else if (firstCost > b.available) {
+        add.disabled = true;
+        add.title = "Not enough skill exp left";
       }
       add.onclick = function () {
         opts.profStore.push({ name: exhaustive ? (kindOptions[0] || "") : "", kind: kind.id, tier: 1 });
@@ -619,24 +719,34 @@
     return wrap;
   }
 
-  // Dots that refuse to push you over budget, or past the tier's level cap.
-  function dots(value, max, costs, pointsLeft, onSet, cap) {
+  function grantedBy(state, kind, name) {
+    var src = Engine.grantSource(state, kind, name);
+    return src ? "Granted by " + src.name : "Granted";
+  }
+
+  // Dots priced in skill exp from the level the row is at. They refuse a raise
+  // that costs more than `available` or passes the tier's level cap, and never
+  // go below `floor`, the level a grant covers for free.
+  function dots(value, max, costs, available, onSet, cap, floor, grantedTitle) {
     cap = cap == null ? max : cap;
+    floor = floor || 0;
     var row = el("div", "dots");
     for (var i = 0; i < max; i++) {
       (function (i) {
-        var target = value === i + 1 ? i : i + 1;
+        var target = Math.max(value === i + 1 ? i : i + 1, floor);
         var delta = Engine.stepCost(costs, Math.min(value, target), Math.max(value, target));
         var raising = target > value;
+        var isGranted = i < floor;
         var beyondCap = i + 1 > cap;
-        var allowed = !raising || (delta <= pointsLeft && !beyondCap);
-        var dot = el("button", "dot" + (i < value ? " filled" : "") +
+        var allowed = !raising || (delta <= available && !beyondCap);
+        var dot = el("button", "dot" + (i < value ? " filled" : "") + (isGranted ? " granted" : "") +
           (allowed ? "" : " disabled") + (beyondCap ? " capped" : ""));
         dot.type = "button";
-        dot.title = beyondCap ? "Beyond the tier of play cap"
-          : raising ? ("+" + delta + " pts") : "refund";
+        dot.title = isGranted ? grantedTitle + ", free"
+          : beyondCap ? "Beyond the tier of play cap"
+          : raising ? ("+" + delta + " exp") : "refund";
         dot.disabled = !allowed;
-        dot.onclick = function () { onSet(target); };
+        dot.onclick = function () { if (target !== value) onSet(target); };
         row.appendChild(dot);
       })(i);
     }
@@ -690,6 +800,12 @@
       .concat(draft.ncProfs.filter(function (p) { return p.name; })
         .map(function (p) { return p.name + " " + p.tier + " (" + p.kind + ")"; }));
     wrap.appendChild(reviewBlock("Non-combat Training", ncLines.length ? ncLines : ["—"]));
+
+    // What is left over is what the sheet will point at once this is created.
+    var left = Engine.expRemaining(candidate());
+    wrap.appendChild(reviewBlock("Exp left to spend", Engine.EXP_POOLS.map(function (p) {
+      return p.label + " exp " + left[p.id];
+    })));
 
     return wrap;
   }
@@ -766,92 +882,92 @@
     if (s) draft.source = s.id;
   }
 
-  // Pick a proficiency name this list isn't already using.
-  function freshProfName(kind, store) {
-    var taken = store.map(function (p) { return (p.name || "").toLowerCase(); });
-    var options = profOptionsForKind(kind);
-    var free = options.filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; });
-    if (free.length) return pick(free);
-    return options.length ? pick(options) : "Unnamed";
+  // A proficiency name of this kind the character does not hold yet, whether
+  // bought or granted, or null when every option is taken. A name already held
+  // would merge into the existing row and cost less than the move was priced at.
+  function freshProfName(kind) {
+    var held = candidate().proficiencies.map(function (p) { return p.name.toLowerCase(); })
+      .concat(draft.combatProfs.concat(draft.ncProfs).map(function (p) { return (p.name || "").toLowerCase(); }));
+    var free = profOptionsForKind(kind).filter(function (n) { return held.indexOf(n.toLowerCase()) < 0; });
+    return free.length ? pick(free) : null;
   }
 
-  // Spend exactly `budget` by repeatedly applying a random affordable advance.
-  // Raising an untouched skill to tier 1 always costs the cheapest step on the
-  // curve, so while any skill remains untouched there is always a 1-point move
-  // available — which is what lets the budget land exactly on zero rather than
-  // stranding a point. Required proficiency kinds are bought first so a run of
-  // unlucky picks can never crowd them out.
+  // Spend exactly a step's minimum, one random affordable advance at a time,
+  // priced on the character as it stands: a pick's grant may already cover a
+  // level, and then only the next one costs. Raising an untouched skill to 1
+  // costs the cheapest step on the curve, so while any skill is untouched there
+  // is a 1-exp move, which is what lets the spend land on the minimum exactly.
+  // Required proficiency kinds the character does not already hold are bought
+  // first, so a run of unlucky picks can never crowd them out.
   function randomSpend(opts) {
     Object.keys(opts.skillStore).forEach(function (k) { delete opts.skillStore[k]; });
     opts.profStore.length = 0;
-    var spent = 0;
+    var target = trainingMinimum(opts.category);
+    function spentHere() { return Engine.computeSpent(candidate()).training[opts.category]; }
 
     Object.keys(opts.required || {}).forEach(function (kindId) {
       var kind = Engine.findKind(kindId);
       if (!kind) return;
-      var costs = CONFIG.SKILL_COSTS[kind.costKey];
-      for (var n = 0; n < opts.required[kindId]; n++) {
-        if (spent + costs[0] > opts.budget) return;
-        opts.profStore.push({ name: freshProfName(kind, opts.profStore), kind: kindId, tier: 1 });
-        spent += costs[0];
+      var creation = Engine.creationMinimums(candidate()).filter(function (m) { return m.id === kindId; })[0];
+      var missing = creation ? creation.need - creation.have : 0;
+      for (var n = 0; n < missing; n++) {
+        var name = freshProfName(kind);
+        if (!name || spentHere() + CONFIG.SKILL_COSTS[kind.costKey][0] > target) return;
+        opts.profStore.push({ name: name, kind: kindId, tier: 1 });
       }
     });
 
     var cap = creationLevelCap();
-    var guard = 0;
-    while (spent < opts.budget && guard++ < 500) {
-      var left = opts.budget - spent;
+    for (var guard = 0; guard < 500; guard++) {
+      var cand = candidate();
+      var left = target - Engine.computeSpent(cand).training[opts.category];
+      if (left <= 0) break;
       var moves = [];
 
       opts.skills.forEach(function (sk) {
-        var t = opts.skillStore[sk.name] || 0;
+        var t = cand.skills[sk.name] || 0;
         if (t >= cap) return;
-        var c = CONFIG.SKILL_COSTS[opts.pool][t];
-        if (c <= left) moves.push({ cost: c, apply: function () { opts.skillStore[sk.name] = t + 1; } });
+        var c = CONFIG.SKILL_COSTS[opts.category][t];
+        if (c <= left) moves.push(function () { opts.skillStore[sk.name] = t + 1; });
       });
 
       opts.profStore.forEach(function (p) {
         var kind = Engine.findKind(p.kind);
         if (!kind) return;
-        var t = p.tier || 0;
+        var t = Math.max(p.tier || 0, Engine.grantedProfTier(cand, p.name));
         if (t >= cap) return;
         var c = CONFIG.SKILL_COSTS[kind.costKey][t];
-        if (c <= left) moves.push({ cost: c, apply: function () { p.tier = t + 1; } });
+        if (c <= left) moves.push(function () { p.tier = t + 1; });
       });
 
       opts.kinds.forEach(function (kind) {
         var c = CONFIG.SKILL_COSTS[kind.costKey][0];
         var have = opts.profStore.filter(function (p) { return p.kind === kind.id; }).length;
-        if (c <= left && have < 3) {         // keep the roster readable
-          moves.push({ cost: c, apply: function () {
-            opts.profStore.push({ name: freshProfName(kind, opts.profStore), kind: kind.id, tier: 1 });
-          } });
-        }
+        if (c > left || have >= 3) return;             // keep the roster readable
+        var name = freshProfName(kind);
+        if (name) moves.push(function () { opts.profStore.push({ name: name, kind: kind.id, tier: 1 }); });
       });
 
       if (!moves.length) break;
-      var m = pick(moves);
-      m.apply();
-      spent += m.cost;
+      pick(moves)();
     }
-    return spent;
   }
 
   function randomCombat() {
     randomSpend({
-      budget: CREATION.combatPoints, pool: "combat",
+      category: "combat",
       skills: window.SKILLS.combat,
       skillStore: draft.combatSkills, profStore: draft.combatProfs,
-      kinds: (window.PROFICIENCY_KINDS || []).filter(function (k) { return k.pool === "combat"; }),
+      kinds: stepKinds("combat"),
     });
   }
 
   function randomNoncombat() {
     randomSpend({
-      budget: CREATION.noncombatPoints, pool: "noncombat",
+      category: "noncombat",
       skills: window.SKILLS.noncombat,
       skillStore: draft.ncSkills, profStore: draft.ncProfs,
-      kinds: (window.PROFICIENCY_KINDS || []).filter(function (k) { return k.pool === "noncombat"; }),
+      kinds: stepKinds("noncombat"),
       required: CREATION.requiredProficiencies,
     });
   }
@@ -906,28 +1022,22 @@
       return null;
     }
 
-    if (key === "combat") {
-      var spent = pointsSpent(draft.combatSkills, draft.combatProfs, "combat");
-      if (spent !== CREATION.combatPoints) return "Spend exactly " + CREATION.combatPoints + " points (" + spent + " spent).";
-      var unnamed = draft.combatProfs.filter(function (p) { return !p.name.trim(); }).length;
-      if (unnamed) return "Name every proficiency you added.";
-      return null;
-    }
-
-    if (key === "noncombat") {
-      var s2 = pointsSpent(draft.ncSkills, draft.ncProfs, "noncombat");
-      if (s2 !== CREATION.noncombatPoints) return "Spend exactly " + CREATION.noncombatPoints + " points (" + s2 + " spent).";
-      var un2 = draft.ncProfs.filter(function (p) { return !p.name.trim(); }).length;
-      if (un2) return "Name every proficiency you added.";
-      var req = CREATION.requiredProficiencies || {};
-      var missing = Object.keys(req).filter(function (kindId) {
-        var have = draft.ncProfs.filter(function (p) {
-          return p.kind === kindId && p.name.trim() && (p.tier || 0) >= 1;
-        }).length;
-        return have < req[kindId];
-      });
-      if (missing.length) return "You still need at least " +
-        missing.map(function (k) { return req[k] + " " + k; }).join(" and ") + ".";
+    if (key === "combat" || key === "noncombat") {
+      var cand = candidate();
+      var minimums = Engine.creationMinimums(cand);
+      var training = minimums.filter(function (m) { return m.id === key; })[0];
+      if (training && !training.met)
+        return "Spend at least " + training.need + " skill exp here (" + training.have + " spent).";
+      var store = key === "combat" ? draft.combatProfs : draft.ncProfs;
+      if (store.some(function (p) { return !(p.name || "").trim(); })) return "Name every proficiency you added.";
+      var spent = Engine.computeSpent(cand).skill, start = startingExp().skill;
+      if (spent > start) return "Your training costs " + spent + " skill exp, but you start with " + start + ".";
+      if (key === "noncombat") {
+        var req = CREATION.requiredProficiencies || {};
+        var missing = minimums.filter(function (m) { return req[m.id] && !m.met; });
+        if (missing.length) return "You still need at least " +
+          missing.map(function (m) { return m.need + " " + m.id; }).join(" and ") + ".";
+      }
       return null;
     }
 
@@ -944,64 +1054,22 @@
   // ---- commit -------------------------------------------------------------
   function finish() {
     var src = Engine.sourceById(draft.source);
-
-    // Ancestries are flavour and sources of power grant nothing at creation, so
-    // the free baseline is purely what the player spent their creation points
-    // on, plus the defining trait they picked.
-    var gSkills = {};
-    function addSkill(name, tier) { gSkills[name] = Math.max(gSkills[name] || 0, tier || 0); }
-    Object.keys(draft.combatSkills).forEach(function (n) { addSkill(n, draft.combatSkills[n]); });
-    Object.keys(draft.ncSkills).forEach(function (n) { addSkill(n, draft.ncSkills[n]); });
-
-    // Granted proficiencies, merged by name+kind.
-    var profList = [];
-    function addProf(p) {
-      if (!p || !p.name || !p.name.trim()) return;
-      var name = p.name.trim();
-      var hit = profList.filter(function (x) {
-        return x.name.toLowerCase() === name.toLowerCase() && x.kind === p.kind;
-      })[0];
-      if (hit) hit.tier = Math.max(hit.tier, p.tier || 0);
-      else profList.push({ name: name, kind: p.kind, tier: p.tier || 0 });
-    }
-    draft.combatProfs.forEach(addProf);
-    draft.ncProfs.forEach(addProf);
-
-    var gProfs = {};
-    profList.forEach(function (p) { gProfs[p.name] = Math.max(gProfs[p.name] || 0, p.tier); });
-
-    // The free talents are the two catalogue picks: the defining trait and the
-    // background. Both are granted outright and cost nothing.
-    var gTalents = pickedTalents()
-      .filter(function (v, i, a) { return a.indexOf(v) === i; });
-
-    // The assigned array becomes the fixed characteristic baseline; from here on
-    // characteristics only move via tier-of-play advancement.
-    var baseChars = {};
-    CONFIG.CHARACTERISTICS.forEach(function (c) { baseChars[c.key] = draft.chars[c.key] || 0; });
-
     var ancestry = Engine.ancestryById(draft.ancestry);
+    // The same object every figure in the wizard was read from.
+    var built = candidate();
 
     State.update(function (s) {
       Object.keys(s.skills).forEach(function (n) { s.skills[n] = 0; });
-      Object.keys(gSkills).forEach(function (n) { s.skills[n] = gSkills[n]; });
+      Object.keys(built.skills).forEach(function (n) { s.skills[n] = built.skills[n]; });
 
-      s.proficiencies = profList.map(function (p) { return { name: p.name, kind: p.kind, tier: p.tier }; });
-      s.talents = gTalents.slice();
+      s.proficiencies = built.proficiencies;
+      s.talents = built.talents;
       s.charAdvances = {};
-      s.grantChoices = {};
-      s.granted = {
-        talents: gTalents.slice(), skills: gSkills, proficiencies: gProfs,
-        characteristics: baseChars,
-      };
-
-      // Applied last, on the finished state: a pick that grants a choice (Jack
-      // of all trades) folds its picks into the same baseline the creation
-      // points built, and records them so revoking it later takes them back (§4.9).
-      gTalents.forEach(function (id) {
-        var t = Engine.talentById(id);
-        if (t && Engine.grantsOf(t)) Engine.applyGrants(s, id, draft.grantChoices[id] || []);
-      });
+      s.grantChoices = built.grantChoices;
+      // Only the picks and their grants are free. The assigned array is the
+      // fixed characteristic baseline; from here on characteristics only move
+      // via tier-of-play advancement.
+      s.granted = built.granted;
 
       s.creation = {
         completed: true, skipped: false,
@@ -1010,9 +1078,11 @@
       };
       s.identity.ancestry = ancestry ? ancestry.name : "";
       s.identity.sourceOfPower = src ? src.name : "";
-      s.expEarned = { combat: CREATION.freeExp.combat, noncombat: CREATION.freeExp.noncombat };
+      s.expEarned = startingExp();
     });
 
+    // The sheet opens on what is left to spend, and where (UI.takeSpendReminder).
+    UI.queueSpendReminder();
     window.location.href = "sheet.html";
   }
 

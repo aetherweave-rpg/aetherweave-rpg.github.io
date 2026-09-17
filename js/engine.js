@@ -311,11 +311,11 @@
 
   // ---- Tree-access surcharge ---------------------------------------------
   // Your first tree containing a PURCHASED talent is free; each further tree
-  // costs a one-time surcharge from CONFIG.TREE_ACCESS.costs, charged to the
-  // pool of the talent that opened it. Granted talents never open a tree, and
-  // exempt tree kinds never charge. Because the surcharge ladder is
-  // applied in the order trees were opened, the total is the same however you
-  // reorder your purchases — refunds stay predictable.
+  // costs a one-time surcharge from CONFIG.TREE_ACCESS.costs, paid in talent
+  // exp. Granted talents never open a tree, and exempt tree kinds never charge.
+  // Because the surcharge ladder is applied in the order trees were opened, the
+  // total is the same however you reorder your purchases — refunds stay
+  // predictable.
   function treeAccessCharges(state) {
     var conf = CONFIG.TREE_ACCESS || { costs: [], exemptKinds: [] };
     var costs = conf.costs || [];
@@ -329,16 +329,12 @@
       var tree = treeById(t.domain);
       if (!tree || exempt.indexOf(tree.kind) >= 0) return;
       seen[t.domain] = true;
-      opened.push({
-        treeId: t.domain,
-        name: tree.name,
-        pool: t.pool === "combat" ? "combat" : "noncombat",
-      });
+      opened.push({ treeId: t.domain, name: tree.name });
     });
 
     return opened.map(function (o, i) {
       var cost = i === 0 ? 0 : (costs[i - 1] !== undefined ? costs[i - 1] : costs[costs.length - 1] || 0);
-      return { treeId: o.treeId, name: o.name, pool: o.pool, cost: cost, index: i, first: i === 0 };
+      return { treeId: o.treeId, name: o.name, cost: cost, index: i, first: i === 0 };
     });
   }
 
@@ -351,19 +347,45 @@
     return costs[n - 1] !== undefined ? costs[n - 1] : (costs[costs.length - 1] || 0);
   }
 
+  // ---- Exp pools ----------------------------------------------------------
+  // Two pools, never interchangeable (main.tex §Experience Points): skill exp
+  // buys skills and proficiencies of every kind, talent exp buys talents and
+  // the tree-access surcharge. Nothing about a purchase picks its pool; what it
+  // is decides that, which is why a talent authors no `pool` field.
+  var EXP_POOLS = [
+    { id: "skill",  label: "Skill",  icon: "✦" },
+    { id: "talent", label: "Talent", icon: "❖" },
+  ];
+  // The keys a talent's `requires.spent` may name.
+  var SPENT_KEYS = ["skill", "talent", "total"];
+
+  // A skill's or a proficiency kind's category of training: "combat" or
+  // "noncombat". It picks a skill's cost curve and which creation minimum the
+  // exp counts toward, never a pool.
+  function trainingCategory(kind) {
+    return kind && kind.category === "combat" ? "combat" : "noncombat";
+  }
+
   // ---- Spent exp ----------------------------------------------------------
   // Recomputed from scratch every render; never stored. Everything in the
-  // granted baseline is subtracted out, so creation picks cost nothing.
+  // granted baseline is subtracted out, so a grant costs nothing. `training`
+  // splits the skill exp by category, which is what creation's minimums are
+  // measured in.
   function computeSpent(state) {
-    var spent = { combat: 0, noncombat: 0, breakdown: { skills: 0, proficiencies: 0, talents: 0, treeAccess: 0, spellcasting: 0 } };
+    var spent = {
+      skill: 0, talent: 0,
+      training: { combat: 0, noncombat: 0 },
+      breakdown: { skills: 0, proficiencies: 0, spellcasting: 0, talents: 0, treeAccess: 0 },
+    };
 
     Object.keys(state.skills || {}).forEach(function (name) {
       var tier = state.skills[name] || 0;
       if (!tier) return;
-      var pool = isCombatSkill(name) ? "combat" : "noncombat";
+      var category = isCombatSkill(name) ? "combat" : "noncombat";
       var free = Math.min(grantedSkillTier(state, name), tier);
-      var cost = stepCost(CONFIG.SKILL_COSTS[pool], free, tier);
-      spent[pool] += cost;
+      var cost = stepCost(CONFIG.SKILL_COSTS[category], free, tier);
+      spent.skill += cost;
+      spent.training[category] += cost;
       spent.breakdown.skills += cost;
     });
 
@@ -373,7 +395,8 @@
       var tier = p.tier || 0;
       var free = Math.min(grantedProfTier(state, p.name), tier);
       var cost = stepCost(CONFIG.SKILL_COSTS[kind.costKey], free, tier);
-      spent[kind.pool] += cost;
+      spent.skill += cost;
+      spent.training[trainingCategory(kind)] += cost;
       // A spellcasting proficiency is tracked on its own breakdown line, so the
       // sheet can say what went into magic apart from ordinary proficiencies.
       if (kind.id === "spellcasting") spent.breakdown.spellcasting += cost;
@@ -384,17 +407,76 @@
       if (isGrantedTalent(state, id)) return;
       var t = byId[id];
       if (!t) return;
-      spent[t.pool === "combat" ? "combat" : "noncombat"] += (t.cost || 0);
+      spent.talent += (t.cost || 0);
       spent.breakdown.talents += (t.cost || 0);
     });
 
     treeAccessCharges(state).forEach(function (c) {
-      spent[c.pool] += c.cost;
+      spent.talent += c.cost;
       spent.breakdown.treeAccess += c.cost;
     });
 
-    spent.total = spent.combat + spent.noncombat;
+    spent.total = spent.skill + spent.talent;
     return spent;
+  }
+
+  // What is left to spend in each pool: earned minus spent. Negative when the
+  // character has planned past what they earned.
+  function expRemaining(state, spent) {
+    spent = spent || computeSpent(state);
+    var earned = state.expEarned || {};
+    var out = {};
+    EXP_POOLS.forEach(function (p) { out[p.id] = (Number(earned[p.id]) || 0) - spent[p.id]; });
+    return out;
+  }
+
+  // ---- Creation minimums ---------------------------------------------------
+  // Creation's training steps set floors, not budgets (data/creation.js): at
+  // least so much skill exp in each category of training, and at least one
+  // proficiency of each required kind. Training bought at creation is an
+  // ordinary purchase, so lowering it refunds its exp, and these floors are
+  // what stays true afterwards. A grant's free levels cost nothing, so they do
+  // not count toward an exp floor; a proficiency held at any level does count
+  // toward a kind.
+  function creationMinimums(state) {
+    var C = window.CREATION || {};
+    var spent = computeSpent(state);
+    var out = [];
+    var floors = C.trainingMinimum || {};
+    ["combat", "noncombat"].forEach(function (category) {
+      var need = floors[category] || 0;
+      if (need <= 0) return;
+      var have = spent.training[category];
+      out.push({ id: category, unit: "exp", need: need, have: have, met: have >= need,
+        label: category === "combat" ? "Combat training" : "Non-combat training" });
+    });
+    var kinds = C.requiredProficiencies || {};
+    Object.keys(kinds).forEach(function (kindId) {
+      var need = kinds[kindId] || 0;
+      if (need <= 0) return;
+      var kind = findKind(kindId);
+      var names = {};
+      (state.proficiencies || []).forEach(function (p) {
+        var name = String(p.name || "").trim().toLowerCase();
+        if (p.kind === kindId && name && (p.tier || 0) >= 1) names[name] = true;
+      });
+      var have = Object.keys(names).length;
+      out.push({ id: kindId, unit: "proficiency", need: need, have: have, met: have >= need,
+        label: (kind ? kind.label : kindId) + " proficiencies" });
+    });
+    return out;
+  }
+
+  // The floors a finished character has fallen below. A character who skipped
+  // creation never agreed to them, so it is held to none.
+  function unmetCreationMinimums(state) {
+    if (!(state.creation && state.creation.completed)) return [];
+    return creationMinimums(state).filter(function (m) { return !m.met; });
+  }
+
+  // "Combat training 4 of 6 skill exp", "Instrument proficiencies 0 of 1".
+  function creationMinimumLabel(m) {
+    return m.label + " " + m.have + " of " + m.need + (m.unit === "exp" ? " skill exp" : "");
   }
 
   // Exp spent inside one tree. This is what gates talent tiers, alongside the
@@ -470,8 +552,8 @@
     return c ? c.label : key;
   }
   function poolLabel(pool) {
-    if (pool === "combat") return "combat";
-    if (pool === "noncombat") return "non-combat";
+    if (pool === "skill") return "skill";
+    if (pool === "talent") return "talent";
     return "total";
   }
   function profTier(state, name) {
@@ -695,7 +777,6 @@
       surcharge: surcharge,
       opensTree: opensTree,
       total: (talent.cost || 0) + surcharge,
-      pool: talent.pool === "combat" ? "combat" : "noncombat",
     };
   }
 
@@ -1003,8 +1084,10 @@
       if (!isCatalogueTree(tree)) {
         if (tree && (t.col < 0 || t.col >= tree.cols))
           problems.push(t.id + ": col " + t.col + " out of range 0.." + (tree.cols - 1));
-        if (t.pool !== "combat" && t.pool !== "noncombat")
-          problems.push(t.id + ": pool must be 'combat' or 'noncombat' (got '" + t.pool + "')");
+        // Every talent costs talent exp, so a `pool` left on one is dead data
+        // that reads as if it still chose something.
+        if (t.pool !== undefined)
+          problems.push(t.id + ": 'pool' no longer exists, every talent costs talent exp (delete the field)");
         if (typeof t.tier !== "number" || t.tier < 1 || t.tier > CONFIG.TIERS.length)
           problems.push(t.id + ": tier " + t.tier + " out of range 1.." + CONFIG.TIERS.length);
         if (typeof t.cost !== "number" || t.cost < 0)
@@ -1040,6 +1123,10 @@
       });
       Object.keys(reqs.characteristics || {}).forEach(function (k) {
         if (!charKeys[k]) problems.push(t.id + ": unknown characteristic '" + k + "'");
+      });
+      Object.keys(reqs.spent || {}).forEach(function (k) {
+        if (SPENT_KEYS.indexOf(k) < 0)
+          problems.push(t.id + ": unknown exp pool '" + k + "' in requires.spent (" + SPENT_KEYS.join(", ") + ")");
       });
       checkAnyReqGroups(t.id, reqs);
     });
@@ -2402,7 +2489,7 @@
   };
   // Deliberately NOT modifiable, and each for a specific reason:
   //   id/row/col   — identity and layout; a moving node breaks the drawn lines
-  //   cost/pool    — computeSpent reads the RAW talent, so a modified cost
+  //   cost         — computeSpent reads the RAW talent, so a modified cost
   //                  would display one price and charge another
   //   tier         — it gates both the tier-of-play and in-tree exp checks
   //   requires     — a modifier that re-gated its target would make the tree
@@ -3027,13 +3114,14 @@
   }
 
   // ---- Max HP ---------------------------------------------------------------
-  // Max HP: 5 + Body at creation, +1 per 10 combat exp spent (any pool use),
-  // and +Body again each time the tier of play advances past tier 1.
+  // Max HP: 3 + Body, +1 per 10 exp spent (skill exp and talent exp together,
+  // rounded down), and +Body again each time the tier of play advances past
+  // tier 1. Anything granted cost no exp, so it adds nothing.
   function maxHP(state) {
     var body = (state.characteristics || {}).body || 0;
-    var spent = computeSpent(state);
+    var fromExp = Math.floor(computeSpent(state).total / 10);
     var tierIncreases = currentTierIndex(state); // 0 at tier 1, 1 at tier 2, ...
-    return 5 + body + Math.floor(spent.combat / 10) + body * tierIncreases;
+    return 3 + body + fromExp + body * tierIncreases;
   }
 
   window.Engine = {
@@ -3059,8 +3147,10 @@
     // talent groups (§6b)
     treeGroups: treeGroups, groupOf: groupOf, requirementsCover: requirementsCover,
     treeAnchors: treeAnchors, anchorFor: anchorFor,
-    // costs & tiers
-    computeSpent: computeSpent, currentTierIndex: currentTierIndex, tierThreshold: tierThreshold,
+    // exp pools, costs & tiers
+    EXP_POOLS: EXP_POOLS, SPENT_KEYS: SPENT_KEYS, trainingCategory: trainingCategory,
+    computeSpent: computeSpent, expRemaining: expRemaining,
+    currentTierIndex: currentTierIndex, tierThreshold: tierThreshold,
     treeAccessCharges: treeAccessCharges, nextTreeCost: nextTreeCost, learnCost: learnCost,
     treeSpent: treeSpent, sumSteps: sumSteps, stepCost: stepCost,
     // level caps & characteristic advancement
@@ -3072,6 +3162,9 @@
     canLearn: canLearn, canRefund: canRefund,
     // granted baseline
     isGrantedTalent: isGrantedTalent, grantedSkillTier: grantedSkillTier, grantedProfTier: grantedProfTier,
+    // creation minimums
+    creationMinimums: creationMinimums, unmetCreationMinimums: unmetCreationMinimums,
+    creationMinimumLabel: creationMinimumLabel,
     // creation helpers
     ancestryById: ancestryById, ancestryPickable: ancestryPickable,
     traits: traits, traitById: traitById,

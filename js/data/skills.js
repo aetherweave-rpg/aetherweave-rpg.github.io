@@ -13,7 +13,9 @@
 // follow it through a rename or a merge (state.js). A merge keeps the better
 // of the two ranks.
 //
-// Combat skills draw from COMBAT exp; everything else from NON-COMBAT exp.
+// Every skill and proficiency is bought with SKILL exp. Combat and non-combat
+// are categories of training, not pools: creation's minimums
+// (data/creation.js) are counted per category.
 // ============================================================================
 
 window.SKILLS = {
@@ -54,16 +56,18 @@ window.SKILLS = {
 };
 
 // Open-ended proficiency lists on the character sheet. `costKey` picks the
-// step-cost array in CONFIG.SKILL_COSTS; `pool` picks which exp they draw from.
-// `suggestions` populate an autocomplete list (purely a convenience).
+// step-cost array in CONFIG.SKILL_COSTS; `category` says which training it is
+// (combat or non-combat), which decides the creation step that offers it and
+// the minimum it counts toward. `suggestions` populate an autocomplete list
+// (purely a convenience).
 window.PROFICIENCY_KINDS = [
   {
-    id: "crafting", label: "Crafting", costKey: "crafting", pool: "noncombat",
+    id: "crafting", label: "Crafting", costKey: "crafting", category: "noncombat",
     suggestions: ["Smithing", "Jewelcrafting", "Tailoring", "Leatherworking",
       "Fletching", "Carpentry", "Clockwork", "Engineering", "Shipwright", "Alchemy"],
   },
   {
-    id: "instrument", label: "Instrument", costKey: "instrument", pool: "noncombat",
+    id: "instrument", label: "Instrument", costKey: "instrument", category: "noncombat",
     suggestions: ["Lute", "Flute", "Drums", "Fiddle", "Harp", "Horn", "Lyre",
       "Bagpipes", "Hurdy-gurdy", "Voice"],
   },
@@ -71,7 +75,7 @@ window.PROFICIENCY_KINDS = [
     // A weapon proficiency is bought per category (main.tex "Weapons"), not
     // per individual weapon — the specific weapon within a category is a
     // cosmetic choice, not a mechanical one. These 12 are the full set.
-    id: "weapon", label: "Weapon", costKey: "weapon", pool: "combat",
+    id: "weapon", label: "Weapon", costKey: "weapon", category: "combat",
     suggestions: ["Light Blades", "Heavy Blades", "Axes", "Maces", "Polearms",
       "Whips", "Staves", "Bows", "Crossbows", "Light Throwing Weapons",
       "Heavy Throwing Weapons", "Unarmed"],
@@ -82,7 +86,7 @@ window.PROFICIENCY_KINDS = [
     // Engine.spellcastingPool. Suggestions are filled in at render time from
     // the magical domains that exist, not hardcoded here (unlike the other
     // kinds' static lists).
-    id: "spellcasting", label: "Spellcasting", costKey: "weapon", pool: "combat",
+    id: "spellcasting", label: "Spellcasting", costKey: "weapon", category: "combat",
     suggestions: [],
   },
 ];
