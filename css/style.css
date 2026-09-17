@@ -254,8 +254,8 @@ a { color: var(--accent); }
 }
 
 /* Kind marker — the box's top-left corner, opposite the owned badge. Says what
-   a node *gives* (passive / maneuver / spell / modifier) without opening the
-   tooltip, which is the question a grid mixing all four raises on every node. */
+   a node *gives* (passive / maneuver / modifier / companion) without opening the
+   tooltip, which is the question a grid mixing them raises on every node. */
 .node-kind {
   position: absolute; top: -7px; left: -7px; min-width: 20px; height: 18px;
   padding: 0 5px; border-radius: 9px;
@@ -266,7 +266,6 @@ a { color: var(--accent); }
 }
 .node-kind.kind-passive  { background: #6b6152; }
 .node-kind.kind-maneuver { background: var(--combat); }
-.node-kind.kind-spell    { background: #6b5ca5; }
 .node-kind.kind-modifier { background: #7a6a2f; }
 
 /* States */
@@ -440,7 +439,7 @@ text.talent-group-label {
 }
 
 /* Stats: HP + characteristics */
-.hp-mana-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; align-items: stretch; margin-bottom: 16px; }
+.vitals-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; align-items: stretch; margin-bottom: 16px; }
 .char-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; align-items: stretch; }
 .hp-box, .char-box {
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px;
@@ -591,8 +590,8 @@ text.talent-group-label {
 .talent-invalid-note { font-size: 12px; color: var(--unmet); font-weight: 600; margin-top: 2px; }
 
 /* ---------- Ability test: the roll, and the ladder read off it ----------- */
-/* One component on four surfaces (tooltip, sheet, Spells page, creation
-   cards), so a success tier reads the same wherever it is met. */
+/* One component on three surfaces (tooltip, sheet, creation cards), so a
+   success tier reads the same wherever it is met. */
 .ability-test { margin-top: 6px; border-left: 2px solid var(--line-strong); padding-left: 9px; }
 .ability-test-roll {
   display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap;
@@ -916,84 +915,10 @@ text.talent-group-label {
   padding: 1px 6px; border-radius: 999px; background: var(--line); color: var(--ink-soft); vertical-align: middle;
 }
 
-/* ==========================================================================
-   Spellcasting — caster panel (trees), spell-picker modal, sheet categories
-   ========================================================================== */
-
-/* Caster panel on the trees page (magical domains) */
-.caster-panel {
-  --accent: #8a6d3b;
-  position: relative; z-index: 3; margin: 0 0 20px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, #fffdf7), var(--panel-2));
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line-strong));
-  border-left: 4px solid var(--accent);
-  border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow);
-  display: flex; flex-direction: column; gap: 12px;
-}
-.caster-head { display: flex; align-items: center; gap: 10px; }
-.caster-icon {
-  font-size: 20px; width: 40px; height: 40px; flex: none; display: grid; place-items: center;
-  border-radius: 10px; background: #fffdf7; border: 2px solid var(--accent);
-}
-.caster-title { font-family: var(--serif); font-weight: 700; font-size: 17px; }
-.caster-sub { font-size: 12px; color: var(--ink-faint); }
-
-.caster-pool {
-  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-  padding: 8px 12px; border-radius: 10px; background: #fffdf7; border: 1px solid var(--line);
-}
-.caster-pool-label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-faint); font-weight: 700; }
-.caster-pool-hint { font-size: 12.5px; color: var(--ink-faint); }
-.caster-pool-eq { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; }
-.cpp { font-weight: 600; }
-.cpp-op { color: var(--ink-faint); }
-.cpp-total { font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
-
-.caster-ladder { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.caster-ladder-label { font-size: 13px; font-weight: 600; }
-.caster-dots { display: flex; gap: 7px; }
-.caster-dot {
-  width: 22px; height: 22px; border-radius: 6px; cursor: pointer; padding: 0;
-  border: 2px solid var(--line-strong); background: #fffdf7;
-  transition: background .08s ease, transform .08s ease;
-}
-.caster-dot:hover:not(:disabled) { transform: scale(1.1); border-color: var(--accent); }
-.caster-dot.filled { background: var(--accent); border-color: color-mix(in srgb, var(--accent) 70%, black); }
-.caster-dot.capped { border-style: dashed; border-color: var(--line); opacity: .5; }
-.caster-dot.capped:hover { transform: none; }
-.caster-dot:disabled { cursor: not-allowed; }
-.caster-ladder-hint { font-size: 11.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-
-.caster-spells { display: flex; flex-direction: column; gap: 8px; }
-.caster-spells-head { display: flex; align-items: center; gap: 10px; }
-.caster-spells-title { font-size: 14px; font-weight: 700; }
-.caster-learn { margin-left: auto; font-size: 13px; padding: 7px 13px; }
-.caster-spells-empty { font-size: 12.5px; color: var(--ink-faint); font-style: italic; }
-.caster-spell-list { display: flex; flex-direction: column; gap: 6px; }
-.caster-spell-row {
-  display: flex; align-items: center; gap: 10px; padding: 7px 10px;
-  background: #fffdf7; border: 1px solid var(--line); border-radius: 9px;
-}
-.caster-spell-row.invalid { border-color: #f0b4ae; background: #fdf0ee; }
-.spell-icon {
-  width: 34px; height: 34px; flex: none; border-radius: 8px; display: grid; place-items: center;
-  font-size: 18px; background: var(--panel-2); border: 1px solid var(--line-strong);
-}
-.spell-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.spell-name { font-weight: 700; display: flex; align-items: baseline; gap: 8px; }
-.spell-desc { font-size: 12px; color: var(--ink-faint); }
-.spell-invalid-note { font-size: 11.5px; color: var(--unmet); font-weight: 600; margin-top: 2px; }
-.spell-tier-tag {
-  font-size: 10px; font-weight: 800; letter-spacing: .3px; padding: 1px 7px; border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 18%, #fff); color: color-mix(in srgb, var(--accent) 75%, black);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); font-variant-numeric: tabular-nums;
-}
-
 /* Ability badge in the node tooltip */
 .tt-ability { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-soft); }
 .tt-ability.maneuver { background: #eef2fb; border-color: #b9c8e6; color: #34507e; }
 .tt-ability.modifier { background: #f5edfa; border-color: #d3bde3; color: #63407f; }
-.tt-ability.spell { background: #eae6fb; border-color: #cfc6ef; color: #4c3f8c; }
 /* Which entry a modifier rewrites. The tree is the only place this is shown:
    modifiers are absent from the character sheet by design (DESIGN.md §4.8). */
 .tt-modifies { margin-top: 6px; font-size: 12px; font-style: italic; color: var(--ink-soft); }
@@ -1045,7 +970,7 @@ text.talent-group-label {
 .modal-close:hover { background: #fdecea; color: var(--unmet); border-color: #f0b4ae; }
 .modal-body { padding: 16px 18px; overflow-y: auto; }
 
-/* Sheet: ability categories + per-domain spell blocks */
+/* Sheet: ability categories */
 .talent-domain-tag {
   font-size: 9.5px; text-transform: uppercase; letter-spacing: .6px; font-weight: 700;
   margin-left: 8px; padding: 1px 7px; border-radius: 999px;
@@ -1055,12 +980,14 @@ text.talent-group-label {
   font-size: 10px; font-weight: 700; margin-left: 8px; padding: 1px 8px; border-radius: 999px;
   background: #eef2fb; color: #34507e; border: 1px solid #b9c8e6;
 }
-.spell-domain-block { margin-bottom: 10px; }
-.spell-domain-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
-.sdh-icon { font-size: 16px; }
-.sdh-name { font-family: var(--serif); font-weight: 700; font-size: 15px; }
-.sdh-pool { font-size: 11.5px; color: var(--ink-faint); }
-.spell-sheet-row .talent-name { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+/* Ability tags (UI.tagChips): tooltip, sheet rows, creation cards. */
+.ability-tag {
+  font-size: 10px; font-weight: 700; margin-left: 8px; padding: 1px 8px; border-radius: 999px;
+  background: var(--panel-2); color: var(--ink-soft); border: 1px solid var(--line);
+}
+.tt-meta .ability-tag { margin-left: 0; }
+.ability-tag.tag-magic { background: #eae6fb; color: #4c3f8c; border-color: #cfc6ef; }
 
 /* ---------- Companions (§4.11) ------------------------------------------- */
 /* One card per companion. Boxed rather than run together, because a character
@@ -1126,51 +1053,12 @@ text.talent-group-label {
 /* Companion abilities reuse .talent-row, minus the icon column its rows have. */
 .companion-ability-list .talent-row { padding: 6px 10px; }
 
-/* ---------- Spells page (a casting reference, not a grid) ---------------- */
-.spell-reference {
-  --accent: #6b5ca5;
-  background:
-    linear-gradient(180deg, rgba(255,252,244,.6), rgba(246,238,218,.6)),
-    var(--panel);
-  border: 1px solid var(--line-strong); border-radius: 14px;
-  padding: 26px 24px; box-shadow: var(--shadow);
-}
-.spell-tier-block { margin-top: 18px; }
-.spell-tier-head {
-  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-  padding-bottom: 6px; margin-bottom: 10px; border-bottom: 2px dashed var(--line-strong);
-}
-.spell-tier-head.reached { border-bottom-style: solid; border-bottom-color: color-mix(in srgb, var(--accent) 55%, var(--line-strong)); }
-.sth-name { font-family: var(--serif); font-weight: 700; font-size: 15px; color: var(--ink-soft); }
-.spell-tier-head.reached .sth-name { color: var(--accent); }
-.sth-sub { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-faint); }
-.sth-mana { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); }
-
-/* Whether the character has it, could have it, or cannot yet. */
-.spell-status-tag {
-  font-size: 10px; font-weight: 800; letter-spacing: .3px; padding: 1px 7px; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-faint);
-}
-.spell-status-tag.known { background: color-mix(in srgb, var(--owned) 16%, #fff); border-color: color-mix(in srgb, var(--owned) 45%, var(--line)); color: color-mix(in srgb, var(--owned) 75%, black); }
-.spell-status-tag.learnable { background: color-mix(in srgb, var(--accent) 14%, #fff); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); color: color-mix(in srgb, var(--accent) 75%, black); }
-.talent-row.spell-sheet-row.unavailable .talent-icon { filter: grayscale(1); opacity: .55; }
-.talent-row.spell-sheet-row.unavailable .talent-name { color: var(--ink-faint); }
-.locked-note { color: var(--ink-faint); font-style: italic; }
-
-/* Spell-test pool tag (trees-page header, magical domains) */
+/* Spellcasting roll tag (trees-page header, magical domains) */
 .caster-tag {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
   background: color-mix(in srgb, var(--accent) 10%, #fff);
   color: color-mix(in srgb, var(--accent) 75%, black);
 }
-
-/* Spell mana tag (tooltip + sheet) */
-.spell-mana-tag { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #eae6fb; color: #5a4aa0; border: 1px solid #cfc6ef; }
-.spell-mana-tag.cantrip { background: var(--panel-2); color: var(--ink-faint); border-color: var(--line); }
-
-/* Mana box on the character sheet (next to HP) */
-.mana-box { border-color: #cfc6ef; }
-.mana-box .stat-title { color: #5a4aa0; }
 
 /* ---------- Print / Export to PDF ----------------------------------------
    Paper renders a different document, not a restyled app: js/print-sheet.js
@@ -1369,7 +1257,7 @@ text.talent-group-label {
   .ps-row-sub { font-size: 6.6pt; color: #666; letter-spacing: .5pt; margin-left: 4pt; }
   .ps-row.ps-plain .ps-row-name { border-bottom: none; }
 
-  /* -- ability / spell index -- */
+  /* -- ability index -- */
   .ps-index-list { margin-bottom: 2pt; }
   .ps-tags { display: flex; gap: 4pt; flex: none; }
   .ps-tag {
@@ -1379,7 +1267,7 @@ text.talent-group-label {
   .ps-warn { border-color: #b3261e; color: #b3261e; font-weight: 700; }
 
   /* -- inventory -- */
-  /* Ruled lines for a pencil, same idea as the HP/Mana "___" current value:
+  /* Ruled lines for a pencil, same idea as the HP "___" current value:
      the printed sheet is what a player actually writes on during a session. */
   .ps-inv-notes { font-size: 8pt; margin-bottom: 4pt; }
   .ps-inv-notes-line {

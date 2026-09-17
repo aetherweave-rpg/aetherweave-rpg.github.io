@@ -3,12 +3,9 @@
 // grid, tier dividers, SVG prerequisite lines, node states,
 // click-to-learn/refund, and tooltips.
 //
-// A magical domain's SPELLS are nodes in this grid too (§4.6) — same row/col
-// space, same tier bands, same prerequisite lines. What differs is the rules
-// behind a node, not the drawing, so everything here works on "entries" and
-// dispatches on Engine.entryKind only where the rules genuinely diverge:
-// which requirement check runs, and what a click does. The Spells page is now
-// a reading reference, not a second place to buy things.
+// Every node is a talent. A magic ability is an ordinary maneuver tagged
+// `magic` (§4.6), so nothing here treats one differently beyond showing the
+// tag in its tooltip.
 // ============================================================================
 
 (function () {
@@ -55,7 +52,6 @@
 
   // Resolve the current selection to a renderable "view":
   //   { id, kind, name, icon, accent, flavour, cols, entries, realTree }
-  // `entries` are the tree's talents AND its spells (§4.6).
   function buildView(state) {
     var real = available().filter(function (t) { return t.id === currentTree; })[0];
     if (!real) {
@@ -157,8 +153,6 @@
 
     var entries = view.entries;
     if (!entries.length) {
-      // "No talents" would be half the story on a magical domain, whose grid
-      // holds spells too.
       host.appendChild(el("div", "empty", "Nothing in this tree yet."));
       return;
     }
@@ -185,7 +179,7 @@
       if (!rowEntries.length) continue;
       var rowTier = rowEntries[0].tier;
 
-      if (prevTier !== null && rowTier !== prevTier) grid.appendChild(tierDivider(prevTier, view));
+      if (prevTier !== null && rowTier !== prevTier) grid.appendChild(tierDivider(prevTier));
       prevTier = rowTier;
 
       var rowEl = el("div", "tree-row");
@@ -226,13 +220,12 @@
     // Talent tiers are gated on exp spent inside this tree, so surface it.
     tags.appendChild(el("span", "tree-tag", Engine.treeSpent(state, tree.id) + " exp spent in this tree"));
 
-    // Magical domains: the effective spell test pool (source characteristic +
-    // Spellcasting proficiency tier), which is also the gate on every spell
-    // node in this grid.
+    // Magical domains: the spellcasting roll this domain's magic uses (source
+    // characteristic + Spellcasting proficiency tier).
     if (Engine.isMagicalDomain(tree.id)) {
-      var pool = Engine.spellPool(state, tree.id);
+      var pool = Engine.spellcastingPool(state, tree.id);
       tags.appendChild(el("span", "tree-tag caster-tag", pool.charKey
-        ? "Spell test: " + Engine.charLabel(pool.charKey) + " (" + pool.charVal + ") + Spellcasting (" + pool.ladder + ") = " + pool.total + " dice"
+        ? "Spellcasting roll: " + Engine.charLabel(pool.charKey) + " (" + pool.charVal + ") + Spellcasting (" + pool.ladder + ") = " + pool.total + " dice"
         : "Spellcasting +" + pool.ladder + " · set a source characteristic in the editor"));
     }
 
@@ -242,7 +235,7 @@
       });
       var unlocked = Engine.combinationUnlocked(tree, state);
       tags.appendChild(el("span", "tree-tag " + (unlocked ? "ok" : "locked"),
-        (unlocked ? "✓ " : "🔒 ") + "Needs talents or spells in " + parents.join(" + ")));
+        (unlocked ? "✓ " : "🔒 ") + "Needs talents in " + parents.join(" + ")));
       tags.appendChild(el("span", "tree-tag ok", "Combination (free)"));
     }
 
@@ -269,19 +262,14 @@
   function nodeOwned(t, state) { return Engine.entryOwned(state, t); }
   function idOwned(id, state) { return Engine.entryOwned(state, Engine.entryById(id)); }
 
-  // Small badges shared by a spell's and a maneuver talent's tooltip
-  // (§ showTooltip). Only a spell gets the mana badge — maneuvers cost none.
-  function spellManaTag(sp) {
-    var m = Engine.spellManaCost(sp);
-    return el("span", "spell-mana-tag" + (m ? "" : " cantrip"), m ? (m + " mana") : "cantrip");
+  // Small badges for a maneuver's tooltip (§ showTooltip): casting time, then
+  // range/target/duration/area, each omitted when the maneuver has none.
+  function castingTimeTag(t) {
+    return el("span", "cast-time-tag", Engine.castingTimeLabel(t));
   }
-  function spellCastingTimeTag(sp) {
-    return el("span", "spell-casting-time-tag", Engine.castingTimeLabel(sp));
-  }
-  // Range/target/duration are always present; AOE tag is omitted for "none".
-  function spellMetaTag(cls, label) { return label ? el("span", cls, label) : null; }
+  function castMetaTag(cls, label) { return label ? el("span", cls, label) : null; }
 
-  // One requirement line, shared by talent and (via spells.js) spell tooltips.
+  // One requirement line in a tooltip.
   function reqLine(r) {
     var ok = Engine.reasonMet(r);
     var line = el("div", "tt-req " + (ok ? "met" : "unmet"));
@@ -293,43 +281,26 @@
     return line;
   }
 
-  // The band above the line. A tier number means two different things
-  // depending on what sits in the band: a talent needs that tier of play, a
-  // spell needs that Spellcasting proficiency tier. So the sub-label names
-  // whichever gates actually apply here rather than always claiming exp.
-  function tierDivider(tierNumber, view) {
+  // The band above the line: the tier of play it needs, and the exp spent
+  // that tier of play takes.
+  function tierDivider(tierNumber) {
     var conf = CONFIG.TIERS[tierNumber - 1];
     var reached = (Engine.currentTierIndex(State.get()) + 1) >= tierNumber;
-    var kinds = tierKinds(view, tierNumber);
-    var parts = [];
-    if (kinds.talents && conf) parts.push(conf.minSpent + " exp spent");
-    if (kinds.spells) parts.push("Spellcasting " + tierNumber);
-    if (!parts.length) parts.push((conf ? conf.minSpent : 0) + " exp spent");
 
     var d = el("div", "tier-divider" + (reached ? " reached" : " locked"));
     d.appendChild(el("span", "tier-divider-line"));
     var lab = el("span", "tier-divider-label");
     lab.appendChild(el("span", "tdl-name", (conf && conf.name) || ("Tier " + tierNumber)));
-    lab.appendChild(el("span", "tdl-sub", parts.join(" · ")));
+    lab.appendChild(el("span", "tdl-sub", (conf ? conf.minSpent : 0) + " exp spent"));
     d.appendChild(lab);
     d.appendChild(el("span", "tier-divider-line"));
     return d;
   }
 
-  // Which kinds of node occupy a given tier band in this view.
-  function tierKinds(view, tierNumber) {
-    var out = { talents: false, spells: false };
-    ((view && view.entries) || []).forEach(function (e) {
-      if ((e.tier || 1) !== tierNumber) return;
-      if (Engine.isSpellEntry(e)) out.spells = true; else out.talents = true;
-    });
-    return out;
-  }
-
-  // The kind marker in the box's top-left corner: P / M / S / mod. It answers
+  // The kind marker in the box's top-left corner: P / M / mod / C…. It answers
   // "what does this node give me" before the tooltip is open, which is the
-  // question a mixed grid of passives, maneuvers, spells and modifiers raises
-  // on every single node. The owned ✓/★ badge keeps the top-right corner.
+  // question a mixed grid of passives, maneuvers and modifiers raises on every
+  // single node. The owned ✓/★ badge keeps the top-right corner.
   function kindMark(entry) {
     var kind = Engine.entryKind(entry);
     var m = el("span", "node-kind kind-" + kind, Engine.entryKindMark(entry));
@@ -377,39 +348,7 @@
     return node;
   }
 
-  function onNodeClick(entry) {
-    if (Engine.isSpellEntry(entry)) return onSpellClick(entry);
-    return onTalentClick(entry);
-  }
-
-  // Unlearning a spell is never blocked (§5): nothing runs a dependency
-  // simulation for it, whatever else names it as a prerequisite just flags red.
-  function onSpellClick(sp) {
-    hideTooltip();
-    var state = State.get();
-    var status = Engine.spellRequirementStatus(sp, state);
-    if (status.owned) {
-      State.update(function (s) {
-        Engine.revokeGrants(s, sp.id);           // takes back what it handed out
-        s.spells = (s.spells || []).filter(function (id) { return id !== sp.id; });
-      });
-      UI.toast("Unlearned " + sp.name);
-      return;
-    }
-    if (!status.met) { UI.toast("Requirements not met for " + sp.name, "error"); return; }
-    var learned = function (keys) {
-      State.update(function (s) {
-        s.spells = s.spells || [];
-        s.spells.push(sp.id);
-        if (Engine.grantsOf(sp)) Engine.applyGrants(s, sp.id, keys || []);
-      });
-      UI.toast("Learned " + sp.name + " (" + (sp.cost || 0) + " " + Engine.poolLabel(sp.pool) + " exp)", "success");
-    };
-    if (Engine.grantNeedsChoice(sp)) UI.grantPicker(sp, state, learned);
-    else learned([]);
-  }
-
-  function onTalentClick(t) {
+  function onNodeClick(t) {
     hideTooltip();
     var state = State.get();
     var status = Engine.requirementStatus(t, state);
@@ -641,7 +580,7 @@
     var baseRect = _grid.getBoundingClientRect();
 
     // A prerequisite may point at something not rendered in THIS view (a
-    // cross-tree talent or spell) — resolve within the current view first,
+    // cross-tree talent) — resolve within the current view first,
     // then fall back to the engine's index; if neither has a DOM node for it,
     // the requirement renders as text instead.
     var viewById = {};
@@ -674,9 +613,7 @@
       if (a.from && a.to && (a.via || []).length) viaFor[a.from + "→" + a.to] = a.via;
     });
 
-    // Talents and spells link to each other freely inside one tree: a spell
-    // chaining off a spell, a talent gated on a spell, a spell gated on a
-    // talent. Only the tree boundary still decides line vs. text.
+    // Only the tree boundary decides line vs. text.
     var links = [];
     view.entries.forEach(function (t) {
       if (!_nodeEls[t.id]) return;
@@ -769,18 +706,13 @@
     // changes already folded in (§4.8). Cost/pool/tier aren't modifiable, so
     // the price and gates below still read the authored values.
     var t = Engine.effective(raw, state);
-    var isSpell = Engine.isSpellEntry(t);
     var tip = tooltipEl();
     tip.innerHTML = "";
     tip.appendChild(el("div", "tt-name", t.name));
 
     var meta = el("div", "tt-meta");
-    // A spell never opens a tree and never carries a surcharge, so its price is
-    // simply its cost (§4.6).
-    var lc = isSpell
-      ? { total: t.cost || 0, surcharge: 0, opensTree: false, pool: t.pool === "combat" ? "combat" : "noncombat" }
-      : Engine.learnCost(t, state);
-    var grantedBy = status.granted ? Engine.grantSource(state, isSpell ? "spell" : "talent", t.id) : null;
+    var lc = Engine.learnCost(t, state);
+    var grantedBy = status.granted ? Engine.grantSource(state, "talent", t.id) : null;
     if (status.granted) {
       meta.appendChild(el("span", "tt-cost granted", grantedBy ? "granted by " + grantedBy.name : "granted at creation"));
     } else {
@@ -789,25 +721,21 @@
       if (!status.owned && lc.opensTree && lc.surcharge)
         meta.appendChild(el("span", "tt-cost surcharge", "+" + lc.surcharge + " tree access"));
     }
-    // A spell's tier is a Spellcasting-proficiency gate, not a tier of play, so
-    // it must not borrow the tier-of-play name.
-    meta.appendChild(el("span", "tt-tier", isSpell
-      ? "Tier " + (t.tier || 1)
-      : ((CONFIG.TIERS[t.tier - 1] || {}).name || ("Tier " + t.tier))));
-    if (isSpell) meta.appendChild(el("span", "tt-ability spell", "Spell"));
-    else if (t.ability === "maneuver")
-      meta.appendChild(el("span", "tt-ability maneuver", "Maneuver" + (t.uses ? " · " + t.uses + "/" + (t.usesPer || "session") : "")));
+    meta.appendChild(el("span", "tt-tier", (CONFIG.TIERS[t.tier - 1] || {}).name || ("Tier " + t.tier)));
+    var uses = Engine.usesLabel(t, "/");
+    if (t.ability === "maneuver")
+      meta.appendChild(el("span", "tt-ability maneuver", "Maneuver" + (uses ? " · " + uses : "")));
     else if (Engine.isModifier(t))
       meta.appendChild(el("span", "tt-ability modifier", "Modifier"));
     else
       meta.appendChild(el("span", "tt-ability passive", "Passive"));
-    if (isSpell) meta.appendChild(spellManaTag(t));
-    if ((isSpell || t.ability === "maneuver") && t.castingTime != null) {
-      meta.appendChild(spellCastingTimeTag(t));
-      [spellMetaTag("spell-range-tag", Engine.rangeLabel(t)),
-       spellMetaTag("spell-target-tag", Engine.targetLabel(t)),
-       spellMetaTag("spell-duration-tag", Engine.durationLabel(t)),
-       spellMetaTag("spell-aoe-tag", Engine.aoeLabel(t))]
+    UI.tagChips(t).forEach(function (chip) { meta.appendChild(chip); });
+    if (t.ability === "maneuver" && t.castingTime != null) {
+      meta.appendChild(castingTimeTag(t));
+      [castMetaTag("cast-range-tag", Engine.rangeLabel(t)),
+       castMetaTag("cast-target-tag", Engine.targetLabel(t)),
+       castMetaTag("cast-duration-tag", Engine.durationLabel(t)),
+       castMetaTag("cast-aoe-tag", Engine.aoeLabel(t))]
         .forEach(function (tag) { if (tag) meta.appendChild(tag); });
     }
     tip.appendChild(meta);
@@ -844,10 +772,6 @@
     if (status.granted) {
       hint.textContent = (grantedBy ? "Granted by " + grantedBy.name : "Granted at creation") +
         ", free, can't be refunded";
-      hint.classList.add("ok");
-    } else if (status.owned && isSpell) {
-      // Never blocked: nothing simulates dependencies on a spell (§5).
-      hint.textContent = "Click to unlearn";
       hint.classList.add("ok");
     } else if (status.owned) {
       var chk = Engine.canRefund(t.id, state);

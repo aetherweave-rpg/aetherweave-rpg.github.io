@@ -19,7 +19,31 @@ window.DOMAINS = [
     accent: "#2f8f5b",
     cols: 5,
     kind: "core",
-    talents: [],
+    talents: [
+      {
+        id: "life_spell_life_link",
+        name: "Life Link",
+        description: "When you or a willing ally takes damage, distribute the damage as you wish.",
+        pool: "combat",
+        cost: 1,
+        tier: 2,
+        row: 2,
+        col: 0,
+        tags: [
+          "magic"
+        ],
+        ability: "maneuver",
+        castingTime: "minor_action",
+        range: 10,
+        target: [
+          "ally"
+        ],
+        duration: {
+          value: 6,
+          unit: "rounds"
+        }
+      }
+    ],
     magical: true
   },
   {
@@ -1883,7 +1907,237 @@ window.DOMAINS = [
     accent: "#8a6d3b",
     cols: 5,
     kind: "core",
-    talents: [],
+    talents: [
+      {
+        id: "aeth_spell_force_blast",
+        name: "Force blast",
+        test: {
+          characteristic: "spellcasting",
+          kind: "spellcasting",
+          skills: [
+            "Aether"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal 1 Bludgeoning damage, and push the target 2y for every success."
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 2,
+        tags: [
+          "magic"
+        ],
+        ability: "maneuver",
+        usesPer: "unlimited",
+        castingTime: "action",
+        range: 10,
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "aeth_spell_speed",
+        name: "Speed",
+        description: "An ally of your choice or self gains an additional 2 actions on their next turn.\nRisk 1: on 1+ Risk You lose one action this turn if available, otherwise lose one action next turn.",
+        pool: "combat",
+        cost: 1,
+        tier: 2,
+        row: 2,
+        col: 3,
+        tags: [
+          "magic"
+        ],
+        ability: "maneuver",
+        castingTime: "action",
+        range: 10,
+        target: [
+          "self",
+          "ally"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "aeth_spell_shockwave",
+        name: "Shockwave",
+        description: "Risk: For every rolled Risk, this spell also targets a random ally within range.",
+        test: {
+          characteristic: "spellcasting",
+          kind: "spellcasting",
+          skills: [
+            "Aether"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Deal 1 damage to all enemies in range. For every two successes, push them 2y."
+            }
+          ]
+        },
+        pool: "combat",
+        cost: 1,
+        tier: 2,
+        row: 2,
+        col: 2,
+        tags: [
+          "magic"
+        ],
+        ability: "maneuver",
+        castingTime: "action",
+        range: "self",
+        target: [
+          "ally",
+          "enemy"
+        ],
+        duration: "instantaneous",
+        aoe: {
+          shape: "circle",
+          origin: "self",
+          size: 6
+        },
+        requires: {
+          talents: [
+            "aeth_spell_force_blast"
+          ]
+        }
+      },
+      {
+        id: "aeth_spell_accelerate",
+        name: "Accelerate",
+        description: "Target ally within 10m or self can move up to 10 meters more on their next move.",
+        pool: "combat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 1,
+        tags: [
+          "magic"
+        ],
+        ability: "maneuver",
+        usesPer: "unlimited",
+        castingTime: "minor_action",
+        range: 10,
+        target: [
+          "self",
+          "ally"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "aeth_spell_burst",
+        name: "Burst",
+        description: "Target ally within 10m or self can move up to 3 times their normal speed on their next move action.",
+        pool: "combat",
+        cost: 1,
+        tier: 2,
+        row: 2,
+        col: 1,
+        tags: [
+          "magic"
+        ],
+        ability: "maneuver",
+        castingTime: "minor_action",
+        range: 10,
+        target: [
+          "self",
+          "ally"
+        ],
+        duration: "instantaneous",
+        requires: {
+          talents: [
+            "aeth_spell_accelerate"
+          ]
+        }
+      },
+      {
+        id: "aeth_spell_hover",
+        name: "Hover",
+        description: "Target object you can touch will hover at the height it had during the casting of the spell. It can be moved laterally, but excessive upward or downward force breaks the spell. Can be cast on objects up to 10kg and last up to 10 minutes.",
+        pool: "noncombat",
+        cost: 1,
+        tier: 1,
+        row: 0,
+        col: 4,
+        tags: [
+          "magic"
+        ],
+        ability: "maneuver",
+        usesPer: "unlimited",
+        castingTime: 1,
+        range: "touch",
+        target: [
+          "object"
+        ],
+        duration: {
+          value: 10,
+          unit: "minutes"
+        }
+      },
+      {
+        id: "aeth_spell_levitate",
+        name: "Levitate",
+        description: "Target ally or self can levitate 20 centimeters above ground. When they do so, they move at half speed.",
+        pool: "noncombat",
+        cost: 1,
+        tier: 2,
+        row: 2,
+        col: 4,
+        tags: [
+          "magic"
+        ],
+        ability: "maneuver",
+        castingTime: 1,
+        range: "touch",
+        target: [
+          "self",
+          "ally"
+        ],
+        duration: {
+          value: 1,
+          unit: "minutes"
+        },
+        requires: {
+          talents: [
+            "aeth_spell_hover"
+          ]
+        }
+      },
+      {
+        id: "aeth_spell_ethereal_ward",
+        name: "Ethereal Ward",
+        description: "An ethereal shield hovers around you, aiding in your defense.\n\nReduce the number of rolled Risk dice rolled due to melee opponents by 3. (to a minimum of 0)\nYou roll 2 additional dice on Deflect rolls.",
+        pool: "combat",
+        cost: 1,
+        tier: 2,
+        row: 2,
+        col: 0,
+        tags: [
+          "magic"
+        ],
+        ability: "maneuver",
+        castingTime: "minor_action",
+        range: "self",
+        target: [
+          "self"
+        ],
+        duration: {
+          value: 1,
+          unit: "minutes"
+        },
+        requires: {
+          skills: {
+            Deflect: 1
+          }
+        }
+      }
+    ],
     magical: true
   },
   {

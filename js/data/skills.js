@@ -77,11 +77,11 @@ window.PROFICIENCY_KINDS = [
       "Heavy Throwing Weapons", "Unarmed"],
   },
   {
-    // Named after a magical domain (e.g. "Elemental"); its tier drives that
-    // domain's spell-test pool and which spell tiers are castable — see
-    // Engine.spellcastingLevel / spellRequirementStatus. Suggestions are
-    // filled in at render time from the magical domains that exist, not
-    // hardcoded here (unlike the other kinds' static lists).
+    // Named after a magical domain (e.g. "Elemental"); its tier is the skill
+    // half of that domain's spellcasting roll, and it gates nothing — see
+    // Engine.spellcastingPool. Suggestions are filled in at render time from
+    // the magical domains that exist, not hardcoded here (unlike the other
+    // kinds' static lists).
     id: "spellcasting", label: "Spellcasting", costKey: "weapon", pool: "combat",
     suggestions: [],
   },

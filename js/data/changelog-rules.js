@@ -9,6 +9,22 @@
 
 window.CHANGELOG_RULES = [
   {
+    date: "2026-09-17",
+    entries: [
+      "Changed: In combat",
+      "Changed: Risk and Reward Rolls",
+      "Changed: Tiers of Play",
+      "Added section: Hit Points",
+      "Changed: Mana",
+      "Changed: Skills",
+      "Changed: Talents",
+      "Changed: Combat",
+      "Changed: Attacking",
+      "Changed: Conditions",
+      "Changed: document preamble / front matter",
+    ],
+  },
+  {
     date: "2026-09-16",
     entries: [
       "Changed: Skills",

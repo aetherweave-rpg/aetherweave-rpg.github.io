@@ -42,7 +42,7 @@
     root.appendChild(skillsSection(state));
     root.appendChild(profSection(state));
     root.appendChild(inventorySection(state));
-    [abilitiesSection, maneuversSection, spellsSection, companionsSection].forEach(function (fn) {
+    [abilitiesSection, maneuversSection, companionsSection].forEach(function (fn) {
       var s = fn(state);
       if (s) root.appendChild(s);
     });
@@ -199,7 +199,7 @@
   // ---- HP + Characteristics ----------------------------------------------
   function statsSection(state) {
     var s = section("Characteristics & HP");
-    var topRow = el("div", "hp-mana-row");
+    var topRow = el("div", "vitals-row");
 
     var hp = el("div", "hp-box");
     hp.appendChild(el("div", "stat-title", "HP"));
@@ -216,24 +216,6 @@
     hpRow.appendChild(hpCurField);
     hp.appendChild(hpRow);
     topRow.appendChild(hp);
-
-    // Mana — the resource spells (tier 2+) spend to cast. Max is computed;
-    // only Current is hand-edited, like HP.
-    var mana = el("div", "hp-box mana-box");
-    mana.appendChild(el("div", "stat-title", "Mana"));
-    var manaRow = el("div", "hp-row");
-    var manaMaxField = el("label", "hp-field");
-    manaMaxField.appendChild(el("span", "hp-label", "Max"));
-    manaMaxField.appendChild(el("span", "hp-input hp-computed", String(Engine.maxMana(state))));
-    manaRow.appendChild(manaMaxField);
-    var manaCurField = el("label", "hp-field");
-    manaCurField.appendChild(el("span", "hp-label", "Current"));
-    manaCurField.appendChild(textInput(state.mana.current, function (v) {
-      State.update(function (s2) { s2.mana.current = v; }, true);
-    }, { cls: "hp-input", type: "number" }));
-    manaRow.appendChild(manaCurField);
-    mana.appendChild(manaRow);
-    topRow.appendChild(mana);
     s.appendChild(topRow);
 
     var charRow = el("div", "char-row");
@@ -343,7 +325,7 @@
     var parts = [
       ["Skills", b.skills], ["Proficiencies", b.proficiencies],
       ["Talents", b.talents], ["Tree access", b.treeAccess],
-      ["Spellcasting", b.spellcasting], ["Spells", b.spells],
+      ["Spellcasting", b.spellcasting],
     ].filter(function (p) { return p[1] > 0; });
 
     if (parts.length) {
@@ -467,7 +449,7 @@
     return row;
   }
 
-  // "Granted by X" once X (the talent/spell whose grant handed this out) is
+  // "Granted by X" once X (the talent whose grant handed this out) is
   // known, else the plain creation-baseline phrasing. `kind`/`id` match
   // Engine.grantSource's.
   function grantedBy(state, kind, id) {
@@ -721,13 +703,13 @@
     return s;
   }
 
-  // ---- Abilities · Maneuvers · Spells --------------------------------------
-  // Three independent categories, each its own section that only appears once
-  // it has something in it. Abilities/Maneuvers merge owned tree talents with
-  // any source-of-power talents unlocked so far (Engine.ownedTalents), split
-  // by `ability`; Spells is a separate mechanic, grouped by magical domain.
+  // ---- Abilities · Maneuvers ----------------------------------------------
+  // Two independent categories, each its own section that only appears once
+  // it has something in it. Both merge owned tree talents with any
+  // source-of-power talents unlocked so far (Engine.ownedTalents), split by
+  // `ability`. A magic ability is listed like any other, with its tag.
   // Every row can be clicked to expand it and read its description.
-  var expanded = {};   // talent/spell id -> true, while its description is open
+  var expanded = {};   // talent id -> true, while its description is open
   function toggleExpand(id) { if (expanded[id]) delete expanded[id]; else expanded[id] = true; render(); }
 
   function tierName(tier) { return (CONFIG.TIERS[tier - 1] || {}).name || ("Tier " + tier); }
@@ -772,7 +754,9 @@
     if (status.granted) nameLine.appendChild(el("span", "granted-tag", "granted"));
     var domainTag = t.fromSource ? t.sourceName : ((Engine.treeById(t.domain) || {}).name || t.domain);
     nameLine.appendChild(el("span", "talent-domain-tag", domainTag));
-    if (t.ability === "maneuver" && t.uses) nameLine.appendChild(el("span", "talent-uses-tag", "⟳ " + t.uses + " / " + (t.usesPer || "session")));
+    UI.tagChips(t).forEach(function (chip) { nameLine.appendChild(chip); });
+    var uses = t.ability === "maneuver" ? Engine.usesLabel(t) : "";
+    if (uses) nameLine.appendChild(el("span", "talent-uses-tag", "⟳ " + uses));
     if (t.description || t.flavour || Engine.hasTest(t, state))
       nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
     info.appendChild(nameLine);
@@ -983,7 +967,8 @@
       var row = el("div", "talent-row expandable" + (isOpen ? " expanded" : ""));
       var info = el("div", "talent-info");
       var nameLine = el("span", "talent-name", a.name);
-      if (a.uses) nameLine.appendChild(el("span", "talent-uses-tag", "⟳ " + a.uses + " / " + (a.usesPer || "session")));
+      UI.tagChips(a).forEach(function (chip) { nameLine.appendChild(chip); });
+      if (Engine.usesLabel(a)) nameLine.appendChild(el("span", "talent-uses-tag", "⟳ " + Engine.usesLabel(a)));
       if (hasBody) nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
       info.appendChild(nameLine);
       if (a.id && a.castingTime != null) {
@@ -1007,91 +992,6 @@
       wrap.appendChild(row);
     });
     return wrap;
-  }
-
-  // Spells: their own section, one block per magical domain the character
-  // casts in or knows spells from, with its spellcasting level + effective pool.
-  function spellsSection(state) {
-    var relevant = Engine.magicalDomains().filter(function (d) {
-      return Engine.spellcastingLevel(state, d.id) > 0 ||
-        Engine.spellsForDomain(d.id).some(function (sp) { return Engine.spellOwned(state, sp.id); });
-    });
-    if (!relevant.length) return null;
-
-    var ownedByDomain = relevant.map(function (d) {
-      return Engine.spellsForDomain(d.id).filter(function (sp) { return Engine.spellOwned(state, sp.id); });
-    });
-    var total = ownedByDomain.reduce(function (n, list) { return n + list.length; }, 0);
-    var s = section("Spells", total + "");
-
-    relevant.forEach(function (d, i) {
-      var block = el("div", "spell-domain-block");
-      var pool = Engine.spellPool(state, d.id);
-      var dh = el("div", "spell-domain-head");
-      dh.appendChild(el("span", "sdh-icon", d.icon));
-      dh.appendChild(el("span", "sdh-name", d.name));
-      dh.appendChild(el("span", "sdh-pool", pool.charKey
-        ? "spellcasting +" + pool.ladder + " · pool " + Engine.charLabel(pool.charKey) +
-          " (" + pool.charVal + ") + " + pool.ladder + " = " + pool.total + " dice"
-        : "spellcasting +" + pool.ladder + " · set a source characteristic to complete the pool"));
-      block.appendChild(dh);
-
-      var owned = ownedByDomain[i].sort(function (a, b) { return (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name); });
-      if (!owned.length) {
-        block.appendChild(el("div", "sheet-hint", "Able to cast, but no spells learned yet."));
-      } else {
-        owned.forEach(function (raw) {
-          var sp = Engine.effective(raw, state);   // a modifier may reshape a spell too
-          var status = Engine.spellRequirementStatus(sp, state);
-          var isOpen = !!expanded[sp.id];
-          var row = el("div", "talent-row spell-sheet-row expandable" + (status.met ? "" : " invalid") + (isOpen ? " expanded" : ""));
-          row.appendChild(el("span", "talent-icon", sp.icon || sp.name.charAt(0)));
-          var info = el("div", "talent-info");
-          var nameLine = el("span", "talent-name", sp.name);
-          nameLine.appendChild(el("span", "spell-tier-tag", "T" + (sp.tier || 1)));
-          if (sp.description || sp.flavour || Engine.hasTest(sp, state))
-            nameLine.appendChild(el("span", "talent-expand-icon", isOpen ? "▾" : "▸"));
-          info.appendChild(nameLine);
-          var manaCost = Engine.spellManaCost(sp);
-          info.appendChild(el("span", "talent-meta", [
-            (sp.cost || 0) + (sp.pool === "combat" ? " combat" : " non-combat") + " exp",
-            manaCost ? (manaCost + " mana to cast") : "cantrip (free to cast)",
-            Engine.castingTimeLabel(sp),
-            Engine.rangeLabel(sp),
-            Engine.targetLabel(sp),
-            Engine.durationLabel(sp),
-            Engine.aoeLabel(sp),
-          ].filter(Boolean).join(" · ")));
-          if (!status.met) {
-            var why = status.reasons.filter(function (r) { return !Engine.reasonMet(r); })
-              .map(function (r) { return r.label; }).join(", ");
-            info.appendChild(el("span", "talent-invalid-note", "⚠ requirements no longer met: " + why));
-          }
-          if (isOpen && (sp.flavour || sp.description || Engine.hasTest(sp, state))) {
-            var spDescBlock = el("div", "talent-desc");
-            if (sp.flavour) spDescBlock.appendChild(el("div", "talent-flavour", sp.flavour));
-            if (sp.description) spDescBlock.appendChild(el("div", "talent-desc-text", Engine.resolveText(sp.description, state)));
-            var spTestBlock = UI.renderTest(sp, state);
-            if (spTestBlock) spDescBlock.appendChild(spTestBlock);
-            info.appendChild(spDescBlock);
-          }
-          row.appendChild(info);
-          var del = el("button", "icon-btn", "✕"); del.type = "button"; del.title = "Unlearn";
-          del.onclick = function (e) {
-            e.stopPropagation();
-            State.update(function (s2) {
-              Engine.revokeGrants(s2, sp.id);
-              s2.spells = (s2.spells || []).filter(function (id) { return id !== sp.id; });
-            });
-          };
-          row.appendChild(del);
-          row.onclick = function () { toggleExpand(sp.id); };
-          block.appendChild(row);
-        });
-      }
-      s.appendChild(block);
-    });
-    return s;
   }
 
   // ---- Save data ----------------------------------------------------------

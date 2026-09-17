@@ -94,19 +94,25 @@ window.CONFIG = {
   // open-ended proficiency, named after the domain, that costs the same as a
   // weapon proficiency and caps out via the ordinary skill/proficiency level
   // cap (tierOfPlay + LEVEL_CAPS.skillOffset), same as any other proficiency.
-  // Holding tier N of a domain's Spellcasting proficiency unlocks casting
-  // tier-N spells in that domain and adds N dice to its spell test pool.
-  // Individual spells (js/data/spells.js) carry their own exp `cost`/`pool`
-  // and a `castingTime` ("minor_action" = 1 action / "action" = 2 actions /
-  // "major_action" = 3 actions / "reaction" / "free" / minutes); mana cost is
-  // never authored — it's always tier - 1, so tier-1 spells are free cantrips.
-  MAX_SPELL_TIER: 5,
+  // It gates nothing. Its tier adds dice to a spellcasting roll: a test with
+  // `characteristic: "spellcasting"` rolls the source of power's
+  // characteristic plus the named domain's Spellcasting proficiency.
 
   // --- Maneuvers -----------------------------------------------------------
   // A maneuver talent may be used `uses` times per one of these periods
   // (talent.usesPer). The first entry is the default when none is set. "scene"
-  // refreshes far more often than "session".
-  MANEUVER_PERIODS: ["session", "scene"],
+  // refreshes far more often than "session". "unlimited" is not a period: a
+  // maneuver with it can be used without limit (a cantrip) and authors no
+  // `uses` count.
+  MANEUVER_PERIODS: ["session", "scene", "unlimited"],
+
+  // --- Ability tags --------------------------------------------------------
+  // Tags an ability may carry in `tags`, independent of what kind of ability
+  // it is. "magic" marks spells: they are maneuvers like any other, and the tag
+  // is what rules and content refer to when they mean magic.
+  ABILITY_TAGS: [
+    { id: "magic", label: "Magic" },
+  ],
 
   // --- Companions ----------------------------------------------------------
   // A companion's name and icon belong to the PLAYER, not to the talent that

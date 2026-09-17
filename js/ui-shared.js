@@ -51,7 +51,6 @@
     // never link to it — only the editor's own header links back to the site.
     var nav = el("nav", "nav");
     [{ href: "index.html", label: "Talent Trees", key: "trees" },
-     { href: "spells.html", label: "Spells", key: "spells" },
      { href: "sheet.html", label: "Character Sheet", key: "sheet" }].forEach(function (l) {
       var a = el("a", "nav-link" + (l.key === activePage ? " active" : ""), l.label);
       a.href = base + l.href;
@@ -376,11 +375,19 @@
   // dialog — they would still rather have a stale sheet than none.
   function safely(fn) { try { fn(); } catch (e) { console.warn("Aetherweave print prepare failed:", e); } }
 
+  // One chip per tag an ability carries (§4.6: "Magic"), for any surface that
+  // lists an ability's tags. The class names the tag, so a tag can be styled.
+  function tagChips(entry) {
+    return Engine.entryTags(entry).map(function (id) {
+      return el("span", "ability-tag tag-" + id, Engine.tagLabel(id));
+    });
+  }
+
   // The roll an ability is used with, and the ladder of effects read off it
-  // (§4.10). One renderer for all five screen surfaces — the tree tooltip, the
-  // sheet's expanded rows, the Spells page and the creation cards — so a tier
-  // can never read one way in the tooltip and another on the sheet. The paper
-  // sheet builds its own markup from the same Engine data.
+  // (§4.10). One renderer for all the screen surfaces — the tree tooltip, the
+  // sheet's expanded rows and the creation cards — so a tier can never read
+  // one way in the tooltip and another on the sheet. The paper sheet builds its
+  // own markup from the same Engine data.
   // Returns null when the entry has nothing to show.
   function renderTest(entry, state, opts) {
     opts = opts || {};
@@ -448,6 +455,7 @@
   window.UI = {
     el: el,
     renderTest: renderTest,
+    tagChips: tagChips,
     bindPrint: bindPrint,
     renderHeader: renderHeader,
     renderFooter: renderFooter,

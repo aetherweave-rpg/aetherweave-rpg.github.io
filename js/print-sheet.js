@@ -13,7 +13,7 @@
 // css/style.css) in two parts, which is the split that keeps the sheet usable:
 //
 //   1. the play sheet — vitals, exp, skills, proficiencies, and an *index* of
-//      abilities/maneuvers/spells by name, the things you scan mid-session;
+//      abilities/maneuvers by name, the things you scan mid-session;
 //   2. a rules appendix, starting on its own page, carrying the full text of
 //      every one of those entries, which is what you actually need to read.
 //
@@ -87,9 +87,9 @@
   // ---- vitals & characteristics --------------------------------------------
   // Two sections sharing one row, ruled apart. They belong at the same height —
   // both are the numbers you read before anything else — but not under one
-  // heading: HP and Mana move during play, characteristics are the fixed
-  // figures every dice pool is built from, and a single "Vitals" over all seven
-  // boxes said they were the same kind of thing.
+  // heading: HP moves during play, characteristics are the fixed figures every
+  // dice pool is built from, and a single "Vitals" over all six boxes said they
+  // were the same kind of thing.
 
   function vitalsRow(state) {
     var row = el("div", "ps-toprow");
@@ -102,7 +102,6 @@
     var b = block("Vitals", null, "ps-vitals-block");
     var row = el("div", "ps-vitals");
     row.appendChild(pool("HP", Engine.maxHP(state), state.hp.current));
-    row.appendChild(pool("Mana", Engine.maxMana(state), state.mana.current));
     b.appendChild(row);
     return b;
   }
@@ -160,7 +159,7 @@
     var bd = spent.breakdown;
     var parts = [
       ["Skills", bd.skills], ["Proficiencies", bd.proficiencies], ["Talents", bd.talents],
-      ["Tree access", bd.treeAccess], ["Spellcasting", bd.spellcasting], ["Spells", bd.spells],
+      ["Tree access", bd.treeAccess], ["Spellcasting", bd.spellcasting],
     ].filter(function (p) { return p[1] > 0; });
     if (parts.length) {
       b.appendChild(inlineList("Spent on", parts.map(function (p) { return p[0] + " " + p[1]; })));
@@ -272,12 +271,12 @@
   }
 
   // ---- inventory -------------------------------------------------------------
-  // Unlike Abilities/Maneuvers/Spells, this block always prints, blank
+  // Unlike Abilities/Maneuvers, this block always prints, blank
   // character or not: the app is for building a character, but once play
   // starts, loot picked up mid-session gets written straight onto the paper
   // sheet rather than round-tripped back through the app. So it always
   // carries a few ruled lines and a few blank weapon rows to write into,
-  // the same "leave it to a pencil" idea as the HP/Mana current-value boxes.
+  // the same "leave it to a pencil" idea as the HP current-value box.
   var MIN_NOTES_LINES = 5;
   var NOTES_PADDING_LINES = 2;
   var BLANK_WEAPON_ROWS = 3;
@@ -444,7 +443,7 @@
     // companion maneuver carries the identical fields, so add them here.
     if (Engine.isCompanionManeuver(a)) {
       var extra = [];
-      if (a.uses) extra.push("⟳ " + a.uses + " / " + (a.usesPer || "session"));
+      if (Engine.usesLabel(a)) extra.push("⟳ " + Engine.usesLabel(a));
       if (a.castingTime != null) {
         [Engine.castingTimeLabel(a), Engine.rangeLabel(a), Engine.targetLabel(a),
          Engine.durationLabel(a), Engine.aoeLabel(a)].forEach(function (v) { if (v) extra.push(v); });
@@ -454,7 +453,7 @@
     return e;
   }
 
-  // ---- the entries (abilities · maneuvers · spells) ------------------------
+  // ---- the entries (abilities · maneuvers · companions) ---------------------
   // Collected once and rendered twice: as a scannable index on the play sheet,
   // and in full in the appendix. One collection means the two can never
   // disagree about what the character actually has.
@@ -497,9 +496,9 @@
     var cost = t.fromSource ? "granted by " + t.sourceName
       : status.granted ? (grantSrc ? "granted by " + grantSrc.name : "free at creation")
       : t.cost + (t.pool === "combat" ? " combat" : " non-combat") + " exp";
-    var tags = [];
+    var tags = Engine.entryTags(t).map(Engine.tagLabel);
     if (t.ability === "maneuver") {
-      if (t.uses) tags.push("⟳ " + t.uses + " / " + (t.usesPer || "session"));
+      if (Engine.usesLabel(t)) tags.push("⟳ " + Engine.usesLabel(t));
       if (t.castingTime != null) {
         [Engine.castingTimeLabel(t), Engine.rangeLabel(t), Engine.targetLabel(t),
          Engine.durationLabel(t), Engine.aoeLabel(t)].forEach(function (v) { if (v) tags.push(v); });
@@ -523,27 +522,6 @@
     };
   }
 
-  function spellEntry(rawSpell, state) {
-    var sp = Engine.effective(rawSpell, state);
-    var mana = Engine.spellManaCost(sp);
-    // A spell's pool is already in its group heading, so only an overridden
-    // roll (one that isn't the domain's own) is worth repeating per spell.
-    var test = testOf(sp, state);
-    var ownRoll = test && !(Engine.testDescriptor(sp, state) || {}).implicit;
-    return {
-      id: sp.id, icon: sp.icon || sp.name.charAt(0), name: sp.name,
-      flavour: Engine.resolveText(sp.flavour || "", state),
-      description: Engine.resolveText(sp.description || "", state),
-      test: test,
-      source: "T" + (sp.tier || 1),
-      tags: [mana ? mana + " mana" : "cantrip", Engine.castingTimeLabel(sp),
-        Engine.rangeLabel(sp), Engine.targetLabel(sp), Engine.durationLabel(sp), Engine.aoeLabel(sp),
-        ownRoll && test.pool != null ? test.pool + " dice" : null].filter(Boolean),
-      meta: (sp.cost || 0) + (sp.pool === "combat" ? " combat" : " non-combat") + " exp",
-      warn: unmetNote(Engine.spellRequirementStatus(sp, state)),
-    };
-  }
-
   // Returns [{ title, note, entries }] — the groups both halves of the document
   // walk, in the order they appear.
   function entryGroups(state) {
@@ -563,25 +541,6 @@
           entries: list.map(function (t) { return talentEntry(t, state); }),
         });
       }
-    });
-
-    // One group per magical domain the character casts in, so the spell-test
-    // pool that applies to those spells sits in the heading above them.
-    Engine.magicalDomains().forEach(function (d) {
-      var spells = Engine.spellsForDomain(d.id).filter(function (sp) { return Engine.spellOwned(state, sp.id); });
-      var ladder = Engine.spellcastingLevel(state, d.id);
-      if (!ladder && !spells.length) return;
-      var p = Engine.spellPool(state, d.id);
-      groups.push({
-        title: "Spells · " + d.name,
-        note: p.charKey
-          ? "spellcasting +" + p.ladder + " · pool " + charAbbr(p.charKey) + " " + p.charVal + " + " + p.ladder + " = " + p.total + " dice"
-          : "spellcasting +" + p.ladder,
-        entries: spells
-          .sort(function (a, b) { return (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name); })
-          .map(function (sp) { return spellEntry(sp, state); }),
-        empty: "Able to cast, but no spells learned yet.",
-      });
     });
 
     // One group per companion, holding everything it can actually do. Innate
@@ -607,10 +566,9 @@
   // The play-sheet half: names and the numbers you need mid-roll, nothing else.
   function entryIndex(groups) {
     if (!groups.length) return null;
-    var b = block("Abilities, Maneuvers & Spells", "rules text in the appendix", "ps-index");
+    var b = block("Abilities & Maneuvers", "rules text in the appendix", "ps-index");
     groups.forEach(function (g) {
       b.appendChild(groupHead(g));
-      if (!g.entries.length) { b.appendChild(el("div", "ps-empty", g.empty || "—")); return; }
       var list = el("div", "ps-index-list");
       g.entries.forEach(function (e) {
         // The dotted leader exists to carry the eye across to something on the
@@ -666,11 +624,10 @@
   // The appendix: the same entries with their rules text, starting on its own
   // page. This is the half the old print output dropped entirely.
   function appendix(groups, state) {
-    var withText = groups.filter(function (g) { return g.entries.length; });
-    if (!withText.length) return null;
+    if (!groups.length) return null;
 
     var b = block("Rules Reference", state.identity.characterName || "", "ps-appendix");
-    withText.forEach(function (g) {
+    groups.forEach(function (g) {
       b.appendChild(groupHead(g));
       g.entries.forEach(function (e) {
         var card = el("article", "ps-entry");

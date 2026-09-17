@@ -323,6 +323,7 @@
       head.appendChild(el("span", "pick-name", t.name));
       if (t.ability && t.ability !== "passive")
         head.appendChild(el("span", "ancestry-tag", Engine.entryKindName(t)));
+      UI.tagChips(t).forEach(function (chip) { head.appendChild(chip); });
       card.appendChild(head);
       // Hooks resolve against the picks made so far — nothing is owned yet,
       // so a card normally reads as its un-modified base text (§4.7).
@@ -411,11 +412,10 @@
       .map(function (p) { return { name: p.name.trim(), kind: p.kind, tier: p.tier || 0 }; });
     return {
       talents: pickedTalents(),
-      spells: [],
       skills: skills,
       proficiencies: profs,
       characteristics: draft.chars || {},
-      granted: { talents: [], spells: [], skills: {}, proficiencies: {} },
+      granted: { talents: [], skills: {}, proficiencies: {} },
       creation: {
         completed: false, ancestry: draft.ancestry, source: draft.source,
         trait: draft.traits[0] || null, background: draft.backgrounds[0] || null,
@@ -465,6 +465,7 @@
           var head = el("div", "pick-head");
           head.appendChild(el("span", "pick-icon", t.icon || t.name.charAt(0)));
           head.appendChild(el("span", "pick-name", "Tier " + (t.tier || 1) + ": " + t.name));
+          UI.tagChips(t).forEach(function (chip) { head.appendChild(chip); });
           card2.appendChild(head);
           var card2State = { talents: pickedTalents() };
           card2.appendChild(el("span", "pick-desc", Engine.resolveText(t.description, card2State)));
@@ -987,11 +988,10 @@
 
       s.proficiencies = profList.map(function (p) { return { name: p.name, kind: p.kind, tier: p.tier }; });
       s.talents = gTalents.slice();
-      s.spells = [];
       s.charAdvances = {};
       s.grantChoices = {};
       s.granted = {
-        talents: gTalents.slice(), spells: [], skills: gSkills, proficiencies: gProfs,
+        talents: gTalents.slice(), skills: gSkills, proficiencies: gProfs,
         characteristics: baseChars,
       };
 

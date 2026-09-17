@@ -82,10 +82,9 @@
     });
 
     return {
-      version: 10,
+      version: 11,
       identity: { characterName: "", playerName: "", ancestry: "", sourceOfPower: "", concept: "", notes: "" },
       hp: { max: "", current: "" },
-      mana: { max: "", current: "" },
       characteristics: chars,
       expEarned: {
         combat: window.CONFIG.STARTING_EXP.combat,
@@ -103,15 +102,13 @@
         weapons: [],          // [{ category, wielding, name }] — wielding: "1h" | "2h" | "dual"
       },
 
-      spells: [],              // learned spell ids (magical domains; bought, or handed out by a grant)
-
       // What the PLAYER named each companion, keyed by the id of the talent
       // that granted it (DESIGN.md §4.11). The statblock authors neither name
       // nor icon: two characters with the same talent have different animals.
       //   { "bst_wolf": { name: "Ash", icon: "🐺" } }
       companions: {},
 
-      // What each granting talent/spell handed out, so refunding it can undo
+      // What each granting talent handed out, so refunding it can undo
       // exactly that and nothing else (see DESIGN.md §4.9).
       //   { "cmb_elemental_shot": [ { key, kind, ... } ] }
       grantChoices: {},
@@ -131,7 +128,6 @@
       // granted talents are excluded from cost and from the tree surcharge.
       granted: {
         talents: [],           // free talent ids
-        spells: [],            // free spell ids (only ever from a grant)
         skills: {},            // skill name  -> free tier
         proficiencies: {},     // prof name   -> free tier
         characteristics: null, // set at creation; the fixed starting array
@@ -174,13 +170,13 @@
     merged.version = def.version;
     merged.identity        = Object.assign({}, def.identity, s.identity);
     merged.hp              = Object.assign({}, def.hp, s.hp);
-    merged.mana            = Object.assign({}, def.mana, s.mana);
     merged.characteristics = Object.assign({}, def.characteristics, s.characteristics);
     merged.expEarned       = Object.assign({}, def.expEarned, s.expEarned);
     merged.skills          = Object.assign({}, def.skills, s.skills);
     merged.proficiencies   = Array.isArray(s.proficiencies) ? s.proficiencies : [];
     merged.talents         = Array.isArray(s.talents) ? s.talents : [];
-    merged.spells          = Array.isArray(s.spells) ? s.spells : [];
+    // v10 → v11: mana is gone, and so is its computed/current pair.
+    delete merged.mana;
 
     // v3 → v4: inventory (general notes + carried weapons) is new; backfill
     // for any older save that predates it.
@@ -226,15 +222,42 @@
     delete merged.trauma;
     merged.granted         = Object.assign({}, def.granted, s.granted);
     merged.granted.talents       = Array.isArray(merged.granted.talents) ? merged.granted.talents : [];
-    merged.granted.spells        = Array.isArray(merged.granted.spells) ? merged.granted.spells : [];
     merged.granted.skills        = merged.granted.skills || {};
     merged.granted.proficiencies = merged.granted.proficiencies || {};
     merged.grantChoices          = (s.grantChoices && typeof s.grantChoices === "object") ? s.grantChoices : {};
     merged.charAdvances          = s.charAdvances || {};
+    foldSpellsIntoTalents(merged, s);
     renameExperiencesToTraits(merged, s);
     renameFormerSkills(merged);
     syncCharacteristics(merged);
     return merged;
+  }
+
+  // v10 → v11: spells stopped being a kind of their own. Every spell became a
+  // maneuver talent tagged magic, keeping its id, so a learned spell is simply
+  // an owned talent now: its id moves into `talents`, a free one into
+  // `granted.talents`, and a grant record that handed one out becomes the
+  // talent record it would be written as today.
+  function foldSpellsIntoTalents(merged, saved) {
+    function fold(into, from) {
+      var out = into.slice();
+      (Array.isArray(from) ? from : []).forEach(function (id) { if (out.indexOf(id) < 0) out.push(id); });
+      return out;
+    }
+    merged.talents = fold(merged.talents, saved.spells);
+    merged.granted.talents = fold(merged.granted.talents, saved.granted && saved.granted.spells);
+    delete merged.spells;
+    delete merged.granted.spells;
+
+    var choices = {};
+    Object.keys(merged.grantChoices).forEach(function (id) {
+      var recs = merged.grantChoices[id];
+      choices[id] = !Array.isArray(recs) ? recs : recs.map(function (rec) {
+        if (!rec || rec.kind !== "spell") return rec;
+        return Object.assign({}, rec, { kind: "talent", key: "talent:" + rec.id });
+      });
+    });
+    merged.grantChoices = choices;
   }
 
   // v9 → v10: skills were renamed (Athletics became Strength) and merged

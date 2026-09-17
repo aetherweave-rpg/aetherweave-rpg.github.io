@@ -13,6 +13,21 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-09-17",
+    entries: [
+      "Added talent \"Shockwave\" (tier 2) to the Aether domain.",
+      "Added talent \"Accelerate\" (tier 1) to the Aether domain.",
+      "Added talent \"Ethereal Ward\" (tier 2) to the Aether domain.",
+      "Added talent \"Speed\" (tier 2) to the Aether domain.",
+      "Added talent \"Levitate\" (tier 2) to the Aether domain.",
+      "Added talent \"Burst\" (tier 2) to the Aether domain.",
+      "Added talent \"Force blast\" (tier 1) to the Aether domain.",
+      "Added talent \"Hover\" (tier 1) to the Aether domain.",
+      "Added talent \"Life Link\" (tier 2) to the Life domain.",
+      "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / creation points).",
+    ],
+  },
+  {
     date: "2026-09-16",
     entries: [
       "Changed talent \"Mental Ward\" (tier 1) in the Discipline domain: description: \"When rolling to Resist, add 2 additional dice.\" -> \"When rolling Presence + Resist, add 2 additional dice.\".",

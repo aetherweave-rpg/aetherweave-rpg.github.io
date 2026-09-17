@@ -1,9 +1,9 @@
 // ============================================================================
 // LinkRouter — orthogonal routing for prerequisite links.
 // ----------------------------------------------------------------------------
-// The trees page, the Spells page and the editor all draw the same thing: an
-// arrow from a prerequisite up to whatever it unlocks, over the same row/col
-// grid. This is the one implementation the three of them share.
+// The trees page and the editor both draw the same thing: an arrow from a
+// prerequisite up to whatever it unlocks, over the same row/col grid. This is
+// the one implementation the two of them share.
 //
 // The whole router rests on one rule: FREE SPACE IS MEASURED, NEVER INFERRED.
 // The previous design derived a column pitch from the laid-out nodes and then
