@@ -15,8 +15,7 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-09-17",
     entries: [
-      "Changed site/public/js/config.js -- describe the effect on players (costs / caps / thresholds / starting exp).",
-      "Changed site/public/js/data/creation.js -- describe the effect on players (costs / caps / thresholds / starting exp).",
+      "Changed character creation, starting exp, and exp pool division system",
     ],
   },
   {
