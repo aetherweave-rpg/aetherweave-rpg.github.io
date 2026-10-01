@@ -15,6 +15,13 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-10-01",
     entries: [
+      "Changed talent \"Ethereal Ward\" (tier 1) in the Aether domain: cost: 1 -> 2.",
+      "Changed talent \"Burst\" (tier 1) in the Aether domain: cost: 1 -> 2.",
+    ],
+  },
+  {
+    date: "2026-10-01",
+    entries: [
       "Changed talent \"Ethereal Ward\" (tier 1) in the Aether domain: tier: 2 -> 1; uses: (none) -> 2.",
       "Changed talent \"Speed\" (tier 1) in the Aether domain: cost: 1 -> 2; tier: 2 -> 1; uses: (none) -> 1; usesPer: (none) -> \"scene\".",
       "Changed talent \"Burst\" (tier 1) in the Aether domain: tier: 2 -> 1; uses: (none) -> 2.",
