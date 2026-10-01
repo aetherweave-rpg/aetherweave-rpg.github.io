@@ -13,6 +13,21 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-10-01",
+    entries: [
+      "Added talent \"Great Beast: Cleave\" (tier 1) to the Nature domain.",
+      "Added talent \"Great Beast: Sweep the Leg\" (tier 2) to the Nature domain.",
+      "Added talent \"Wide Sweep\" (tier 3) to the Brawling domain.",
+      "Added talent \"Great Beast: Greater Cleave\" (tier 2) to the Nature domain.",
+      "Added talent \"Great Beast: Flanking\" (tier 1) to the Nature domain.",
+      "Added talent \"Sweep the Leg\" (tier 2) to the Brawling domain.",
+      "Added talent \"Great Beast: Dominant Apex\" (tier 2) to the Nature domain.",
+      "Added talent \"Great Beast: Assert Dominance\" (tier 1) to the Nature domain.",
+      "Changed talent \"Challenge\" (tier 1) in the Leadership domain: cost: 1 -> 2.",
+      "Added talent \"Great Beast: Knock Back\" (tier 1) to the Nature domain.",
+    ],
+  },
+  {
     date: "2026-09-17",
     entries: [
       "Changed character creation, starting exp, and exp pool division system",

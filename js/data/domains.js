@@ -194,6 +194,241 @@ window.DOMAINS = [
             "natu_animal_companion"
           ]
         }
+      },
+      {
+        id: "natu_great_beast_cleave",
+        name: "Great Beast: Cleave",
+        flavour: "Your companion can hit multiple enemies with its sweeping attacks.",
+        description: "Make a regular attack with your companion against {up to {natu_great_beast_greater_cleave:\"3\">natu_great_beast_cleave:\"2\"} enemies within an arc.",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "slashing"
+        },
+        cost: 2,
+        tier: 1,
+        row: 2,
+        col: 1,
+        ability: "companion_maneuver",
+        uses: 2,
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        numTargets: 2,
+        duration: "instantaneous",
+        aoe: {
+          shape: "arc",
+          origin: "self",
+          size: 2
+        },
+        companionOf: [
+          "natu_animal_companion_great"
+        ],
+        requires: {
+          talents: [
+            "natu_animal_companion_great"
+          ]
+        }
+      },
+      {
+        id: "natu_great_beast_greater_cleave",
+        name: "Great Beast: Greater Cleave",
+        flavour: "Your companion's sweeping cleave can hit an additional enemy.",
+        description: "Great Beast: Cleave can hit an additional enemy in range.",
+        cost: 1,
+        tier: 2,
+        row: 4,
+        col: 1,
+        ability: "modifier",
+        modifies: {
+          natu_great_beast_cleave: {
+            numTargets: {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "natu_great_beast_cleave"
+          ]
+        }
+      },
+      {
+        id: "natu_great_beast_knock_back",
+        name: "Great Beast: Knock Back",
+        flavour: "Your companion uses its sheer bulk to knock back an enemy.",
+        description: "Make a regular attack with your companion. In addition to the attack's normal effects it gains the following:",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 1,
+              effect: "Push the target 2y"
+            },
+            {
+              successes: 3,
+              effect: "Push the target up to 4y"
+            }
+          ]
+        },
+        cost: 2,
+        tier: 1,
+        row: 3,
+        col: 3,
+        ability: "companion_maneuver",
+        uses: 1,
+        usesPer: "scene",
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        companionOf: [
+          "natu_animal_companion_great"
+        ],
+        requires: {
+          talents: [
+            "natu_animal_companion_great"
+          ]
+        }
+      },
+      {
+        id: "natu_great_beast_flanking",
+        name: "Great Beast: Flanking",
+        description: "Your companion has learned to coordinate its attacks with you and your allies. It can now benefit from flanking allies as well as grant a flanking bonus to allies.",
+        cost: 2,
+        tier: 1,
+        row: 2,
+        col: 3,
+        ability: "companion_passive",
+        companionOf: [
+          "natu_animal_companion_great"
+        ],
+        requires: {
+          talents: [
+            "natu_animal_companion_great"
+          ]
+        }
+      },
+      {
+        id: "natu_great_beast_assert_dominance",
+        name: "Great Beast: Assert Dominance",
+        flavour: "Your companion asserts its dominance over any sapient foe, attracting their attention.",
+        description: "Against {natu_great_beast_dominant_apex:\"each\">natu_great_beast_assert_dominance:\"the\"} enemy's Mental stat.",
+        test: {
+          characteristic: "presence",
+          kind: "noncombat",
+          skills: [
+            "Intimidation"
+          ],
+          vs: "mental",
+          tiers: [
+            {
+              successes: 2,
+              effect: "For every two successes, damage dealt by the target against any target other than your companion is reduced by 1. This effect lasts until the end of the target's turn."
+            },
+            {
+              successes: 4,
+              effect: "Instead: this effect lasts until the end of the target's second turn."
+            }
+          ]
+        },
+        cost: 2,
+        tier: 1,
+        row: 2,
+        col: 2,
+        ability: "companion_maneuver",
+        uses: 3,
+        castingTime: "minor_action",
+        range: 10,
+        target: [
+          "enemy"
+        ],
+        numTargets: 1,
+        duration: "instantaneous",
+        companionOf: [
+          "natu_animal_companion_great"
+        ],
+        requires: {
+          talents: [
+            "natu_animal_companion_great"
+          ]
+        }
+      },
+      {
+        id: "natu_great_beast_dominant_apex",
+        name: "Great Beast: Dominant Apex",
+        flavour: "Your companion can dominate multiple enemies at the same time.",
+        description: "Great Beast: Assert Dominance can target one additional enemy.",
+        cost: 1,
+        tier: 2,
+        row: 4,
+        col: 2,
+        ability: "modifier",
+        modifies: {
+          natu_great_beast_assert_dominance: {
+            numTargets: {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "natu_great_beast_assert_dominance"
+          ]
+        }
+      },
+      {
+        id: "natu_great_beast_sweep_the_leg",
+        name: "Great Beast: Sweep the Leg",
+        flavour: "Your companion barrels into an opponent's legs, knocking them off their feet.",
+        description: "Make a regular attack with your companion. In addition to the attack's normal effects it gains the following:",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 3,
+              effect: "Inflict Prone"
+            }
+          ]
+        },
+        cost: 2,
+        tier: 2,
+        row: 4,
+        col: 3,
+        ability: "companion_maneuver",
+        uses: 1,
+        usesPer: "scene",
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous",
+        companionOf: [
+          "natu_animal_companion_great"
+        ],
+        requires: {
+          talents: [
+            "natu_great_beast_knock_back"
+          ]
+        }
       }
     ],
     magical: true,
@@ -1197,6 +1432,67 @@ window.DOMAINS = [
           "enemy"
         ],
         duration: "instantaneous"
+      },
+      {
+        id: "braw_sweep_the_leg",
+        name: "Sweep the Leg",
+        flavour: "You sweep your opponent's legs out from under them.",
+        description: "Make a regular attack against {braw_wide_sweep:\"each enemy within an arc\">braw_sweep_the_leg:\"the target\"}. In addition to the attack's normal effects it gains the following:",
+        test: {
+          characteristic: "weapon",
+          kind: "weapon",
+          skills: [
+            "Unarmed",
+            "Staves"
+          ],
+          vs: "bludgeoning",
+          tiers: [
+            {
+              successes: 3,
+              effect: "Inflict Prone"
+            }
+          ]
+        },
+        cost: 2,
+        tier: 2,
+        row: 3,
+        col: 8,
+        ability: "maneuver",
+        uses: 1,
+        usesPer: "scene",
+        castingTime: "action",
+        range: "touch",
+        target: [
+          "enemy"
+        ],
+        duration: "instantaneous"
+      },
+      {
+        id: "braw_wide_sweep",
+        name: "Wide Sweep",
+        flavour: "One low, wide sweep takes every nearby foe off their feet.",
+        description: "Sweep the Leg targets each enemy within an arc.",
+        cost: 2,
+        tier: 3,
+        row: 5,
+        col: 8,
+        ability: "modifier",
+        modifies: {
+          braw_sweep_the_leg: {
+            aoe: {
+              set: {
+                shape: "arc",
+                origin: "self",
+                size: 2
+              }
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "braw_sweep_the_leg"
+          ]
+        }
       }
     ]
   },
@@ -2285,7 +2581,7 @@ window.DOMAINS = [
             }
           ]
         },
-        cost: 1,
+        cost: 2,
         tier: 1,
         row: 0,
         col: 3,
