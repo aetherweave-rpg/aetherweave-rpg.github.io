@@ -70,7 +70,7 @@ window.DOMAINS = [
     name: "Nature",
     icon: "🐺",
     accent: "#6a8f2f",
-    cols: 5,
+    cols: 9,
     kind: "core",
     talents: [
       {
@@ -111,9 +111,9 @@ window.DOMAINS = [
         companion: {
           hp: 2,
           defenses: {
+            piercing: 1,
             bludgeoning: 1,
-            slashing: 1,
-            piercing: 1
+            slashing: 1
           },
           attacks: [
             {
@@ -187,7 +187,10 @@ window.DOMAINS = [
               damage: "piercing",
               pool: 4
             }
-          ]
+          ],
+          skills: {
+            Intimidation: 4
+          }
         },
         requires: {
           talents: [
@@ -210,8 +213,8 @@ window.DOMAINS = [
         },
         cost: 2,
         tier: 1,
-        row: 2,
-        col: 1,
+        row: 3,
+        col: 3,
         ability: "companion_maneuver",
         uses: 2,
         castingTime: "action",
@@ -243,7 +246,7 @@ window.DOMAINS = [
         cost: 1,
         tier: 2,
         row: 4,
-        col: 1,
+        col: 3,
         ability: "modifier",
         modifies: {
           natu_great_beast_cleave: {
@@ -284,7 +287,7 @@ window.DOMAINS = [
         cost: 2,
         tier: 1,
         row: 3,
-        col: 3,
+        col: 5,
         ability: "companion_maneuver",
         uses: 1,
         usesPer: "scene",
@@ -324,8 +327,8 @@ window.DOMAINS = [
       {
         id: "natu_great_beast_assert_dominance",
         name: "Great Beast: Assert Dominance",
-        flavour: "Your companion asserts its dominance over any sapient foe, attracting their attention.",
-        description: "Against {natu_great_beast_dominant_apex:\"each\">natu_great_beast_assert_dominance:\"the\"} enemy's Mental stat.",
+        flavour: "Your companion asserts its dominance, attracting the attention of its foe.",
+        description: "Against {natu_great_beast_apex_dominance:\"each\">natu_great_beast_assert_dominance:\"the\"} enemy's Mental stat.",
         test: {
           characteristic: "presence",
           kind: "noncombat",
@@ -346,8 +349,8 @@ window.DOMAINS = [
         },
         cost: 2,
         tier: 1,
-        row: 2,
-        col: 2,
+        row: 3,
+        col: 4,
         ability: "companion_maneuver",
         uses: 3,
         castingTime: "minor_action",
@@ -355,7 +358,6 @@ window.DOMAINS = [
         target: [
           "enemy"
         ],
-        numTargets: 1,
         duration: "instantaneous",
         companionOf: [
           "natu_animal_companion_great"
@@ -367,14 +369,14 @@ window.DOMAINS = [
         }
       },
       {
-        id: "natu_great_beast_dominant_apex",
-        name: "Great Beast: Dominant Apex",
+        id: "natu_great_beast_apex_dominance",
+        name: "Great Beast: Apex Dominance",
         flavour: "Your companion can dominate multiple enemies at the same time.",
         description: "Great Beast: Assert Dominance can target one additional enemy.",
         cost: 1,
         tier: 2,
         row: 4,
-        col: 2,
+        col: 4,
         ability: "modifier",
         modifies: {
           natu_great_beast_assert_dominance: {
@@ -390,9 +392,9 @@ window.DOMAINS = [
         }
       },
       {
-        id: "natu_great_beast_sweep_the_leg",
-        name: "Great Beast: Sweep the Leg",
-        flavour: "Your companion barrels into an opponent's legs, knocking them off their feet.",
+        id: "natu_great_beast_knock_down",
+        name: "Great Beast: Knock Down",
+        flavour: "Your companion slams into an enemy, knocking it to the ground.",
         description: "Make a regular attack with your companion. In addition to the attack's normal effects it gains the following:",
         test: {
           characteristic: "weapon",
@@ -411,7 +413,10 @@ window.DOMAINS = [
         cost: 2,
         tier: 2,
         row: 4,
-        col: 3,
+        col: 5,
+        tags: [
+          "magic"
+        ],
         ability: "companion_maneuver",
         uses: 1,
         usesPer: "scene",
@@ -427,6 +432,197 @@ window.DOMAINS = [
         requires: {
           talents: [
             "natu_great_beast_knock_back"
+          ]
+        }
+      },
+      {
+        id: "natu_improved_flying_companion",
+        name: "Improved Flying Companion",
+        flavour: "Your flying companion is now fully fledged, becoming more capable.",
+        description: "Your flying companion's skills and Claw increase by 1 and its HP by 2. It gains 1 damage reduction against fire, cold, lightning, acid, arcane, blight, radiant and fortitude.",
+        cost: 3,
+        tier: 2,
+        row: 4,
+        col: 0,
+        ability: "companion_modifier",
+        modifiesCompanion: {
+          natu_animal_companion_flying: {
+            hp: {
+              add: 2
+            },
+            "skills.Observe": {
+              add: 1
+            },
+            "skills.Survival": {
+              add: 1
+            },
+            "skills.Acrobatics": {
+              add: 1
+            },
+            "attacks.Claw": {
+              add: 1
+            },
+            "defenses.fire": {
+              add: 1
+            },
+            "defenses.cold": {
+              add: 1
+            },
+            "defenses.lightning": {
+              add: 1
+            },
+            "defenses.acid": {
+              add: 1
+            },
+            "defenses.arcane": {
+              add: 1
+            },
+            "defenses.blight": {
+              add: 1
+            },
+            "defenses.radiant": {
+              add: 1
+            },
+            "defenses.fortitude": {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "natu_animal_companion_flying"
+          ]
+        }
+      },
+      {
+        id: "natu_improved_tiny_companion",
+        name: "Improved Tiny Companion",
+        flavour: "Your tiny companion has grown to be more intelligent and capable.",
+        description: "Your tiny companion's skills increase by 2 and its HP by 1. It gains 1 damage reduction against bludgeoning, slashing and piercing.",
+        cost: 3,
+        tier: 2,
+        row: 4,
+        col: 1,
+        ability: "companion_modifier",
+        modifiesCompanion: {
+          natu_animal_companion_tiny_animal: {
+            hp: {
+              add: 1
+            },
+            "skills.Climb": {
+              add: 2
+            },
+            "skills.Acrobatics": {
+              add: 2
+            },
+            "skills.Observe": {
+              add: 2
+            },
+            "skills.Sneak": {
+              add: 2
+            },
+            "skills.Thievery": {
+              add: 2
+            },
+            "defenses.bludgeoning": {
+              add: 1
+            },
+            "defenses.slashing": {
+              add: 1
+            },
+            "defenses.piercing": {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "natu_animal_companion_tiny_animal"
+          ]
+        }
+      },
+      {
+        id: "natu_improved_great_companion",
+        name: "Improved Great Companion",
+        flavour: "Your has grown into an impressive adult beast.",
+        description: "Your great companion's HP increases by 3 and its Bite by 2. All its damage reduction increases by 1.",
+        cost: 3,
+        tier: 2,
+        row: 4,
+        col: 2,
+        ability: "companion_modifier",
+        modifiesCompanion: {
+          natu_animal_companion_great: {
+            hp: {
+              add: 3
+            },
+            "attacks.Bite": {
+              add: 2
+            },
+            "defenses.bludgeoning": {
+              add: 1
+            },
+            "defenses.slashing": {
+              add: 1
+            },
+            "defenses.piercing": {
+              add: 1
+            },
+            "defenses.fire": {
+              add: 1
+            },
+            "defenses.cold": {
+              add: 1
+            },
+            "defenses.lightning": {
+              add: 1
+            },
+            "defenses.acid": {
+              add: 1
+            },
+            "defenses.arcane": {
+              add: 1
+            },
+            "defenses.blight": {
+              add: 1
+            },
+            "defenses.radiant": {
+              add: 1
+            },
+            "defenses.fortitude": {
+              add: 1
+            },
+            "defenses.mental": {
+              add: 1
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "natu_animal_companion_great"
+          ]
+        }
+      },
+      {
+        id: "natu_intimidating_beast",
+        name: "Intimidating Beast",
+        flavour: "Your beast companion has grown to be especially fearsome.",
+        description: "Your great companion's Intimidation increases by 2.",
+        cost: 1,
+        tier: 1,
+        row: 2,
+        col: 4,
+        ability: "companion_modifier",
+        modifiesCompanion: {
+          natu_animal_companion_great: {
+            "skills.Intimidation": {
+              add: 2
+            }
+          }
+        },
+        requires: {
+          talents: [
+            "natu_animal_companion_great"
           ]
         }
       }
@@ -446,6 +642,20 @@ window.DOMAINS = [
             "natu_animal_companion"
           ]
         }
+      },
+      {
+        id: "great_beast",
+        name: "Great Beast",
+        members: [
+          "natu_great_beast_greater_cleave",
+          "natu_great_beast_apex_dominance",
+          "natu_great_beast_knock_down",
+          "natu_great_beast_knock_back",
+          "natu_great_beast_flanking",
+          "natu_great_beast_assert_dominance",
+          "natu_great_beast_cleave",
+          "natu_intimidating_beast"
+        ]
       }
     ]
   },

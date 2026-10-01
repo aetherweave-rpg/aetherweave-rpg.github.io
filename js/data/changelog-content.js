@@ -15,6 +15,20 @@ window.CHANGELOG_CONTENT = [
   {
     date: "2026-10-01",
     entries: [
+      "Added talent \"Great Beast: Apex Dominance\" (tier 2) to the Nature domain.",
+      "Added talent \"Improved Great Companion\" (tier 2) to the Nature domain.",
+      "Added talent \"Intimidating Beast\" (tier 1) to the Nature domain.",
+      "Added talent \"Improved Tiny Companion\" (tier 2) to the Nature domain.",
+      "Added talent \"Great Beast: Knock Down\" (tier 2) to the Nature domain.",
+      "Changed talent \"Great Beast: Assert Dominance\" (tier 1) in the Nature domain: description: \"Against {natu_great_beast_dominant_apex:\"each\">natu_great_be...\" -> \"Against {natu_great_beast_apex_dominance:\"each\">natu_great_b...\".",
+      "Added talent \"Improved Flying Companion\" (tier 2) to the Nature domain.",
+      "Removed talent \"Great Beast: Sweep the Leg\" (tier 2) from the Nature domain.",
+      "Removed talent \"Great Beast: Dominant Apex\" (tier 2) from the Nature domain.",
+    ],
+  },
+  {
+    date: "2026-10-01",
+    entries: [
       "Added talent \"Great Beast: Cleave\" (tier 1) to the Nature domain.",
       "Added talent \"Great Beast: Sweep the Leg\" (tier 2) to the Nature domain.",
       "Added talent \"Wide Sweep\" (tier 3) to the Brawling domain.",

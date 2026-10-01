@@ -21,6 +21,9 @@
   // a rect taken against the grid is already in the overlay's own space —
   // scrollLeft never enters the arithmetic.
   var _svg = null, _nodeEls = {}, _view = null, _rowEls = {}, _groupBoxes = [], _grid = null;
+  // The scroller's scrollLeft from before the last re-render, until drawLines
+  // has laid the new grid out and can put it back (see render()).
+  var _keepLeft = null;
 
   function init() {
     UI.renderHeader("trees");
@@ -133,6 +136,14 @@
     var host = document.getElementById("tree");
     if (!host) return;
     hideTooltip();
+    // Every learn/refund rebuilds the tree from scratch. Left alone, that snaps
+    // the sideways scroller back to its left edge, and until drawLines has
+    // re-added the widened gaps the page is shorter than before, so the browser
+    // clamps the window's scroll and the view jumps. Hold the old height as a
+    // floor and carry the old scrollLeft over; drawLines releases both.
+    var oldScroll = host.querySelector(".tree-scroll");
+    _keepLeft = oldScroll && _view && _view.id === currentTree ? oldScroll.scrollLeft : 0;
+    host.style.minHeight = host.offsetHeight + "px";
     host.innerHTML = "";
     _nodeEls = {};
     _rowEls = {};
@@ -143,6 +154,7 @@
     var state = State.get();
     var view = _view = buildView(state);
     if (!view) {
+      host.style.minHeight = "";
       host.appendChild(el("div", "empty", "No trees available."));
       return;
     }
@@ -153,6 +165,7 @@
 
     var entries = view.entries;
     if (!entries.length) {
+      host.style.minHeight = "";
       host.appendChild(el("div", "empty", "Nothing in this tree yet."));
       return;
     }
@@ -194,6 +207,7 @@
       _rowEls[row] = rowEl;   // drawLines widens these when a gap needs lanes
     }
 
+    scroller.scrollLeft = _keepLeft;   // close enough already; drawLines settles it
     scheduleDraw();
   }
 
@@ -437,6 +451,10 @@
         : r.link.group.members.every(function (id) { return idOwned(id, state); });
       drawRoute(r, preOwned && childOwned ? "active" : preOwned ? "ready" : "idle");
     });
+
+    // The grid has its final size now: restore the scroll render() kept.
+    if (_keepLeft !== null) { _grid.parentNode.scrollLeft = _keepLeft; _keepLeft = null; }
+    host.style.minHeight = "";
   }
 
   // The dotted rectangle round each group's members, measured after layout.
@@ -500,7 +518,7 @@
 
   function clearGapSpacing() {
     Object.keys(_rowEls).forEach(function (row) { _rowEls[row].style.marginTop = ""; });
-    if (_grid) _grid.style.paddingTop = "";
+    if (_grid) _grid.style.paddingTop = _grid.style.paddingLeft = _grid.style.paddingRight = "";
   }
 
   // A group box reaches GROUP_PAD_TOP above its highest member to make room for
@@ -510,14 +528,23 @@
   // the row gaps already use, and it keeps the overlay and the grid sharing one
   // origin rather than introducing a second, negative one. Only ever grows
   // within a draw (clearGapSpacing resets it first), so this cannot oscillate.
+  // GROUP_PAD does the same sideways: a group holding a first- or last-column
+  // talent pokes past the grid's side, where the scroller clips it.
   function applyGroupHeadroom() {
     if (!_grid) return false;
-    var minTop = 0;
-    _groupBoxes.forEach(function (gb) { minTop = Math.min(minTop, gb.rect.top); });
-    if (minTop >= 0) return false;
-    var have = parseFloat(_grid.style.paddingTop) || 0;
-    _grid.style.paddingTop = (have + Math.ceil(-minTop) + 2) + "px";
-    return true;
+    var minTop = 0, minLeft = 0, overRight = 0, w = _grid.offsetWidth, changed = false;
+    _groupBoxes.forEach(function (gb) {
+      minTop = Math.min(minTop, gb.rect.top);
+      minLeft = Math.min(minLeft, gb.rect.left);
+      overRight = Math.max(overRight, gb.rect.right - w);
+    });
+    [["paddingTop", -minTop], ["paddingLeft", -minLeft], ["paddingRight", overRight]].forEach(function (p) {
+      if (p[1] <= 0) return;
+      var have = parseFloat(_grid.style[p[0]]) || 0;
+      _grid.style[p[0]] = (have + Math.ceil(p[1]) + 2) + "px";
+      changed = true;
+    });
+    return changed;
   }
 
   // Combines LinkRouter's own lane-demand gaps with the extra room any

@@ -1288,6 +1288,23 @@
         return target;
       }
 
+      // Every attack name a companion can end up with: its own, plus any a
+      // companion modifier grants it through `attacks` set/merge. An
+      // `attacks.<name>` change aimed at none of these could never apply.
+      function companionAttackNames(targetId) {
+        var names = ((byId[targetId] && byId[targetId].companion && byId[targetId].companion.attacks) || [])
+          .map(function (a) { return a && a.name; });
+        allTalents.forEach(function (m) {
+          var ops = isCompanionModifier(m) && m.modifiesCompanion &&
+            m.modifiesCompanion[targetId] && m.modifiesCompanion[targetId].attacks;
+          if (!ops) return;
+          [ops.set, ops.merge].forEach(function (list) {
+            if (Array.isArray(list)) list.forEach(function (a) { if (a && a.name) names.push(a.name); });
+          });
+        });
+        return names;
+      }
+
       if (t.companion && !isCompanion(t))
         problems.push(t.id + ": has a `companion` statblock but is not ability: \"companion\"");
       if (t.companionOf && !companionAttachKind(t))
@@ -1367,14 +1384,20 @@
           problems.push(t.id + ": a companion modifier must name at least one companion in `modifiesCompanion`");
         }
         cTargets.forEach(function (targetId) {
-          if (!checkTargetTree(targetId, "modifies")) return;
+          var target = checkTargetTree(targetId, "modifies");
+          if (!target) return;
           var spec = t.modifiesCompanion[targetId] || {};
           Object.keys(spec).forEach(function (field) {
             var allowed = companionFieldOps(field);
             if (!allowed) {
               problems.push(t.id + ": '" + field + "' is not a modifiable companion field " +
-                "(hp, attacks, defenses.<defense>, skills.<skill>)");
+                "(hp, attacks, attacks.<attack>, defenses.<defense>, skills.<skill>)");
               return;
+            }
+            if (field.indexOf("attacks.") === 0) {
+              var atkName = field.slice("attacks.".length);
+              if (companionAttackNames(targetId).indexOf(atkName) < 0)
+                problems.push(t.id + ": '" + field + "' names an attack '" + targetId + "' does not have");
             }
             var ops = spec[field];
             if (!ops || typeof ops !== "object" || Array.isArray(ops)) {
@@ -2678,6 +2701,11 @@
     if (dot < 0) return null;
     var top = field.slice(0, dot), sub = field.slice(dot + 1);
     if (top === "defenses") return defenseById(sub) ? ARITHMETIC_OPS : null;
+    // `attacks.<name>` is arithmetic on that one attack's pool — an improvement
+    // that "adds 2 to Bite" stays additive instead of restating the whole row.
+    // Whether the companion has an attack by that name is the validator's call
+    // (it depends on the target), not this predicate's.
+    if (top === "attacks") return sub ? ARITHMETIC_OPS : null;
     if (top === "skills") {
       return allSkillNames().indexOf(sub) >= 0 ? ARITHMETIC_OPS : null;
     }
@@ -2720,6 +2748,15 @@
         var dot = field.indexOf(".");
         if (dot < 0) { out[field] = applyFieldOps(out[field], spec[field], field); return; }
         var top = field.slice(0, dot), sub = field.slice(dot + 1);
+        if (top === "attacks") {
+          out.attacks = out.attacks.map(function (a) {
+            if (a.name !== sub) return a;
+            var next = shallow(a);
+            next.pool = applyFieldOps(a.pool, spec[field], field);
+            return next;
+          });
+          return;
+        }
         var holder = shallow(out[top]);
         holder[sub] = applyFieldOps(holder[sub], spec[field], field);
         out[top] = holder;
