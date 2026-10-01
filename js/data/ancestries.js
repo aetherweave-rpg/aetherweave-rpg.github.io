@@ -15,8 +15,7 @@ window.ANCESTRIES = [
     icon: "🧝🏻‍♀️",
     accent: "#4a8f7b",
     flavour: "The once immortal high elves had a thriving civilization, prizing culture and arts from the alabaster city of Kinara. Since the loss of the Alabaster stone, the high elves found themselves confronted with imminent mortality, and lost most of their population overnight. What remains is a proud people, desperately hanging on to what is left of their once great society.",
-    parent: "elf",
-    hidden: true
+    parent: "elf"
   },
   {
     id: "snow_elf",
@@ -24,8 +23,7 @@ window.ANCESTRIES = [
     icon: "🧝‍♂️",
     accent: "#aee8ee",
     flavour: "",
-    parent: "elf",
-    hidden: true
+    parent: "elf"
   },
   {
     id: "wood_elf",
@@ -33,8 +31,7 @@ window.ANCESTRIES = [
     icon: "🧝",
     accent: "#33b920",
     flavour: "",
-    parent: "elf",
-    hidden: true
+    parent: "elf"
   },
   {
     id: "keramish_orc",
@@ -42,8 +39,7 @@ window.ANCESTRIES = [
     icon: "🧌",
     accent: "#ac2d46",
     flavour: "",
-    parent: "orc",
-    hidden: true
+    parent: "orc"
   },
   {
     id: "aislir_orc",
@@ -51,24 +47,21 @@ window.ANCESTRIES = [
     icon: "🛶",
     accent: "#4a8f7b",
     flavour: "",
-    parent: "orc",
-    hidden: true
+    parent: "orc"
   },
   {
     id: "halfling",
     name: "Halfling",
     icon: "👨🏻‍🦱",
     accent: "#4a8f7b",
-    flavour: "",
-    hidden: true
+    flavour: ""
   },
   {
     id: "dryad",
     name: "Dryad",
     icon: "🌳",
     accent: "#008040",
-    flavour: "",
-    hidden: true
+    flavour: ""
   },
   {
     id: "nomad_orc",
@@ -84,8 +77,7 @@ window.ANCESTRIES = [
     icon: "⛵",
     accent: "#ff8040",
     flavour: "",
-    parent: "dwarf",
-    hidden: true
+    parent: "dwarf"
   },
   {
     id: "elf",
@@ -100,8 +92,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     flavour: "",
-    pickable: false,
-    hidden: true
+    pickable: false
   },
   {
     id: "orc",
@@ -118,8 +109,7 @@ window.ANCESTRIES = [
     accent: "#4a8f7b",
     flavour: "",
     parent: "dwarf",
-    pickable: false,
-    hidden: true
+    pickable: false
   },
   {
     id: "pillar_dwarf",
@@ -127,8 +117,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     flavour: "",
-    parent: "dwarf",
-    hidden: true
+    parent: "dwarf"
   },
   {
     id: "gnome",
@@ -136,8 +125,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     flavour: "",
-    pickable: false,
-    hidden: true
+    pickable: false
   },
   {
     id: "rock_gnome",
@@ -145,8 +133,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     flavour: "",
-    parent: "gnome",
-    hidden: true
+    parent: "gnome"
   },
   {
     id: "traveler_gnome",
@@ -154,8 +141,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     flavour: "",
-    parent: "gnome",
-    hidden: true
+    parent: "gnome"
   },
   {
     id: "vistavi_elf",
@@ -163,8 +149,7 @@ window.ANCESTRIES = [
     icon: "",
     accent: "#4a8f7b",
     flavour: "",
-    parent: "elf",
-    hidden: true
+    parent: "elf"
   },
   {
     id: "mokra_nor",
