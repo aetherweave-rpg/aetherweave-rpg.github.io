@@ -2369,7 +2369,7 @@ window.DOMAINS = [
             }
           ]
         },
-        cost: 1,
+        cost: 2,
         tier: 1,
         row: 0,
         col: 2,
@@ -2389,14 +2389,16 @@ window.DOMAINS = [
         id: "aeth_spell_speed",
         name: "Speed",
         description: "An ally of your choice or self gains an additional 2 actions on their next turn.\nRisk 1: on 1+ Risk You lose one action this turn if available, otherwise lose one action next turn.",
-        cost: 1,
-        tier: 2,
+        cost: 2,
+        tier: 1,
         row: 2,
         col: 3,
         tags: [
           "magic"
         ],
         ability: "maneuver",
+        uses: 1,
+        usesPer: "scene",
         castingTime: "action",
         range: 10,
         target: [
@@ -2423,14 +2425,15 @@ window.DOMAINS = [
             }
           ]
         },
-        cost: 1,
-        tier: 2,
+        cost: 2,
+        tier: 1,
         row: 2,
         col: 2,
         tags: [
           "magic"
         ],
         ability: "maneuver",
+        uses: 2,
         castingTime: "action",
         range: "self",
         target: [
@@ -2453,7 +2456,7 @@ window.DOMAINS = [
         id: "aeth_spell_accelerate",
         name: "Accelerate",
         description: "Target ally within 10m or self can move up to 10 meters more on their next move.",
-        cost: 1,
+        cost: 2,
         tier: 1,
         row: 0,
         col: 1,
@@ -2461,7 +2464,8 @@ window.DOMAINS = [
           "magic"
         ],
         ability: "maneuver",
-        usesPer: "unlimited",
+        uses: 1,
+        usesPer: "scene",
         castingTime: "minor_action",
         range: 10,
         target: [
@@ -2475,13 +2479,14 @@ window.DOMAINS = [
         name: "Burst",
         description: "Target ally within 10m or self can move up to 3 times their normal speed on their next move action.",
         cost: 1,
-        tier: 2,
+        tier: 1,
         row: 2,
         col: 1,
         tags: [
           "magic"
         ],
         ability: "maneuver",
+        uses: 2,
         castingTime: "minor_action",
         range: 10,
         target: [
@@ -2499,7 +2504,7 @@ window.DOMAINS = [
         id: "aeth_spell_hover",
         name: "Hover",
         description: "Target object you can touch will hover at the height it had during the casting of the spell. It can be moved laterally, but excessive upward or downward force breaks the spell. Can be cast on objects up to 10kg and last up to 10 minutes.",
-        cost: 1,
+        cost: 2,
         tier: 1,
         row: 0,
         col: 4,
@@ -2522,14 +2527,15 @@ window.DOMAINS = [
         id: "aeth_spell_levitate",
         name: "Levitate",
         description: "Target ally or self can levitate 20 centimeters above ground. When they do so, they move at half speed.",
-        cost: 1,
-        tier: 2,
+        cost: 2,
+        tier: 1,
         row: 2,
         col: 4,
         tags: [
           "magic"
         ],
         ability: "maneuver",
+        uses: 1,
         castingTime: 1,
         range: "touch",
         target: [
@@ -2551,13 +2557,14 @@ window.DOMAINS = [
         name: "Ethereal Ward",
         description: "An ethereal shield hovers around you, aiding in your defense.\n\nReduce the number of rolled Risk dice rolled due to melee opponents by 3. (to a minimum of 0)\nYou roll 2 additional dice on Deflect rolls.",
         cost: 1,
-        tier: 2,
+        tier: 1,
         row: 2,
         col: 0,
         tags: [
           "magic"
         ],
         ability: "maneuver",
+        uses: 2,
         castingTime: "minor_action",
         range: "self",
         target: [

@@ -107,9 +107,7 @@ window.ANCESTRIES = [
     name: "Ben Duran Dwarf",
     icon: "",
     accent: "#4a8f7b",
-    flavour: "",
-    parent: "dwarf",
-    pickable: false
+    parent: "dwarf"
   },
   {
     id: "pillar_dwarf",
