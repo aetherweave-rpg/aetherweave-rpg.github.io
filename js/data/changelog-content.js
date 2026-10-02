@@ -13,6 +13,14 @@
 
 window.CHANGELOG_CONTENT = [
   {
+    date: "2026-10-02",
+    entries: [
+      "Changed talent \"Accelerate\" (tier 1) in the Aether domain: description: \"Target ally within 10m or self can move up to 10 meters more...\" -> \"Target can move up to 10 yards more on their next move.\".",
+      "Changed talent \"Uppercut\" (tier 1) in the Brawling domain: description: wording changed (both start \"{braw_defensive_combo:\"\" > braw_uppercut...\").",
+      "Changed source talent \"Anger\" (tier 1) in the Rage source of power: description: wording changed (both start \"You can choose to lose control in the he...\"); ability: (none) -> \"maneuver\"; uses: (none) -> 1; usesPer: (none) -> \"scene\"; castingTime: (none) -> \"free\"; range: (none) -> \"touch\"; duration: (none) -> \"instantaneous\".",
+    ],
+  },
+  {
     date: "2026-10-01",
     entries: [
       "Changed talent \"Ethereal Ward\" (tier 1) in the Aether domain: cost: 1 -> 2.",

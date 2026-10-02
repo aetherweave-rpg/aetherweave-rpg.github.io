@@ -41,7 +41,16 @@ window.SOURCES = [
         tier: 1,
         name: "Anger",
         icon: "",
-        description: "You can choose to lose control in the heat of combat. You are more reckless, dealing more damage as you risk injuring yourself. You also shrug off much of the damage you take. \n\nOnce per scene: For the rest of the scene, roll 2 additional Risk dice for every combat test. Every Risk you roll during an attack adds 1 damage to the attack. Every Risk you roll for a defensive roll instead reduces damage by 1 for every Risk rolled."
+        description: "You can choose to lose control in the heat of combat. You are more reckless, dealing more damage as you risk injuring yourself. You also shrug off much of the damage you take. \n\nOnce per scene: For the rest of the scene, roll 2 additional Risk dice for every combat test. Every Risk you roll during an attack adds 1 damage to the attack.",
+        ability: "maneuver",
+        uses: 1,
+        usesPer: "scene",
+        castingTime: "free",
+        range: "touch",
+        target: [
+          "self"
+        ],
+        duration: "instantaneous"
       }
     ]
   },

@@ -1231,6 +1231,21 @@ window.DOMAINS = [
         name: "Flamethrower",
         flavour: "You have constructed a simple flamethrower.",
         test: {
+          characteristic: "intelligence",
+          kind: "crafting",
+          skills: [
+            "Carpentry",
+            "Jewelcrafting",
+            "Clockwork",
+            "Engineering",
+            "Leatherworking",
+            "Tailoring",
+            "Shipwright",
+            "Fletching",
+            "Alchemy",
+            "Smithing"
+          ],
+          vs: "fire",
           tiers: [
             {
               successes: 1,
@@ -1435,7 +1450,7 @@ window.DOMAINS = [
         id: "braw_uppercut",
         name: "Uppercut",
         flavour: "You deliver a powerful uppercut, debilitating your opponent{braw_defensive_combo:\".\" > braw_uppercut:\", but risk injury on yourself by getting in close.\"}",
-        description: "{braw_defensive_combo:\"\" > braw_uppercut:\"Until the start of your next turn, roll 2 fewer dice on your next defense roll.\"}",
+        description: "{braw_defensive_combo:\"\" > braw_uppercut:\"Until the start of your next turn, roll 2 fewer dice on your next dodge or deflect roll.\"}",
         test: {
           characteristic: "weapon",
           kind: "weapon",
@@ -2455,7 +2470,7 @@ window.DOMAINS = [
       {
         id: "aeth_spell_accelerate",
         name: "Accelerate",
-        description: "Target ally within 10m or self can move up to 10 meters more on their next move.",
+        description: "Target can move up to 10 yards more on their next move.",
         cost: 2,
         tier: 1,
         row: 0,
